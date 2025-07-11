@@ -1,23 +1,21 @@
 from flask import request, jsonify, Flask
+from flask_mysql_connector import MySql
+from dotenv import load_dotenv
+from database import db
+import os
+
+load_dotenv()
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = "tarrafa_flask_back_2014"
+app.config['SQLALCHEMY_DATABASE_URI']  = os.getenv('MYSQL_ACCESS')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-tasks = []  # Lista para armazenar as tarefas
-task_id_control = 1  # Controlador de IDs para garantir unicidade
+db.init_app(app)
 
-@app.route("/tasks", methods=["POST"])
-def create_task():
-    global task_id_control
-    data = request.get_json()  # Pega os dados enviados no corpo da requisição
-    new_task = {
-        "id": task_id_control,
-        "title": data.get("title"),  # Obtém o título enviado
-        "description": data.get("description", ""),  # Descrição opcional
-        "completed": False  # Define que a tarefa começa como incompleta
-    }
-    tasks.append(new_task)  # Adiciona a nova tarefa à lista
-    task_id_control += 1  # Incrementa o ID para a próxima tarefa
-    return jsonify({"message": "Tarefa criada com sucesso!", "task": new_task}), 201
+@app.route("/course/<int:course_id>", methods=["GET"])
+def get_course(course_id):
+    return jsonify({}), 200
 
 @app.route("/")
 def hello():

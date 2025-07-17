@@ -1,9 +1,9 @@
 from flask import request, jsonify, Flask
-# from flask_mysql_connector import MySql
 from dotenv import load_dotenv
 import pymysql
 from database import db
 import os
+import pandas as pd
 
 load_dotenv()
 
@@ -53,11 +53,20 @@ def get_course(course_id):
             AND lh.component = 'mod_forum'
             AND r.archetype = 'student';
         ''', course_id)
-        coursers = cursor.fetchall()
+        
+        courses = cursor.fetchall()
+        df = pd.DataFrame(courses)
+        
+        if not df.empty:
+            df.rename(columns={'timestamp': 'timestamp'}, inplace=True)
+            df['timestamp'] = pd.to_datetime(df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+        
+        print(df)
+        
     connector.close()
-    return jsonify(coursers), 200
-
-
+    
+    # Return DataFrame as JSON if you want the converted data
+    return jsonify(df.to_dict(orient='records')), 200
 
 
 

@@ -1,29 +1,15 @@
 from flask import request, jsonify, Flask
-from dotenv import load_dotenv
-import pymysql
-from database import db
-import os
+from database import db, Database
 import pandas as pd
-
-load_dotenv()
+from analysis.analysis import Analyzer
 
 app = Flask(__name__)
-
-
-def get_connection():
-    return pymysql.connect(
-        host=os.getenv('MYSQL_HOST'),
-        port=int(os.getenv('MYSQL_GRAD_PORT')),
-        user=os.getenv('MYSQL_USER'),
-        password=os.getenv('MYSQL_PASSWORD'),
-        db=os.getenv('MYSQL_DATABASE'),
-        charset='utf8mb4',
-        cursorclass=pymysql.cursors.DictCursor
-    )
+conn = Database()
+analyzer = Analyzer()
 
 @app.route('/courses')
 def get_courses():
-    connector = get_connection()
+    connector = conn.get_connection()
     with connector.cursor() as cursor:
         cursor.execute('''
             SELECT *
@@ -35,7 +21,7 @@ def get_courses():
 
 @app.route('/course/<int:course_id>')
 def get_course(course_id):
-    connector = get_connection()
+    connector = conn.get_connection()
     with connector.cursor() as cursor:
         cursor.execute('''
             SELECT DISTINCT 
@@ -69,10 +55,87 @@ def get_course(course_id):
     return jsonify(df.to_dict(orient='records')), 200
 
 
+@app.route("/versions", methods=["GET"])
+def moodle_version():
+    connector = conn.get_connection()
+    with connector.cursor() as cursor:
+        cursor.execute('''
+            SELECT *
+            FROM mdl_course
+        ''')
+        coursers = cursor.fetchall()
+    connector.close()
+    return jsonify(coursers), 200
+
+@app.route("/version", methods=["GET", "POST"])
+def version():
+    port = request.form.get('port', type=int)
+    config = {
+            'host':     request.form['host'],
+            'port':     port,
+            'db': request.form['database'],
+            'user':     request.form['user'],
+            'password': request.form['password'],
+        }
+    connector = conn.get_connection_with_config()
+
+    version = analyzer.get_moodle_version(connector)
+    page = f'''
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+        <meta charset="UTF-8">
+        <title>Versão do moodle</title>
+        </head>
+        <body>
+            <p>A versão utilizada do moodle é a: {version}</p>
+        </body>
+        </html>
+    '''
+    return page, 200
+
 
 @app.route("/")
 def hello():
-    return "Hello, Flask + Poetry!"
+    page = '''
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+        <meta charset="UTF-8">
+        <title>Configuração de Banco Moodle</title>
+        </head>
+        <body>
+        <h2>Configuração de Conexão ao Banco de Dados Moodle</h2>
+        <form method="post" action="/version">
+            <div>
+            <label for="host">Host (ex: localhost):</label>
+            <input id="host" name="host" type="text" required>
+            </div>
+            <div>
+            <label for="port">Port:</label>
+            <input id="port" name="port" type="text" required>
+            </div>
+            <div>
+            <label for="database">Nome do Banco:</label>
+            <input id="database" name="database" type="text" required>
+            </div>
+            <div>
+            <label for="user">Usuário:</label>
+            <input id="user" name="user" type="text" required>
+            </div>
+            <div>
+            <label for="password">Senha:</label>
+            <input id="password" name="password" type="password">
+            </div>
+            <div>
+            <button type="submit">Salvar Configuração</button>
+            </div>
+        </form>
+        </body>
+        </html>
+
+    '''
+    return page
 
 if __name__ == '__main__':
     app.run(debug=True)

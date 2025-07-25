@@ -9,7 +9,7 @@ class Database:
     def __init__(self):
         pass
 
-    def get_connection():
+    def get_connection(self):
         return pymysql.connect(
             host=os.getenv('MYSQL_HOST'),
             port=int(os.getenv('MYSQL_GRAD_PORT')),
@@ -20,7 +20,7 @@ class Database:
             cursorclass=pymysql.cursors.DictCursor
         )
     
-    def get_connection_with_config(config):
+    def get_connection_with_config(self, config):
         return pymysql.connect(
             host = config['host'],
             port = config['port'],

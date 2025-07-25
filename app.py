@@ -77,7 +77,7 @@ def version():
             'user':     request.form['user'],
             'password': request.form['password'],
         }
-    connector = conn.get_connection_with_config()
+    connector = conn.get_connection_with_config(config)
 
     version = analyzer.get_moodle_version(connector)
     page = f'''

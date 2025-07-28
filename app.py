@@ -73,7 +73,7 @@ def version():
     config = {
             'host':     request.form['host'],
             'port':     port,
-            'db': request.form['database'],
+            'db':       request.form['database'],
             'user':     request.form['user'],
             'password': request.form['password'],
         }

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulários de Indicadores</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h2 {
+            margin-top: 40px;
+            color: #333;
+        }
+        form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        label, select, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 8px;
+        }
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007BFF;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Consultas de Indicadores</h1>
+
+    <h2>Motivação</h2>
+    <form id="form-motivacao" action="#" method="get">
+        <label for="motivation-query">Selecione o tipo de consulta:</label>
+        <select name="motivation-query" id="motivation-query">
+            <option value="geral">Geral</option>
+            <option value="periodo">Por Período</option>
+            <option value="usuario">Por Usuário</option>
+            <option value="curso">Por Curso</option>
+            <option value="detalhada">Detalhada</option>
+        </select>
+        <button type="submit">Consultar Motivação</button>
+    </form>
+
+    <h2>Engajamento</h2>
+    <form id="form-engajamento" action="#" method="get">
+        <label for="engagement-query">Selecione o tipo de consulta:</label>
+        <select name="engagement-query" id="engagement-query">
+            <option value="geral">Geral</option>
+            <option value="periodo">Por Período</option>
+            <option value="usuario">Por Usuário</option>
+            <option value="curso">Por Curso</option>
+            <option value="detalhada">Detalhada</option>
+        </select>
+        <button type="submit">Consultar Engajamento</button>
+    </form>
+
+    <h2>Desempenho</h2>
+    <form id="form-desempenho" action="#" method="get">
+        <label for="performance-query">Selecione o tipo de consulta:</label>
+        <select name="performance-query" id="performance-query">
+            <option value="geral">Geral</option>
+            <option value="periodo">Por Período</option>
+            <option value="usuario">Por Usuário</option>
+            <option value="curso">Por Curso</option>
+            <option value="detalhada">Detalhada</option>
+        </select>
+        <button type="submit">Consultar Desempenho</button>
+    </form>
+
+    <h2>Profundidade Cognitiva</h2>
+    <form id="form-profundidade" action="#" method="get">
+        <label for="depth-query">Selecione o tipo de consulta:</label>
+        <select name="depth-query" id="depth-query">
+            <option value="geral">Geral</option>
+            <option value="periodo">Por Período</option>
+            <option value="usuario">Por Usuário</option>
+            <option value="curso">Por Curso</option>
+            <option value="detalhada">Detalhada</option>
+        </select>
+        <button type="submit">Consultar Profundidade</button>
+    </form>
+
+    <h2>Amplitude Social</h2>
+    <form id="form-amplitude" action="#" method="get">
+        <label for="social-query">Selecione o tipo de consulta:</label>
+        <select name="social-query" id="social-query">
+            <option value="geral">Geral</option>
+            <option value="periodo">Por Período</option>
+            <option value="usuario">Por Usuário</option>
+            <option value="curso">Por Curso</option>
+            <option value="detalhada">Detalhada</option>
+        </select>
+        <button type="submit">Consultar Amplitude Social</button>
+    </form>
+
+</body>
+</html>

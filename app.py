@@ -1,4 +1,4 @@
-from flask import request, jsonify, Flask
+from flask import request, jsonify, Flask, send_file
 from database import db, Database
 import pandas as pd
 from analysis.analysis import Analyzer
@@ -67,8 +67,8 @@ def moodle_version():
     connector.close()
     return jsonify(coursers), 200
 
-@app.route("/version", methods=["GET", "POST"])
-def version():
+@app.route("/analysis", methods=["GET", "POST"])
+def analysis():
     port = request.form.get('port', type=int)
     config = {
             'host':     request.form['host'],
@@ -83,21 +83,26 @@ def version():
 
     res = analyzer.general_query(connector, version)
 
-    # page = f'''
-    #     <!DOCTYPE html>
-    #     <html lang="pt-BR">
-    #     <head>
-    #     <meta charset="UTF-8">
-    #     <title>Versão do moodle</title>
-    #     </head>
-    #     <body>
-    #         <p>A versão utilizada do moodle é a: {version}</p>
-    #     </body>
-    #     </html>
-    # '''
+    page = f'''
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+        <meta charset="UTF-8">
+        <title>Versão do moodle</title>
+        </head>
+        <body>
+            <p>A versão utilizada do moodle é a: {version}</p>
+            <form method="get" action="/">
+
+            </form>
+        </body>
+        </html>
+    '''
 
     connector.close()
-    return jsonify(res), 200
+    return send_file('src/pages/analysis.html',
+        mimetype='text/html',
+        download_name='pagina.html'), 200
 
 
 @app.route("/")
@@ -111,7 +116,7 @@ def hello():
         </head>
         <body>
         <h2>Configuração de Conexão ao Banco de Dados Moodle</h2>
-        <form method="post" action="/version">
+        <form method="post" action="/analysis">
             <div>
             <label for="host">Host (ex: localhost):</label>
             <input id="host" name="host" type="text" required>

@@ -15,6 +15,7 @@ class Mapper:
             return resultado.group()
         return None
 
+    # Função responsável por identificar a versão do moodle utilizada
     def get_moodle_version(self, connector):
         cursor = connector.cursor()
         cursor.execute(f"""
@@ -30,6 +31,7 @@ class Mapper:
 
         return version
     
+    # Função responsável por escolher qual código de consulta será utilzado baseando-se na versão do moodle
     def get_general_query(self, connector, version):
         match version:
             case '3.1.3':

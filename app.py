@@ -80,19 +80,24 @@ def version():
     connector = conn.get_connection_with_config(config)
 
     version = analyzer.get_moodle_version(connector)
-    page = f'''
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-        <meta charset="UTF-8">
-        <title>Versão do moodle</title>
-        </head>
-        <body>
-            <p>A versão utilizada do moodle é a: {version}</p>
-        </body>
-        </html>
-    '''
-    return page, 200
+
+    res = analyzer.general_query(connector, version)
+
+    # page = f'''
+    #     <!DOCTYPE html>
+    #     <html lang="pt-BR">
+    #     <head>
+    #     <meta charset="UTF-8">
+    #     <title>Versão do moodle</title>
+    #     </head>
+    #     <body>
+    #         <p>A versão utilizada do moodle é a: {version}</p>
+    #     </body>
+    #     </html>
+    # '''
+
+    connector.close()
+    return jsonify(res), 200
 
 
 @app.route("/")

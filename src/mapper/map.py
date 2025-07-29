@@ -2,6 +2,7 @@
 Neste arquivo, devemos criar a lógica do mapeamento das consultas.
 '''
 import re
+from mapper.connectors.moodle3_1 import Moodle31
 
 class Mapper:
     def __init__(self):
@@ -23,9 +24,14 @@ class Mapper:
         """)
         result = cursor.fetchall() # dict(cursor.fetchall())
         cursor.close()
-        connector.close()
 
         version = result[0]['value']
         version = self.get_real_version(version)
 
         return version
+    
+    def get_general_query(self, connector, version):
+        match version:
+            case '3.1.3':
+                moodle = Moodle31(connector)
+                return moodle.general_indicators()

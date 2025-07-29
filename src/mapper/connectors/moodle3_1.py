@@ -1,5 +1,5 @@
-from mapper.map import Moodle
+from mapper.moodle import Moodle
 
 class Moodle31(Moodle):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, connector):
+        super().__init__(connector)

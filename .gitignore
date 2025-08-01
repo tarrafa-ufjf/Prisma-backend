@@ -2,3 +2,4 @@
 /dist
 poetry.lock
 /__pycache__
+*.csv

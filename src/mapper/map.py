@@ -23,7 +23,7 @@ class Mapper:
             FROM mdl_config
             WHERE name = 'release'
         """)
-        result = cursor.fetchall() # dict(cursor.fetchall())
+        result = cursor.fetchall() 
         cursor.close()
 
         version = result[0]['value']
@@ -37,3 +37,5 @@ class Mapper:
             case '3.1.3':
                 moodle = Moodle31(connector)
                 return moodle.general_indicators()
+    
+    

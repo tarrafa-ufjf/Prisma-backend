@@ -1,0 +1,46 @@
+@app.route('/courses')
+def get_courses():
+    connector = conn.get_connection()
+    with connector.cursor() as cursor:
+        cursor.execute('''
+            SELECT *
+            FROM mdl_course
+        ''')
+        coursers = cursor.fetchall()
+    connector.close()
+    return jsonify(coursers), 200
+
+@app.route('/course/<int:course_id>')
+def get_course(course_id):
+    connector = conn.get_connection()
+    with connector.cursor() as cursor:
+        cursor.execute('''
+            SELECT DISTINCT 
+                u.id AS user_id,
+                u.firstname,
+                lh.objectid AS forum_id,
+                FROM_UNIXTIME(lh.timecreated) AS timestamp
+            FROM mdl_logstore_standard_log lh
+            JOIN mdl_user u ON lh.userid = u.id
+            JOIN mdl_user_enrolments ue ON ue.userid = u.id
+            JOIN mdl_enrol e ON e.id = ue.enrolid
+            JOIN mdl_role r ON r.id = e.roleid
+            WHERE lh.courseid = %s
+            AND lh.eventname LIKE '%%course_module_viewed%%'
+            AND lh.component = 'mod_forum'
+            AND r.archetype = 'student';
+        ''', course_id)
+        
+        courses = cursor.fetchall()
+        df = pd.DataFrame(courses)
+        
+        if not df.empty:
+            df.rename(columns={'timestamp': 'timestamp'}, inplace=True)
+            df['timestamp'] = pd.to_datetime(df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+        
+        print(df)
+        
+    connector.close()
+    
+    # Return DataFrame as JSON if you want the converted data
+    return jsonify(df.to_dict(orient='records')), 200

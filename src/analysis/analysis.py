@@ -1,4 +1,5 @@
 from mapper.map import Mapper
+import pandas as pd
 
 class Analyzer:
     def __init__(self):
@@ -10,3 +11,6 @@ class Analyzer:
 
     def general_query(self, connector, version):
         return self.mapper.get_general_query(connector, version)
+    
+    def generate_course_csv(self, course_id):
+        pass

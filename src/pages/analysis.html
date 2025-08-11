@@ -21,12 +21,12 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }
-        label, select, button {
+        label, select, input, button {
             display: block;
             width: 100%;
             margin-bottom: 10px;
         }
-        select {
+        select, input {
             padding: 8px;
         }
         button {
@@ -49,67 +49,88 @@
     <h2>Motivação</h2>
     <form id="form-motivacao" action="#" method="get">
         <label for="motivation-query">Selecione o tipo de consulta:</label>
-        <select name="motivation-query" id="motivation-query">
+        <select name="motivation-query" id="motivation-query" onchange="toggleInput(this)">
             <option value="geral">Geral</option>
             <option value="periodo">Por Período</option>
             <option value="usuario">Por Usuário</option>
             <option value="curso">Por Curso</option>
             <option value="detalhada">Detalhada</option>
         </select>
+        <label for="motivation-id">Informe o ID:</label>
+        <input type="text" id="motivation-id" name="motivation-id" disabled>
         <button type="submit">Consultar Motivação</button>
     </form>
 
     <h2>Engajamento</h2>
     <form id="form-engajamento" action="#" method="get">
         <label for="engagement-query">Selecione o tipo de consulta:</label>
-        <select name="engagement-query" id="engagement-query">
+        <select name="engagement-query" id="engagement-query" onchange="toggleInput(this)">
             <option value="geral">Geral</option>
             <option value="periodo">Por Período</option>
             <option value="usuario">Por Usuário</option>
             <option value="curso">Por Curso</option>
             <option value="detalhada">Detalhada</option>
         </select>
+        <label for="engagement-id">Informe o ID:</label>
+        <input type="text" id="engagement-id" name="engagement-id" disabled>
         <button type="submit">Consultar Engajamento</button>
     </form>
 
     <h2>Desempenho</h2>
     <form id="form-desempenho" action="#" method="get">
         <label for="performance-query">Selecione o tipo de consulta:</label>
-        <select name="performance-query" id="performance-query">
+        <select name="performance-query" id="performance-query" onchange="toggleInput(this)">
             <option value="geral">Geral</option>
             <option value="periodo">Por Período</option>
             <option value="usuario">Por Usuário</option>
             <option value="curso">Por Curso</option>
             <option value="detalhada">Detalhada</option>
         </select>
+        <label for="performance-id">Informe o ID:</label>
+        <input type="text" id="performance-id" name="performance-id" disabled>
         <button type="submit">Consultar Desempenho</button>
     </form>
 
     <h2>Profundidade Cognitiva</h2>
     <form id="form-profundidade" action="#" method="get">
         <label for="depth-query">Selecione o tipo de consulta:</label>
-        <select name="depth-query" id="depth-query">
+        <select name="depth-query" id="depth-query" onchange="toggleInput(this)">
             <option value="geral">Geral</option>
             <option value="periodo">Por Período</option>
             <option value="usuario">Por Usuário</option>
             <option value="curso">Por Curso</option>
             <option value="detalhada">Detalhada</option>
         </select>
+        <label for="depth-id">Informe o ID:</label>
+        <input type="text" id="depth-id" name="depth-id" disabled>
         <button type="submit">Consultar Profundidade</button>
     </form>
 
     <h2>Amplitude Social</h2>
     <form id="form-amplitude" action="#" method="get">
         <label for="social-query">Selecione o tipo de consulta:</label>
-        <select name="social-query" id="social-query">
+        <select name="social-query" id="social-query" onchange="toggleInput(this)">
             <option value="geral">Geral</option>
             <option value="periodo">Por Período</option>
             <option value="usuario">Por Usuário</option>
             <option value="curso">Por Curso</option>
             <option value="detalhada">Detalhada</option>
         </select>
+        <label for="social-id">Informe o ID:</label>
+        <input type="text" id="social-id" name="social-id" disabled>
         <button type="submit">Consultar Amplitude Social</button>
     </form>
 
+    <script>
+        function toggleInput(selectElement) {
+            const idField = document.getElementById(selectElement.id.replace('query', 'id'));
+            if (selectElement.value === 'geral') {
+                idField.disabled = true;
+                idField.value = '';
+            } else {
+                idField.disabled = false;
+            }
+        }
+    </script>
 </body>
 </html>

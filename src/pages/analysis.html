@@ -46,6 +46,21 @@
 <body>
     <h1>Consultas de Indicadores</h1>
 
+    <h2>Engajamento</h2>
+    <form id="form-engajamento" action="/engagement" method="post">
+        <label for="engagement-query">Selecione o tipo de consulta:</label>
+        <select name="engagement-query" id="engagement-query" onchange="toggleInput(this)">
+            <option value="geral">Geral</option>
+            <option value="periodo">Por Período</option>
+            <option value="usuario">Por Usuário</option>
+            <option value="course">Por Curso</option>
+            <option value="detalhada">Detalhada</option>
+        </select>
+        <label for="engagement-id">Informe o ID:</label>
+        <input type="text" id="engagement-id" name="engagement-id" disabled>
+        <button type="submit">Consultar Engajamento</button>
+    </form>
+
     <h2>Motivação</h2>
     <form id="form-motivacao" action="#" method="get">
         <label for="motivation-query">Selecione o tipo de consulta:</label>
@@ -59,21 +74,6 @@
         <label for="motivation-id">Informe o ID:</label>
         <input type="text" id="motivation-id" name="motivation-id" disabled>
         <button type="submit">Consultar Motivação</button>
-    </form>
-
-    <h2>Engajamento</h2>
-    <form id="form-engajamento" action="#" method="get">
-        <label for="engagement-query">Selecione o tipo de consulta:</label>
-        <select name="engagement-query" id="engagement-query" onchange="toggleInput(this)">
-            <option value="geral">Geral</option>
-            <option value="periodo">Por Período</option>
-            <option value="usuario">Por Usuário</option>
-            <option value="curso">Por Curso</option>
-            <option value="detalhada">Detalhada</option>
-        </select>
-        <label for="engagement-id">Informe o ID:</label>
-        <input type="text" id="engagement-id" name="engagement-id" disabled>
-        <button type="submit">Consultar Engajamento</button>
     </form>
 
     <h2>Desempenho</h2>

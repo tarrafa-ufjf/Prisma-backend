@@ -87,5 +87,21 @@ class Moodle31(Moodle):
         return df
         
     
+    def get_all_students_by_course(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT u.id AS user_id
+                FROM mdl_user u
+                JOIN mdl_user_enrolments ue ON ue.userid = u.id
+                JOIN mdl_enrol e ON e.id = ue.enrolid
+                JOIN mdl_role r ON r.id = e.roleid
+                WHERE e.courseid = %s
+                AND r.archetype = 'student'
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
     
         

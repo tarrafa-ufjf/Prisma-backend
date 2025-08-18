@@ -91,7 +91,7 @@ class Moodle31(Moodle):
         conn = self.connector
         with conn.cursor() as cur:
             cur.execute('''
-                SELECT u.id AS user_id
+                SELECT u.id AS user_id, CONCAT(u.firstname, ' ', u.lastname) AS full_name
                 FROM mdl_user u
                 JOIN mdl_user_enrolments ue ON ue.userid = u.id
                 JOIN mdl_enrol e ON e.id = ue.enrolid

@@ -1,4 +1,4 @@
-from flask import request, jsonify, Flask, send_file
+from flask import request, jsonify, Flask, send_file, send_from_directory
 from database import db, Database
 import pandas as pd
 from analysis.analysis import Analyzer
@@ -21,27 +21,27 @@ def moodle_version():
     connector.close()
     return jsonify(coursers), 200
 
-@app.route("/engagement", methods=["GET", "POST"])
+@app.route("/engagement", methods=["GET"])
 def engagement():
-    print(request.form)
-    course_id = request.form.get('engagement-id', type=int)
+    print(request.args)
+    course_id = request.args.get('engagement-id', type=int)
     if not course_id:
         return jsonify({"error": "Course ID is required"}), 400
     
-    res = analyzer.engagement_analysis(course_id, request.form.get('engagement-query'), version, connector)
+    res = analyzer.engagement_analysis(course_id, request.args.get('engagement-query'), version, connector)
 
-    return jsonify({"message": res.to_dict(orient="records")}), 200
+    return jsonify(res.to_dict(orient="records")), 200
 
-@app.route("/analysis", methods=["GET", "POST"])
+@app.route("/analysis", methods=["GET"])
 def analysis():
     global connector, version
-    port = request.form.get('port', type=int)
+    port = request.args.get('port', type=int)
     config = {
-            'host':     request.form['host'],
+            'host':     request.args['host'],
             'port':     port,
-            'db':       request.form['database'],
-            'user':     request.form['user'],
-            'password': request.form['password'],
+            'db':       request.args['database'],
+            'user':     request.args['user'],
+            'password': request.args['password'],
         }
     connector = conn.get_connection_with_config(config)
 
@@ -49,9 +49,7 @@ def analysis():
 
     res = analyzer.general_query(connector, version)
 
-    return send_file('src/pages/analysis.html',
-        mimetype='text/html',
-        download_name='analysis.html'), 200
+    return send_from_directory('src/pages', 'analysis.html'), 200
 
 
 @app.route("/")

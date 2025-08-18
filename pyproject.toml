@@ -14,6 +14,8 @@ dependencies = [
     "flask-script (>=2.0.6,<3.0.0)",
     "python-dotenv (>=1.1.1,<2.0.0)",
     "pandas (>=2.3.1,<3.0.0)",
+    "matplotlib (>=3.10.5,<4.0.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
 ]
 
 [tool.poetry]

@@ -1,3 +1,5 @@
+from io import BytesIO
+from matplotlib import pyplot as plt
 import pandas as pd
 
 class Engagement:

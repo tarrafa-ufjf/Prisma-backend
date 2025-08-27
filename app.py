@@ -1,7 +1,11 @@
+from concurrent.futures import ThreadPoolExecutor
 from flask import request, jsonify, Flask, send_file, send_from_directory
 from database import db, Database
 import pandas as pd
 from analysis.analysis import Analyzer
+import asyncio
+
+executor = ThreadPoolExecutor(max_workers=2)
 
 app = Flask(__name__)
 conn = Database()
@@ -22,13 +26,13 @@ def moodle_version():
     return jsonify(coursers), 200
 
 @app.route("/engagement", methods=["GET"])
-def engagement():
+async def engagement():
     print(request.args)
     course_id = request.args.get('engagement-id', type=int)
-    if not course_id:
+    if not course_id and request.args.get('engagement-query') != 'geral':
         return jsonify({"error": "Course ID is required"}), 400
     
-    res = analyzer.engagement_analysis(course_id, request.args.get('engagement-query'), version, connector)
+    res = await analyzer.engagement_analysis(course_id, request.args.get('engagement-query'), version, connector)
 
     return jsonify(res.to_dict(orient="records")), 200
 
@@ -47,7 +51,7 @@ def analysis():
 
     version = analyzer.get_moodle_version(connector)
 
-    res = analyzer.general_query(connector, version)
+    analyzer.general_query(connector, version)
 
     return send_from_directory('src/pages', 'analysis.html'), 200
 

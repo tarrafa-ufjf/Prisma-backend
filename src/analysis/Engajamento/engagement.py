@@ -44,3 +44,23 @@ class Engagement:
 
         # Teste
         return df_final
+    
+    def general_analysis(self, connector, version):
+        batch_size = 20
+
+        df_courses = self.mapper.get_courses(connector, version)
+        df_courses = pd.DataFrame(df_courses, columns=['course_id'])
+        count_courses = df_courses.max()['course_id'] 
+
+        df = pd.DataFrame(columns=['course_id', 'num_posts_required', 'posts_required_label'])
+
+        for i in range(1, count_courses + 1):
+            result = self.course_analysis(i, version, connector)
+
+            df = pd.concat([df, result], ignore_index=True)
+
+            if i % batch_size == 0:
+                print('------------------------------------------')
+                print(f"Processed {i} courses, saving progress...")
+                df.to_csv('data/engagement_global_analysis.csv', index=False, header=False, mode='a')
+                df = pd.DataFrame(columns=['course_id', 'num_posts_required', 'posts_required_label'])  # limpa acumulador

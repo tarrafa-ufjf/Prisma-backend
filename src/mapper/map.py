@@ -31,25 +31,26 @@ class Mapper:
 
         return version
     
-    # Função responsável por escolher qual código de consulta será utilzado baseando-se na versão do moodle
-    def get_general_query(self, connector, version):
+    # Funções responsáveis por mapear as consultas com base na versão do moodle
+    def get_moodle(self, connector, version):
         match version:
             case '3.1.3':
-                moodle = Moodle31(connector)
-                return moodle.general_indicators()
+                return Moodle31(connector)
+            case _:
+                raise ValueError("Unsupported Moodle version")
+
+    def get_general_query(self, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.general_indicators()
 
     def get_engagement_data(self, connector, course_id, version):
-        match version:
-            case '3.1.3':
-                moodle = Moodle31(connector)
-                return moodle.get_all_posts_for_forum_required_by_course(course_id)
-            case _:
-                raise ValueError("Unsupported Moodle version")
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_all_posts_for_forum_required_by_course(course_id)
     
     def get_all_students(self, connector, course_id, version):
-        match version:
-            case '3.1.3':
-                moodle = Moodle31(connector)
-                return moodle.get_all_students_by_course(course_id)
-            case _:
-                raise ValueError("Unsupported Moodle version")
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_all_students_by_course(course_id)
+    
+    def get_courses(self, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_courses()

@@ -1,15 +1,10 @@
-from concurrent.futures import ThreadPoolExecutor
 from flask import request, jsonify, Flask, send_file, send_from_directory
-from database import db, Database
+from worker.database import db, Database
 import pandas as pd
-from analysis.analysis import Analyzer
-import asyncio
 
-executor = ThreadPoolExecutor(max_workers=2)
 
 app = Flask(__name__)
 conn = Database()
-analyzer = Analyzer()
 connector = None
 version = None
 
@@ -53,12 +48,12 @@ def analysis():
 
     analyzer.general_query(connector, version)
 
-    return send_from_directory('src/pages', 'analysis.html'), 200
+    return send_from_directory('pages', 'analysis.html'), 200
 
 
 @app.route("/")
 def hello():
-    return send_file('src/pages/app.html',
+    return send_file('pages/app.html',
         mimetype='text/html',
         download_name='app.html'), 200
 

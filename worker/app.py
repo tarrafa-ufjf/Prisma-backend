@@ -1,42 +1,41 @@
-from concurrent.futures import ThreadPoolExecutor
-from flask import request, jsonify, Flask, send_file, send_from_directory
 from worker.database import db, Database
 import pandas as pd
-from analysis.analysis import Analyzer
-import asyncio
+from src.analysis.analysis import Analyzer
+import pika
+import json
+import time
+import os
 
-executor = ThreadPoolExecutor(max_workers=2)
-
-app = Flask(__name__)
 conn = Database()
 analyzer = Analyzer()
 connector = None
-version = None
 
-@app.route("/versions", methods=["GET"])
-def moodle_version():
-    connector = conn.get_connection()
-    with connector.cursor() as cursor:
-        cursor.execute('''
-            SELECT *
-            FROM mdl_course
-        ''')
-        coursers = cursor.fetchall()
-    connector.close()
-    return jsonify(coursers), 200
+RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
+RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
+RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))
 
-@app.route("/engagement", methods=["GET"])
-async def engagement():
-    print(request.args)
-    course_id = request.args.get('engagement-id', type=int)
-    if not course_id and request.args.get('engagement-query') != 'geral':
-        return jsonify({"error": "Course ID is required"}), 400
-    
-    res = await analyzer.engagement_analysis(course_id, request.args.get('engagement-query'), version, connector)
+def create_rabbit_connection():
+    credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(
+            host=RABBITMQ_HOST,
+            port=RABBITMQ_PORT,
+            credentials=credentials,
+            heartbeat=600,  # mantém a conexão viva
+            blocked_connection_timeout=300
+        )
+    )
+    channel = connection.channel()
+    return channel
+
+# TODO
+def engagement(analysis_config):
+    res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], version, connector)
 
     return jsonify(res.to_dict(orient="records")), 200
 
-@app.route("/analysis", methods=["GET"])
+# TODO
 def analysis():
     global connector, version
     port = request.args.get('port', type=int)
@@ -55,12 +54,6 @@ def analysis():
 
     return send_from_directory('src/pages', 'analysis.html'), 200
 
-
-@app.route("/")
-def hello():
-    return send_file('src/pages/app.html',
-        mimetype='text/html',
-        download_name='app.html'), 200
-
 if __name__ == '__main__':
-    app.run(debug=True)
+    print("Worker iniciado. Aguardando mensagens...")
+    channel = create_rabbit_connection()

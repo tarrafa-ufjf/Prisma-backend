@@ -33,6 +33,9 @@ class Mapper:
     
     # Funções responsáveis por mapear as consultas com base na versão do moodle
     def get_moodle(self, connector, version):
+        print('------------------------------------------')
+        print(f"[x] Versão do Moodle: {version}")
+        print('------------------------------------------')
         match version:
             case '3.1.3':
                 return Moodle31(connector)
@@ -41,6 +44,7 @@ class Mapper:
 
     def get_general_query(self, connector, version):
         moodle = self.get_moodle(connector, version)
+        connector.close()
         return moodle.general_indicators()
 
     def get_engagement_data(self, connector, course_id, version):

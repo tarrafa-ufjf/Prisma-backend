@@ -56,7 +56,7 @@ def get_done_message(name):
 
 @app.route("/engagement", methods=["GET"])
 def engagement():
-    global db_config, channel
+    global db_config, channel, version
 
     course_id = request.args.get('engagement-id', type=int)
     if not course_id and request.args.get('engagement-query') != 'geral':
@@ -71,7 +71,9 @@ def engagement():
     task = {
         "name" : name,
         "db_config" : db_config,
-        "a_config" : analysis_config
+        "a_config" : analysis_config,
+        "version" : version,
+        "type" : "engagement"
     }
     channel.basic_publish(
         exchange="",
@@ -102,7 +104,10 @@ def analysis():
     name = "user:get_version"
     task = {
         "name" : name,
-        "db_config" : db_config,
+        "body" : {
+            "db_inst_config" : db_config,
+        },
+        "type" : "version"
     }
     channel.basic_publish(
         exchange="",
@@ -116,21 +121,26 @@ def analysis():
 
     body = get_done_message(name)
 
-    task = {
-        "name" : "user:global_analysis",
-        "version" : body["version"],
-        "db_config" : db_config
-    }
+    print('------------------------------------------')
+    print(f"[x] Versão do Moodle: {body['version']}")
+    print('------------------------------------------')
 
-    channel.basic_publish(
-        exchange="",
-        routing_key="tasks_to_process",
-        body=json.dumps(task),
-        properties=pika.BasicProperties(
-            priority=1,
-            delivery_mode=2
-        )
-    )
+    # task = {
+    #     "name" : "user:global_analysis",
+    #     "version" : body["version"],
+    #     "db_config" : db_config,
+    #     "type" : "global_analysis"
+    # }
+
+    # channel.basic_publish(
+    #     exchange="",
+    #     routing_key="tasks_to_process",
+    #     body=json.dumps(task),
+    #     properties=pika.BasicProperties(
+    #         priority=1,
+    #         delivery_mode=2
+    #     )
+    # )
 
     return send_from_directory('pages', 'analysis.html'), 200
 

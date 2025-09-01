@@ -1,4 +1,3 @@
-from io import BytesIO
 from matplotlib import pyplot as plt
 import pandas as pd
 
@@ -45,7 +44,7 @@ class Engagement:
         # Teste
         return df_final
     
-    def general_analysis(self, connector, version):
+    def general_analysis(self, version, connector):
         batch_size = 20
 
         df_courses = self.mapper.get_courses(connector, version)

@@ -9,6 +9,7 @@ services:
       - POSTGRESQL_USERNAME=tarrafa
       - POSTGRESQL_PASSWORD=tarrafa123
       - POSTGRESQL_DATABASE=tarrafa_db
+      - POSTGRESQL_HOST=postgres
     volumes:
       - postgres_data:/bitnami/postgresql
 

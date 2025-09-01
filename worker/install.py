@@ -38,6 +38,8 @@ engine = create_engine(
     f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
+print(f'Conectado ao banco de dados PostgreSQL em {DB_HOST}:{DB_PORT}/{DB_NAME}')
+
 metadata = MetaData()
 
 def criar_tabela(nome_tabela, colunas):

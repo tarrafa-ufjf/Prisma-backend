@@ -1,4 +1,4 @@
-from worker.database import db, Database
+from database import db, Database
 import pandas as pd
 from src.analysis.analysis import Analyzer
 import pika
@@ -33,27 +33,70 @@ def create_rabbit_connection():
 def engagement(analysis_config):
     res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], version, connector)
 
-    return jsonify(res.to_dict(orient="records")), 200
+    return res
 
-# TODO
-def analysis():
-    global connector, version
-    port = request.args.get('port', type=int)
-    config = {
-            'host':     request.args['host'],
-            'port':     port,
-            'db':       request.args['database'],
-            'user':     request.args['user'],
-            'password': request.args['password'],
-        }
+def analysis(message):
+    global connector, analyzer
+    
+    connector = conn.get_connection_with_config(message["db_config"])
+
+    version = message["version"]
+
+    analyzer.general_query(connector, version)
+
+    return analyzer.global_engagement
+
+#Função que diz o valor da versão do Moodle
+def get_version(message):
+    global connector, version, analyzer
+
+    config = message["db_inst_config"]
+    print(f'config := {config}')
+    
     connector = conn.get_connection_with_config(config)
 
     version = analyzer.get_moodle_version(connector)
 
-    analyzer.general_query(connector, version)
+    return version
 
-    return send_from_directory('src/pages', 'analysis.html'), 200
+def continuously_listen():
+    global channel
+
+    def callback(ch, method, properties, body):
+        message = json.loads(body.decode())
+        analysis_type = message.get("type")
+
+        print(f"[x] Mensagem recebida para análise: {message}")
+
+        if analysis_type == "engagement":
+            engagement(message.get("body"))
+        elif analysis_type == "global_analysis":
+            analysis(message)
+        elif analysis_type == "version":
+            version = get_version(message.get("body"))
+            channel.basic_publish(
+                exchange="",
+                routing_key="Done",
+                body=json.dumps({
+                    "name": "user:get_version",
+                    "body": {
+                        "version": version
+                    }
+                })
+            )
+        else:
+            print(f"[!] Tipo de análise desconhecido: {analysis_type}")
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        print("[x] Análise concluída e mensagem removida da fila.")
+
+    channel.basic_qos(prefetch_count=1)
+    channel.basic_consume(queue='tasks_to_process', on_message_callback=callback)
+
+    print(' [*] Aguardando mensagens. Para sair pressione CTRL+C')
+    channel.start_consuming()
 
 if __name__ == '__main__':
     print("Worker iniciado. Aguardando mensagens...")
     channel = create_rabbit_connection()
+    continuously_listen()

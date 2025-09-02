@@ -29,11 +29,10 @@ def create_rabbit_connection():
     channel = connection.channel()
     return channel
 
-# TODO
-def engagement(analysis_config):
+def engagement(body):
+    analysis_config = body.get("analysis_config")
     res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], version, connector)
-
-    return res
+    return res.to_dict(orient="records")
 
 def analysis(message):
     global connector, analyzer
@@ -46,7 +45,7 @@ def analysis(message):
 
     return analyzer.global_engagement
 
-#Função que diz o valor da versão do Moodle
+#Função que retorna o valor da versão do Moodle
 def get_version(message):
     global connector, version, analyzer
 
@@ -64,12 +63,25 @@ def continuously_listen():
 
     def callback(ch, method, properties, body):
         message = json.loads(body.decode())
-        analysis_type = message.get("type")
+        analysis_type = message.get("body").get("type")
 
         print(f"[x] Mensagem recebida para análise: {message}")
 
         if analysis_type == "engagement":
-            engagement(message.get("body"))
+            response = engagement(message.get("body"))
+            done_message = {
+                "name" : message.get("name"),
+                "body" : {
+                    "version" : message.get("version"),
+                    "results" : response,
+                }
+            }
+
+            channel.basic_publish(
+                exchange="",
+                routing_key="Done",
+                body=json.dumps(done_message)
+            )
         elif analysis_type == "global_analysis":
             analysis(message)
         elif analysis_type == "version":

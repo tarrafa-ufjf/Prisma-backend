@@ -28,6 +28,19 @@ connection = pika.BlockingConnection(
 )
 channel = connection.channel()
 
+def publish_message(queue_name, task):
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(
+            host=RABBITMQ_HOST,
+            port=RABBITMQ_PORT,
+            credentials=credentials
+        )
+    )
+    channel = connection.channel()
+    channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task))
+    connection.close()
+
+
 def get_done_message(name):
     global channel
     found = False
@@ -70,24 +83,18 @@ def engagement():
     name = "user:engagement"
     task = {
         "name" : name,
-        "db_config" : db_config,
-        "a_config" : analysis_config,
         "version" : version,
-        "type" : "engagement"
+        "body" : {
+            "db_inst_config" : db_config,
+            "analysis_config" : analysis_config,
+            "type" : "engagement",
+        }
     }
-    channel.basic_publish(
-        exchange="",
-        routing_key="tasks_to_process",
-        body=json.dumps(task),
-        properties=pika.BasicProperties(
-            priority=2,
-            delivery_mode=2
-        )
-    )
+    publish_message("tasks_to_process", task)
 
     body = get_done_message(name)
 
-    return jsonify(body.to_dict(orient="records")), 200
+    return jsonify(body), 200
 
 @app.route("/analysis", methods=["GET"])
 def analysis():
@@ -104,20 +111,15 @@ def analysis():
     name = "user:get_version"
     task = {
         "name" : name,
+        "version" : "",
         "body" : {
             "db_inst_config" : db_config,
+            "type" : "version",
+            "analysis_config": {}
         },
-        "type" : "version"
     }
-    channel.basic_publish(
-        exchange="",
-        routing_key="tasks_to_process",
-        body=json.dumps(task),
-        properties=pika.BasicProperties(
-            priority=2,
-            delivery_mode=2
-        )
-    )
+    
+    publish_message("tasks_to_process", task)
 
     body = get_done_message(name)
 

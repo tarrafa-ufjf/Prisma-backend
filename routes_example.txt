@@ -44,3 +44,30 @@ def get_course(course_id):
     
     # Return DataFrame as JSON if you want the converted data
     return jsonify(df.to_dict(orient='records')), 200
+
+
+# Tasks Example - Send message to queue "tasks_to_process"
+
+{
+    "name" : "",
+    "version": "",
+    "body" : {
+        "db_inst_config": {},
+        "type" : "",
+        "analysis_config": {}
+    },
+}
+
+# Send message to "Done"
+
+{
+    "name" : "",
+    "body" : {} # => Content of the message
+}
+
+# Content of the message
+
+{
+    "version": "",
+    "results" : {}
+}

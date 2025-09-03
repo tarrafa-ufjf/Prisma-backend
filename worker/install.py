@@ -1,7 +1,7 @@
 import os
 import pika
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, DECIMAL
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, DECIMAL, PrimaryKeyConstraint
 from sqlalchemy.exc import SQLAlchemyError
 
 # Carregar variáveis do arquivo .env
@@ -10,8 +10,8 @@ load_dotenv()
 # Ler variáveis de ambiente
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = int(os.getenv("DB_PORT", 5432))
 DB_NAME = os.getenv("DB_DATABASE")
 
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
@@ -42,29 +42,13 @@ print(f'Conectado ao banco de dados PostgreSQL em {DB_HOST}:{DB_PORT}/{DB_NAME}'
 
 metadata = MetaData()
 
-def create_table(nome_tabela, colunas):
-    try:
-        cols = []
-        for nome, tipo in colunas.items():
-            if nome == "id":
-                cols.append(Column(nome, tipo, primary_key=True, autoincrement=True))
-            else:
-                cols.append(Column(nome, tipo))
-        
-        tabela = Table(nome_tabela, metadata, *cols)
-        metadata.create_all(engine)
-        print(f"Tabela '{nome_tabela}' criada com sucesso!")
-    except SQLAlchemyError as e:
-        print("Erro ao criar tabela:", e)
-
-def create_config_table(table_name, columns):
+def create_table(table_name, columns, primary_key=None):
     try:
         cols = []
         for nome, tipo in columns.items():
-            if nome == "name" or nome == "":
-                cols.append(Column(nome, tipo, primary_key=True, autoincrement=True))
-            else:
-                cols.append(Column(nome, tipo))
+            cols.append(Column(nome, tipo))
+        if primary_key:
+            cols.append(PrimaryKeyConstraint(*primary_key))
         
         tabela = Table(table_name, metadata, *cols)
         metadata.create_all(engine)
@@ -73,16 +57,28 @@ def create_config_table(table_name, columns):
         print("Erro ao criar tabela:", e)
 
 if __name__ == "__main__":
-    colunas_engajamento_global = {
-        "id": Integer,
+    columns_engajamento_global = {
+        "s_user": Integer,
         "course_id": Integer,
-        "value": Integer
+        "muito_baixo": Integer,
+        "baixo": Integer,
+        "medio": Integer,
+        "alto": Integer,
+        "muito_alto": Integer,
     }
-    create_table("engajamento_global", colunas_engajamento_global)
 
-    columns_indicators_config = {
-        "id": Integer,
+    primary_keys = ["s_user", "course_id"]
+    create_table("engajamento_global", columns_engajamento_global, primary_key=primary_keys)
+
+    columns_indicators_status = {
+        "s_user": Integer,
+        "course_id": Integer,
+        "indicator": Integer,
+        "status": Integer,
     }
+
+    primary_keys = ["s_user", "course_id", "indicator"]
+    create_table("gl_indicators_status", columns_indicators_status, primary_key=primary_keys)
 
     channel.queue_declare(
         queue="tasks_to_process",

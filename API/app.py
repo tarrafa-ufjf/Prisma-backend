@@ -26,7 +26,7 @@ connection = pika.BlockingConnection(
 )
 channel = connection.channel()
 
-def publish_message(queue_name, task):
+def publish_message(queue_name, task, priority=None):
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(
             host=RABBITMQ_HOST,
@@ -35,7 +35,10 @@ def publish_message(queue_name, task):
         )
     )
     channel = connection.channel()
-    channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task))
+    if priority is None:
+        channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(delivery_mode=2))
+    else:
+        channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(priority=priority, delivery_mode=2))
     connection.close()
 
 
@@ -88,7 +91,7 @@ def engagement():
             "type" : "engagement",
         }
     }
-    publish_message("tasks_to_process", task)
+    publish_message("tasks_to_process", task, priority=2)
 
     body = get_done_message(name)
 
@@ -126,33 +129,24 @@ def analysis():
     print(f"[x] Versão do Moodle: {version}")
     print('------------------------------------------')
 
-    # task = {
-    #     "name" : "user:global_analysis",
-    #     "version" : body["version"],
-    #     "db_config" : db_config,
-    #     "type" : "global_analysis"
-    # }
-
-    name = "user:global_analysis"
-    task = {
-        "name" : name,
-        "version" : version,
-        "body" : {
-            "db_inst_config" : db_config,
-            "type" : "global_analysis",
-            "analysis_config": {}
-        },
-    }
-
-    # channel.basic_publish(
-    #     exchange="",
-    #     routing_key="tasks_to_process",
-    #     body=json.dumps(task),
-    #     properties=pika.BasicProperties(
-    #         priority=1,
-    #         delivery_mode=2
-    #     )
-    # )
+    indicators = ["Engagement"]
+    for indicator in indicators:
+        task = {
+            "name" : f"user:set_global_{indicator.lower()}",
+            "version" : version,
+            "body" : {
+                "db_config" : db_config,
+                "type" : f"global_analysis_{indicator.lower()}",
+                "analysis_config" : {
+                    "id" : None,
+                    "type" : "geral",
+                    "batch_size" : 20,
+                    "processed" : 0,
+                    "total" : 0
+                }
+            }
+        }
+        publish_message("tasks_to_process", task, priority=1)
 
     return send_from_directory('pages', 'analysis.html'), 200
 

@@ -28,6 +28,21 @@ def create_rabbit_connection():
     channel = connection.channel()
     return channel
 
+def publish_message(queue_name, task, priority=None):
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(
+            host=RABBITMQ_HOST,
+            port=RABBITMQ_PORT,
+            credentials=pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
+        )
+    )
+    channel = connection.channel()
+    if priority is None:
+        channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(delivery_mode=2))
+    else:
+        channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(priority=priority, delivery_mode=2))
+    connection.close()
+
 def engagement(body):
     analysis_config = body.get("analysis_config")
     res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], version, connector)
@@ -44,6 +59,7 @@ def analysis(message):
 
     return analyzer.global_engagement
 
+
 #Função que retorna o valor da versão do Moodle
 def get_version(message):
     global connector, version, analyzer
@@ -56,6 +72,36 @@ def get_version(message):
     version = analyzer.get_moodle_version(connector)
 
     return version
+
+def global_analysis_engagement(message):
+    global connector, version, analyzer
+
+    body = message["body"]
+
+    if connector is None:
+        config = body["db_config"]
+        connector = conn.get_connection_with_config(config)
+    if version is None:
+        version = body["version"]
+
+    res = analyzer.general_engagement_analysis(connector, version, body["analysis_config"])
+    if res["processed"] == res["total"]:
+        publish_message("Done", {
+            "name": "user:global_analysis_engagement",
+            "body": {
+                "status": "Ok"
+            }
+        })
+    else:
+        publish_message("tasks_to_process", {
+            "name": "user:global_analysis_engagement",
+            "version": message["version"],
+            "body": {
+                "type": "global_analysis_engagement",
+                "db_config": body["db_config"],
+                "analysis_config": res
+            }
+        }, priority=0)
 
 def continuously_listen():
     global channel
@@ -75,14 +121,9 @@ def continuously_listen():
                     "results" : response,
                 }
             }
-
-            channel.basic_publish(
-                exchange="",
-                routing_key="Done",
-                body=json.dumps(done_message)
-            )
-        elif analysis_type == "global_analysis":
-            analysis(message)
+            publish_message("Done", done_message)
+        elif analysis_type == "global_analysis_engagement":
+            global_analysis_engagement(message)
         elif analysis_type == "version":
             version = get_version(message.get("body"))
             channel.basic_publish(

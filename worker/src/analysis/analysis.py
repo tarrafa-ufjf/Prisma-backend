@@ -16,16 +16,17 @@ class Analyzer:
     def get_moodle_version(self, connector):
         return self.mapper.get_moodle_version(connector)
 
-    def general_query(self, connector, version):
-        self.global_engagement = self.engagement_analysis(None, 'geral', version, connector)
+    def general_engagement_analysis(self, connector, version, analysis_config):
+        engagement = Engagement(self.mapper)
+        analysis_config = engagement.general_analysis(version, connector, analysis_config)
+
+        return analysis_config
 
     def engagement_analysis(self, course_id, type_query, version, connector):
         engagement = Engagement(self.mapper)
         res = None
 
-        if type_query == 'geral':
-            res = engagement.general_analysis(version, connector)
-        elif type_query == 'usuario':
+        if type_query == 'usuario':
             pass
         elif type_query == 'course': 
             res = engagement.course_analysis(course_id, version, connector)

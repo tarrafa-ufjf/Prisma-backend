@@ -125,10 +125,6 @@ def analysis():
     body = get_done_message(name)
     version = body['version']
 
-    print('------------------------------------------')
-    print(f"[x] Versão do Moodle: {version}")
-    print('------------------------------------------')
-
     indicators = ["Engagement"]
     for indicator in indicators:
         task = {

@@ -5,6 +5,7 @@ from pathlib import Path
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import Optional
+from database import Database
 
 class Analyzer:
     def __init__(self):

@@ -1,11 +1,9 @@
 from flask import request, jsonify, Flask, send_file, send_from_directory
-from database import db, Database
 import os
 import pika
 import json, time
 
 app = Flask(__name__)
-conn = Database()
 connector = None
 version = None
 db_config = None
@@ -122,9 +120,10 @@ def analysis():
     publish_message("tasks_to_process", task)
 
     body = get_done_message(name)
+    version = body['version']
 
     print('------------------------------------------')
-    print(f"[x] Versão do Moodle: {body['version']}")
+    print(f"[x] Versão do Moodle: {version}")
     print('------------------------------------------')
 
     # task = {
@@ -133,6 +132,17 @@ def analysis():
     #     "db_config" : db_config,
     #     "type" : "global_analysis"
     # }
+
+    name = "user:global_analysis"
+    task = {
+        "name" : name,
+        "version" : version,
+        "body" : {
+            "db_inst_config" : db_config,
+            "type" : "global_analysis",
+            "analysis_config": {}
+        },
+    }
 
     # channel.basic_publish(
     #     exchange="",

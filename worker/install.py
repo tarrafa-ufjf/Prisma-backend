@@ -42,7 +42,7 @@ print(f'Conectado ao banco de dados PostgreSQL em {DB_HOST}:{DB_PORT}/{DB_NAME}'
 
 metadata = MetaData()
 
-def criar_tabela(nome_tabela, colunas):
+def create_table(nome_tabela, colunas):
     try:
         cols = []
         for nome, tipo in colunas.items():
@@ -57,13 +57,32 @@ def criar_tabela(nome_tabela, colunas):
     except SQLAlchemyError as e:
         print("Erro ao criar tabela:", e)
 
+def create_config_table(table_name, columns):
+    try:
+        cols = []
+        for nome, tipo in columns.items():
+            if nome == "name" or nome == "":
+                cols.append(Column(nome, tipo, primary_key=True, autoincrement=True))
+            else:
+                cols.append(Column(nome, tipo))
+        
+        tabela = Table(table_name, metadata, *cols)
+        metadata.create_all(engine)
+        print(f"Tabela '{table_name}' criada com sucesso!")
+    except SQLAlchemyError as e:
+        print("Erro ao criar tabela:", e)
+
 if __name__ == "__main__":
     colunas_engajamento_global = {
         "id": Integer,
         "course_id": Integer,
         "value": Integer
     }
-    criar_tabela("engajamento_global", colunas_engajamento_global)
+    create_table("engajamento_global", colunas_engajamento_global)
+
+    columns_indicators_config = {
+        "id": Integer,
+    }
 
     channel.queue_declare(
         queue="tasks_to_process",

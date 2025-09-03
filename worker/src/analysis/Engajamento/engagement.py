@@ -51,7 +51,7 @@ class Engagement:
         df_courses = pd.DataFrame(df_courses, columns=['course_id'])
         count_courses = df_courses.max()['course_id'] 
 
-        df = pd.DataFrame(columns=['course_id', 'num_posts_required', 'posts_required_label'])
+        df = pd.DataFrame(columns=['course_id', 'full_name' , 'num_posts_required', 'posts_required_label', 'user_id'])
 
         for i in range(1, count_courses + 1):
             result = self.course_analysis(i, version, connector)

@@ -1,6 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
 import os
 import pymysql
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, DECIMAL
+from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,6 +21,19 @@ class Database:
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
         )
+    
+    def get_systems_local_database_connection(self):
+        DB_USER = os.getenv("DB_USER")
+        DB_PASSWORD = os.getenv("DB_PASSWORD")
+        DB_HOST = os.getenv("DB_HOST")
+        DB_PORT = os.getenv("DB_PORT")
+        DB_NAME = os.getenv("DB_DATABASE")
+
+        engine = create_engine(
+            f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        )
+
+        return engine
     
     def get_connection_with_config(self, config):
         return pymysql.connect(

@@ -3,7 +3,6 @@ import pandas as pd
 from src.analysis.analysis import Analyzer
 import pika
 import json
-import time
 import os
 
 conn = Database()

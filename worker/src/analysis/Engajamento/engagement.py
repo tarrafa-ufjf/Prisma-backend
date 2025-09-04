@@ -1,7 +1,6 @@
-from matplotlib import pyplot as plt
 import pandas as pd
-from sqlalchemy import Table, Column, Integer, MetaData, text, create_engine
-import os
+from sqlalchemy import Table, Column, Integer, MetaData, String, create_engine
+import os, sys
 from dotenv import load_dotenv
 
 class Engagement:
@@ -20,6 +19,33 @@ class Engagement:
             f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
         )
         return engine
+    
+
+    def get_global_analysis_table(self):
+        metadata = MetaData()
+        global_analysis = Table(
+            'gl_indicators_status', metadata,
+            Column('s_user', Integer, primary_key=True),
+            Column('course_id', Integer, primary_key=True),
+            Column('indicator', Integer, primary_key=True),
+            Column('status', String(1), nullable=False)
+        )
+        return global_analysis
+    
+    def insert_global_analysis_status(self, s_user: int, course_id: int, indicator: int, status: str):
+        engine = self.get_connector()
+        global_analysis = self.get_global_analysis_table()
+
+        with engine.connect() as conn:
+            insert_stmt = global_analysis.insert().values(
+                s_user=s_user,
+                course_id=course_id,
+                indicator=indicator,
+                status=status
+            )
+            conn.execute(insert_stmt)
+            conn.commit()
+        
 
     def course_analysis(self, course_id, version, connector):
         df_posts = self.mapper.get_engagement_data(connector, course_id, version)
@@ -60,6 +86,20 @@ class Engagement:
         # Teste
         return df_final
     
+    def print_load(self, processed, total):
+        percent = (processed / total) * 100
+        bar_length = 40
+        filled_length = int(bar_length * processed // total)
+        bar = '#' * filled_length + '-' * (bar_length - filled_length)
+
+        # sobrescreve a linha atual
+        sys.stdout.write(f'\rGlobal Analysis: |{bar}| {percent:.2f}% Complete')
+        sys.stdout.flush()
+
+        if processed == total:
+            print(' ✅\n')
+
+    
     def general_analysis(self, version, connector, analysis_config):
         batch_size = analysis_config["batch_size"]
         processed = analysis_config["processed"]
@@ -80,6 +120,9 @@ class Engagement:
             df = pd.concat([df, result], ignore_index=True)
             analysis_config["processed"] += 1
 
+
+            self.print_load(analysis_config["processed"], total)
+
             # Quando atingir batch_size, salvar e retornar
             if analysis_config["processed"] % batch_size == 0:
                 df_counts = (
@@ -89,11 +132,10 @@ class Engagement:
                     .reset_index()
                 )
 
-                # Substituir espaços por underscore e deixar em minúsculo
                 df_counts.columns = (
-                    df_counts.columns.str.strip()  # remove espaços extras
-                    .str.lower()                   # tudo minúsculo
-                    .str.replace(" ", "_")         # troca espaço por _
+                    df_counts.columns.str.strip()  
+                    .str.lower()                   
+                    .str.replace(" ", "_")        
                 )
 
                 df_counts["s_user"] = 1 
@@ -105,7 +147,6 @@ class Engagement:
 
                 df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
 
-                # Resetar DataFrame temporário
                 df = pd.DataFrame(columns=['course_id', 'full_name', 'num_posts_required', 'posts_required_label', 'user_id'])
 
                 return analysis_config
@@ -120,9 +161,9 @@ class Engagement:
             )
 
             df_counts.columns = (
-                df_counts.columns.str.strip()  # remove espaços extras
-                .str.lower()                   # tudo minúsculo
-                .str.replace(" ", "_")         # troca espaço por _
+                df_counts.columns.str.strip() 
+                .str.lower()   
+                .str.replace(" ", "_") 
             )
 
             df_counts["s_user"] = 1

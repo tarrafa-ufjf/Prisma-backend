@@ -2,7 +2,6 @@ from mapper.map import Mapper
 import pandas as pd
 from analysis.Engajamento.engagement import Engagement
 from pathlib import Path
-import asyncio
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import Optional
 from database import Database

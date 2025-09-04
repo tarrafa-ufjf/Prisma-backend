@@ -72,12 +72,11 @@ if __name__ == "__main__":
 
     columns_indicators_status = {
         "s_user": Integer,
-        "course_id": Integer,
         "indicator": Integer,
-        "status": Integer,
+        "status": String(1),
     }
 
-    primary_keys = ["s_user", "course_id", "indicator"]
+    primary_keys = ["s_user", "indicator"]
     create_table("gl_indicators_status", columns_indicators_status, primary_key=primary_keys)
 
     channel.queue_declare(

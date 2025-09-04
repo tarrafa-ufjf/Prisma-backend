@@ -1,5 +1,7 @@
 from flask import request, jsonify, Flask, send_file, send_from_directory
+from sqlalchemy import and_, select, create_engine, MetaData, Table, Column, Integer, String
 import os
+from dotenv import load_dotenv
 import pika
 import json, time
 
@@ -7,6 +9,7 @@ app = Flask(__name__)
 connector = None
 version = None
 db_config = None
+load_dotenv()
 
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
 RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
@@ -24,7 +27,43 @@ connection = pika.BlockingConnection(
         credentials=credentials
     )
 )
-channel = connection.channel()
+channel = connection.channel()   
+
+def get_connector():
+    DB_USER = os.getenv("DB_USER")
+    DB_PASSWORD = os.getenv("DB_PASSWORD")
+    DB_HOST = os.getenv("DB_HOST", "localhost")
+    DB_PORT = int(os.getenv("DB_PORT", 5432))
+    DB_NAME = os.getenv("DB_DATABASE")
+
+    engine = create_engine(
+        f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+    return engine
+    
+
+def get_global_analysis_table():
+    metadata = MetaData()
+    global_analysis = Table(
+        'gl_indicators_status', metadata,
+        Column('s_user', Integer, primary_key=True),
+        Column('indicator', Integer, primary_key=True),
+        Column('status', String(1), nullable=False)
+    )
+    return global_analysis
+
+def insert_global_analysis_status(s_user: int, indicator: int, status: str):
+    engine = get_connector()
+    global_analysis = get_global_analysis_table()
+
+    with engine.connect() as conn:
+        insert_stmt = global_analysis.insert().values(
+            s_user=s_user,
+            indicator=indicator,
+            status=status
+        )
+        conn.execute(insert_stmt)
+        conn.commit()
 
 def publish_message(queue_name, task, priority=None):
     connection = pika.BlockingConnection(
@@ -68,11 +107,33 @@ def get_done_message(name):
             time.sleep(0.5)
     return res
 
+def wait_until_done(s_user, indicator, status, poll_interval=2):
+    engine = get_connector()
+    global_analysis = get_global_analysis_table()
+
+    while True:
+        with engine.connect() as conn:
+            query = select(global_analysis.c.status).where(
+                and_(
+                    global_analysis.c.s_user == s_user,
+                    global_analysis.c.status == status,
+                    global_analysis.c.indicator == indicator
+                )
+            )
+            result = conn.execute(query).fetchone()
+
+            if result and result.status == "D":
+                return True
+
+        time.sleep(poll_interval)  # espera antes de checar de novo
+
 @app.route("/engagement", methods=["GET"])
 def engagement():
     global db_config, channel, version
 
     course_id = request.args.get('engagement-id', type=int)
+    type_ = request.args.get('engagement-query')
+
     if not course_id and request.args.get('engagement-query') != 'geral':
         return jsonify({"error": "Course ID is required"}), 400
     
@@ -80,22 +141,37 @@ def engagement():
         "type" : request.args.get('engagement-query'),
         "id" : course_id
     }
-    
-    name = "user:engagement"
-    task = {
-        "name" : name,
-        "version" : version,
-        "body" : {
-            "db_inst_config" : db_config,
-            "analysis_config" : analysis_config,
-            "type" : "engagement",
+
+    if type_ != 'geral':
+        name = "user:engagement"
+        task = {
+            "name" : name,
+            "version" : version,
+            "body" : {
+                "db_inst_config" : db_config,
+                "analysis_config" : analysis_config,
+                "type" : "engagement",
+            }
         }
-    }
-    publish_message("tasks_to_process", task, priority=2)
+        publish_message("tasks_to_process", task, priority=2)
+        body = get_done_message(name)
+        return jsonify(body), 200
+    else:
+        name = "user:global_analysis_engagement"
+        wait_until_done(1, 1, 'D')  # Indicador 1: Engagement, Status 'D' (Done)
+        rows = get_all_engajamento_global()
+        data = [dict(row) for row in rows]  
+        return jsonify(data), 200
 
-    body = get_done_message(name)
+def get_all_engajamento_global():
+    engine = get_connector()
+    metadata = MetaData()
+    engajamento_global = Table("engajamento_global", metadata, autoload_with=engine)
 
-    return jsonify(body), 200
+    with engine.connect() as conn:
+        query = select(engajamento_global).where(engajamento_global.c.s_user == 1) #TODO
+        result = conn.execute(query).mappings().all()  # retorna lista de dicts
+        return result
 
 @app.route("/analysis", methods=["GET"])
 def analysis():
@@ -142,6 +218,8 @@ def analysis():
                 }
             }
         }
+
+        insert_global_analysis_status(1, 1, 'P')  # Indicador 1: Engagement, Status 'I' (Idle
         publish_message("tasks_to_process", task, priority=1)
 
     return send_from_directory('pages', 'analysis.html'), 200

@@ -1,6 +1,7 @@
 from database import db, Database
 import pandas as pd
 from src.analysis.analysis import Analyzer
+from sqlalchemy import and_, create_engine, MetaData, Table, Column, Integer, String
 import pika
 import json
 import os
@@ -13,6 +14,42 @@ RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
 RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))
+
+def get_connector():
+    DB_USER = os.getenv("DB_USER")
+    DB_PASSWORD = os.getenv("DB_PASSWORD")
+    DB_HOST = os.getenv("DB_HOST", "localhost")
+    DB_PORT = int(os.getenv("DB_PORT", 5432))
+    DB_NAME = os.getenv("DB_DATABASE")
+
+    engine = create_engine(
+        f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+    return engine
+    
+
+def get_global_analysis_table():
+    metadata = MetaData()
+    global_analysis = Table(
+        'gl_indicators_status', metadata,
+        Column('s_user', Integer, primary_key=True),
+        Column('indicator', Integer, primary_key=True),
+        Column('status', String(1), nullable=False)
+    )
+    return global_analysis
+
+def update_global_analysis_status(s_user: int, indicator: int, status: str):
+    engine = get_connector()
+    global_analysis = get_global_analysis_table()
+
+    with engine.connect() as conn:
+        insert_stmt = global_analysis.update().values(
+            s_user=s_user,
+            indicator=indicator,
+            status=status
+        )
+        conn.execute(insert_stmt)
+        conn.commit()
 
 def create_rabbit_connection():
     credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
@@ -85,14 +122,7 @@ def global_analysis_engagement(message):
         version = body["version"]
 
     res = analyzer.general_engagement_analysis(connector, version, body["analysis_config"])
-    if res["processed"] == res["total"]:
-        publish_message("Done", {
-            "name": "user:global_analysis_engagement",
-            "body": {
-                "status": "Ok"
-            }
-        })
-    else:
+    if res["processed"] != res["total"]:
         publish_message("tasks_to_process", {
             "name": "user:global_analysis_engagement",
             "version": message["version"],
@@ -102,6 +132,8 @@ def global_analysis_engagement(message):
                 "analysis_config": res
             }
         }, priority=0)
+    else:
+        update_global_analysis_status(1, 1, 'D')
 
 def continuously_listen():
     global channel
@@ -110,7 +142,7 @@ def continuously_listen():
         message = json.loads(body.decode())
         analysis_type = message.get("body").get("type")
 
-        print(f"[x] Mensagem recebida para análise: {message}")
+        # print(f"[x] Mensagem recebida para análise: {message}")
 
         if analysis_type == "engagement":
             response = engagement(message.get("body"))
@@ -140,7 +172,7 @@ def continuously_listen():
             print(f"[!] Tipo de análise desconhecido: {analysis_type}")
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
-        print("[x] Análise concluída e mensagem removida da fila.")
+        # print("[x] Análise concluída e mensagem removida da fila.")
 
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue='tasks_to_process', on_message_callback=callback)

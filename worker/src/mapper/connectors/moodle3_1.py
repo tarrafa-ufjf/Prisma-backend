@@ -104,4 +104,58 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-        
+    '''
+    Consultas relacionadas ao indicador de Desempenho:
+    '''
+
+    def get_grades_by_course(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT
+                    u.id AS user_id,
+                    u.firstname,
+                    gi.courseid,
+                    cm.id AS activity_id,
+                    gi.itemname AS activity_name,
+                    WEEK(FROM_UNIXTIME(cm.added)) AS week,
+                    ((COALESCE(gg.finalgrade, 0) / gi.grademax)*100) AS performance
+                FROM mdl_user u
+                JOIN mdl_grade_grades gg ON gg.userid = u.id
+                JOIN mdl_grade_items gi ON gi.id = gg.itemid
+                JOIN mdl_course_modules cm ON cm.instance = gi.iteminstance
+                JOIN mdl_modules m ON m.id = cm.module AND m.name = gi.itemmodule
+                WHERE gi.itemtype = 'mod'
+                AND gi.courseid = %s
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    def get_activity_weights(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT 
+                    cm.id AS activity_id,
+                    gi.itemname AS activity_name,
+                    gi.grademax,
+                    ROUND((gi.grademax / total_course.total_max) * 100, 2) AS peso_percentual
+                FROM mdl_grade_items gi
+                JOIN mdl_modules m ON m.name = gi.itemmodule
+                JOIN mdl_course_modules cm 
+                    ON cm.instance = gi.iteminstance AND cm.module = m.id AND cm.course = gi.courseid
+                JOIN (
+                    SELECT grademax AS total_max
+                    FROM mdl_grade_items
+                    WHERE itemtype = 'course' AND courseid = %s
+                    LIMIT 1
+                ) AS total_course ON 1=1
+                WHERE gi.courseid = %s
+                AND gi.itemtype = 'mod';
+            ''', (course_id, course_id))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df

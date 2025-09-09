@@ -127,6 +127,42 @@ def wait_until_done(s_user, indicator, status, poll_interval=2):
 
         time.sleep(poll_interval)  # espera antes de checar de novo
 
+@app.route("/performance", methods=["GET"])
+def performance():
+    global db_config, channel, version
+
+    course_id = request.args.get('performance-id', type=int)
+    type_ = request.args.get('performance-query')
+
+    if not course_id and request.args.get('performance-query') != 'geral':
+        return jsonify({"error": "Course ID is required"}), 400
+    
+    analysis_config = {
+        "type" : request.args.get('performance-query'),
+        "id" : course_id
+    }
+
+    if type_ != 'geral':
+        name = "user:performance"
+        task = {
+            "name" : name,
+            "version" : version,
+            "body" : {
+                "db_inst_config" : db_config,
+                "analysis_config" : analysis_config,
+                "type" : "performance",
+            }
+        }
+        publish_message("tasks_to_process", task, priority=2)
+        body = get_done_message(name)
+        return jsonify(body), 200
+    else:
+        name = "user:global_analysis_performance"
+        wait_until_done(1, 2, 'D')  # Indicador 2: performance, Status 'D' (Done)
+        rows = get_all_engajamento_global()
+        data = [dict(row) for row in rows]  
+        return jsonify(data), 200
+
 @app.route("/engagement", methods=["GET"])
 def engagement():
     global db_config, channel, version
@@ -134,7 +170,7 @@ def engagement():
     course_id = request.args.get('engagement-id', type=int)
     type_ = request.args.get('engagement-query')
 
-    if not course_id and request.args.get('engagement-query') != 'geral':
+    if not course_id and request.args.get('engagement-query') != 'general':
         return jsonify({"error": "Course ID is required"}), 400
     
     analysis_config = {
@@ -142,7 +178,7 @@ def engagement():
         "id" : course_id
     }
 
-    if type_ != 'geral':
+    if type_ != 'general':
         name = "user:engagement"
         task = {
             "name" : name,
@@ -219,8 +255,11 @@ def analysis():
             }
         }
 
-        insert_global_analysis_status(1, 1, 'P')  # Indicador 1: Engagement, Status 'I' (Idle
-        publish_message("tasks_to_process", task, priority=1)
+        try:
+            insert_global_analysis_status(1, 1, 'P')  # Indicador 1: Engagement, Status 'I' (Idle
+            publish_message("tasks_to_process", task, priority=1)
+        except Exception as e:
+            continue
 
     return send_from_directory('pages', 'analysis.html'), 200
 

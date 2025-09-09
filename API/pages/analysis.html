@@ -50,8 +50,8 @@
     <form id="form-engajamento" action="/engagement" method="get">
         <label for="engagement-query">Selecione o tipo de consulta:</label>
         <select name="engagement-query" id="engagement-query" onchange="toggleInput(this)">
-            <option value="geral">Geral</option>
-            <option value="usuario">Por Usuário</option>
+            <option value="general">Geral</option>
+            <option value="user">Por Usuário</option>
             <option value="course">Por Curso</option>
         </select>
         <label for="engagement-id">Informe o ID:</label>
@@ -59,26 +59,13 @@
         <button type="submit">Consultar Engajamento</button>
     </form>
 
-    <h2>Motivação</h2>
-    <form id="form-motivacao" action="#" method="get">
-        <label for="motivation-query">Selecione o tipo de consulta:</label>
-        <select name="motivation-query" id="motivation-query" onchange="toggleInput(this)">
-            <option value="geral">Geral</option>
-            <option value="usuario">Por Usuário</option>
-            <option value="curso">Por Curso</option>
-        </select>
-        <label for="motivation-id">Informe o ID:</label>
-        <input type="text" id="motivation-id" name="motivation-id" disabled>
-        <button type="submit">Consultar Motivação</button>
-    </form>
-
     <h2>Desempenho</h2>
-    <form id="form-desempenho" action="#" method="get">
+    <form id="form-desempenho" action="/performance" method="get">
         <label for="performance-query">Selecione o tipo de consulta:</label>
         <select name="performance-query" id="performance-query" onchange="toggleInput(this)">
-            <option value="geral">Geral</option>
-            <option value="usuario">Por Usuário</option>
-            <option value="curso">Por Curso</option>
+            <option value="general">Geral</option>
+            <option value="user">Por Usuário</option>
+            <option value="course">Por Curso</option>
         </select>
         <label for="performance-id">Informe o ID:</label>
         <input type="text" id="performance-id" name="performance-id" disabled>
@@ -89,26 +76,13 @@
     <form id="form-profundidade" action="#" method="get">
         <label for="depth-query">Selecione o tipo de consulta:</label>
         <select name="depth-query" id="depth-query" onchange="toggleInput(this)">
-            <option value="geral">Geral</option>
-            <option value="usuario">Por Usuário</option>
-            <option value="curso">Por Curso</option>
+            <option value="general">Geral</option>
+            <option value="user">Por Usuário</option>
+            <option value="course">Por Curso</option>
         </select>
         <label for="depth-id">Informe o ID:</label>
         <input type="text" id="depth-id" name="depth-id" disabled>
         <button type="submit">Consultar Profundidade</button>
-    </form>
-
-    <h2>Amplitude Social</h2>
-    <form id="form-amplitude" action="#" method="get">
-        <label for="social-query">Selecione o tipo de consulta:</label>
-        <select name="social-query" id="social-query" onchange="toggleInput(this)">
-            <option value="geral">Geral</option>
-            <option value="usuario">Por Usuário</option>
-            <option value="curso">Por Curso</option>
-        </select>
-        <label for="social-id">Informe o ID:</label>
-        <input type="text" id="social-id" name="social-id" disabled>
-        <button type="submit">Consultar Amplitude Social</button>
     </form>
 
     <script>

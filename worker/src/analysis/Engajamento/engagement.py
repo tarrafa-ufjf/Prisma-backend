@@ -120,7 +120,6 @@ class Engagement:
             df = pd.concat([df, result], ignore_index=True)
             analysis_config["processed"] += 1
 
-
             self.print_load(analysis_config["processed"], total)
 
             # Quando atingir batch_size, salvar e retornar

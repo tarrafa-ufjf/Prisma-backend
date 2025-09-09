@@ -80,6 +80,11 @@ def publish_message(queue_name, task, priority=None):
         channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(priority=priority, delivery_mode=2))
     connection.close()
 
+def performance(body):
+    analysis_config = body.get("analysis_config")
+    res = analyzer.performance_analysis(analysis_config["id"], analysis_config["type"], version, connector)
+    return res.to_dict(orient="records")
+
 def engagement(body):
     analysis_config = body.get("analysis_config")
     res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], version, connector)
@@ -146,6 +151,16 @@ def continuously_listen():
 
         if analysis_type == "engagement":
             response = engagement(message.get("body"))
+            done_message = {
+                "name" : message.get("name"),
+                "body" : {
+                    "version" : message.get("version"),
+                    "results" : response,
+                }
+            }
+            publish_message("Done", done_message)
+        elif analysis_type == "performance":
+            response = performance(message.get("body"))
             done_message = {
                 "name" : message.get("name"),
                 "body" : {

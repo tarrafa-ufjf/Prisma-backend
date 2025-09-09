@@ -55,3 +55,11 @@ class Mapper:
     def get_courses(self, connector, version):
         moodle = self.get_moodle(connector, version)
         return moodle.get_courses()
+    
+    def get_activity_weights(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_activity_weights(course_id)
+    
+    def get_grades(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_grades_by_course(course_id)

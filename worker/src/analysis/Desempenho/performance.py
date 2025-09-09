@@ -1,0 +1,246 @@
+import pandas as pd
+from sqlalchemy import Table, Column, Integer, MetaData, String, create_engine
+import os, sys
+from dotenv import load_dotenv
+
+class Performance:
+    def __init__(self, mapper):
+        self.mapper = mapper
+        load_dotenv()
+    
+    def get_connector(self):
+        DB_USER = os.getenv("DB_USER")
+        DB_PASSWORD = os.getenv("DB_PASSWORD")
+        DB_HOST = os.getenv("DB_HOST", "localhost")
+        DB_PORT = int(os.getenv("DB_PORT", 5432))
+        DB_NAME = os.getenv("DB_DATABASE")
+
+        engine = create_engine(
+            f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        )
+        return engine
+    
+
+    def get_global_analysis_table(self):
+        metadata = MetaData()
+        global_analysis = Table(
+            'gl_indicators_status', metadata,
+            Column('s_user', Integer, primary_key=True),
+            Column('course_id', Integer, primary_key=True),
+            Column('indicator', Integer, primary_key=True),
+            Column('status', String(1), nullable=False)
+        )
+        return global_analysis
+    
+    def course_analysis(self, course_id, version, connector):
+        df = self.mapper.get_grades(connector, course_id, version)
+        df_pesos = self.mapper.get_activity_weights(connector, course_id, version)
+
+        # Converte tipos
+        df['performance']  = pd.to_numeric(df['performance'], errors='coerce').fillna(0)
+        df['activity_id']  = pd.to_numeric(df['activity_id'], errors='coerce').fillna(0).astype(int)
+        df_pesos['grademax']    = pd.to_numeric(df_pesos['grademax'], errors='coerce').fillna(0)
+        df_pesos['activity_id'] = pd.to_numeric(df_pesos['activity_id'], errors='coerce').fillna(0).astype(int)
+
+        # Remove atividades 100% zeradas
+        atividades_todas_nulas = df.groupby('activity_id', group_keys=False)['performance'].apply(lambda x: (x == 0).all())
+        ids_para_remover = atividades_todas_nulas[atividades_todas_nulas].index.tolist()
+        df = df[~df['activity_id'].isin(ids_para_remover)]
+
+        # Merge
+        df_merged = df.merge(df_pesos[['activity_id', 'grademax', 'activity_name']], on='activity_id', how='left')
+
+        # Nota real
+        df_merged['nota_real'] = df_merged['performance'] * (df_merged['grademax'] / 100)
+
+        # Alunos válidos
+        alunos_com_nota = df_merged.groupby('user_id', group_keys=False)['nota_real'].sum()
+        total_alunos_validos = int((alunos_com_nota > 0).sum())
+
+        # Participação
+        participacao_atividade = (
+            df_merged[df_merged['performance'] > 0]
+            .groupby('activity_id', group_keys=False)['user_id']
+            .nunique()
+        )
+        atividades_validas_ids = participacao_atividade[participacao_atividade >= 0.3 * total_alunos_validos].index
+
+        df_merged = df_merged[df_merged['activity_id'].isin(atividades_validas_ids)]
+        df_pesos_filtrado = df_pesos[df_pesos['activity_id'].isin(atividades_validas_ids)]
+
+        # Nota final e max
+        notas_finais = df_merged.groupby(['user_id', 'firstname'], group_keys=False)['nota_real'].sum().reset_index()
+        notas_finais.rename(columns={'nota_real': 'nota_final'}, inplace=True)
+
+        df_pesos_filtrado = df_pesos_filtrado.copy()
+        df_pesos_filtrado['grademax'] = pd.to_numeric(df_pesos_filtrado['grademax'], errors='coerce').fillna(0)
+        nota_maxima_semestre = float(df_pesos_filtrado['grademax'].sum())
+
+        if nota_maxima_semestre > 0:
+            notas_finais['percentual'] = (notas_finais['nota_final'] / nota_maxima_semestre) * 100
+        else:
+            notas_finais['percentual'] = 0.0
+
+        notas_finais['situacao'] = notas_finais['percentual'].apply(
+            lambda x: 'Aprovado' if x >= 69 else ('RI' if x == 0 else 'Reprovado')
+        )
+
+        notas_finais['situacao'] = notas_finais['situacao'].astype(str)
+
+        if nota_maxima_semestre <= 60:
+            mask = notas_finais['situacao'] != 'RI'
+            notas_finais.loc[mask, 'situacao'] = notas_finais.loc[mask, 'situacao'] + ' com ressalva'
+
+        notas_finais['course_id']  = course_id
+        notas_finais['grademax']   = round(nota_maxima_semestre, 1)
+        notas_finais['nota_final'] = notas_finais['nota_final'].round(1)
+        notas_finais['percentual'] = notas_finais['percentual'].round(0)
+
+        return notas_finais
+    
+    def normalized_grades(self, course_id, version, connector):
+        df_norm = self.course_analysis(course_id, version, connector)
+        df_norm['nota_final'] = pd.to_numeric(df_norm['nota_final'], errors='coerce')
+        df_norm['grademax'] = pd.to_numeric(df_norm['grademax'], errors='coerce')
+
+        # Adiciona coluna de nota normalizada (0 a 1)
+        df_norm['nota_normalizada'] = df_norm['nota_final'] / df_norm['grademax']
+
+        df_norm['aprovado'] = df_norm['situacao'].str.contains('Aprovado', case=False)
+        df_norm['reprovado'] = df_norm['situacao'].str.contains('Reprovado', case=False)
+        df_norm['ri'] = df_norm['situacao'] == 'RI'
+        df_norm['ressalva'] = df_norm['situacao'].str.contains('ressalva', case=False)
+
+        df_norm_aluno = df_norm.groupby(['user_id', 'firstname']).agg(
+            media_nota_normalizada=('nota_normalizada', 'mean'),
+            media_percentual=('percentual', 'mean'),
+            qtd_cursos=('course_id', 'nunique'),
+            qtd_aprovado=('aprovado', 'sum'),
+            qtd_reprovado=('reprovado', 'sum'),
+            qtd_ri=('ri', 'sum'),
+            qtd_ressalva=('ressalva', 'sum')
+        ).reset_index()
+
+        return df_norm_aluno
+    
+    def discretized_performance(self, course_id, version, connector):
+        df_norm = self.normalized_grades(course_id, version, connector)
+
+        # Calcula quartis e limites
+        q1 = df_norm["media_nota_normalizada"].quantile(0.25)
+        q3 = df_norm["media_nota_normalizada"].quantile(0.75)
+        q2 = df_norm["media_nota_normalizada"].quantile(0.5)
+
+        iqr = q3 - q1
+        lim_inf = q1 - 1.5 * iqr
+        lim_sup = q3 + 1.5 * iqr
+
+        # Função de discretização
+        def discretize_performance(x, lim_inf, q1, q3, lim_sup):
+            if x <= lim_inf:
+                return "Muito baixo"
+            elif x <= q1:
+                return "Baixo"
+            elif x <= q3:
+                return "Médio"
+            elif x <= lim_sup:
+                return "Alto"
+            else:
+                return "Muito alto"
+
+        # Aplica discretização
+        df_norm["performance_label_global"] = df_norm["media_nota_normalizada"].apply(
+            lambda x: discretize_performance(x, lim_inf, q1, q3, lim_sup)
+        )
+
+        return df_norm
+    
+    def print_load(self, processed, total):
+        percent = (processed / total) * 100
+        bar_length = 40
+        filled_length = int(bar_length * processed // total)
+        bar = '#' * filled_length + '-' * (bar_length - filled_length)
+
+        # sobrescreve a linha atual
+        sys.stdout.write(f'\rGlobal Analysis: |{bar}| {percent:.2f}% Complete')
+        sys.stdout.flush()
+
+        if processed == total:
+            print(' ✅\n')
+    
+    def general_analysis(self, version, connector, analysis_config):
+        batch_size = analysis_config.get("batch_size")
+        processed = analysis_config.get("processed", 0)
+        engine = self.get_connector()
+
+        # Se total ainda não foi definido, calcular (baseado no banco fonte)
+        if analysis_config["total"] == 0:
+            df_courses = self.mapper.get_courses(connector, version)  
+            df_courses = pd.DataFrame(df_courses, columns=['course_id'])
+            analysis_config["total"] = len(df_courses)
+
+        total = analysis_config["total"]
+        df = pd.DataFrame(columns=['course_id', 'full_name', 'num_posts_required', 'posts_required_label', 'user_id'])
+
+        # Processar cursos a partir do ponto onde parou
+        for i in range(processed + 1, total + 1):
+            result = self.course_analysis(i, version, connector)
+            df = pd.concat([df, result], ignore_index=True)
+            analysis_config["processed"] += 1
+
+            self.print_load(analysis_config["processed"], total)
+
+            # Quando atingir batch_size, salvar e retornar
+            if analysis_config["processed"] % batch_size == 0:
+                df_counts = (
+                    df.groupby(['course_id', 'posts_required_label'])
+                    .size()
+                    .unstack(fill_value=0)
+                    .reset_index()
+                )
+
+                df_counts.columns = (
+                    df_counts.columns.str.strip()  
+                    .str.lower()                   
+                    .str.replace(" ", "_")        
+                )
+
+                df_counts["s_user"] = 1 
+                for col in ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]:
+                    if col not in df_counts.columns:
+                        df_counts[col] = 0
+                
+                df_counts = df_counts.groupby("course_id", as_index=False).sum()
+
+                df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
+
+                df = pd.DataFrame(columns=['course_id', 'full_name', 'num_posts_required', 'posts_required_label', 'user_id'])
+
+                return analysis_config
+
+        # Se terminar todos os cursos (salva o que restou)
+        if not df.empty:
+            df_counts = (
+                df.groupby(['course_id', 'posts_required_label'])
+                .size()
+                .unstack(fill_value=0)
+                .reset_index()
+            )
+
+            df_counts.columns = (
+                df_counts.columns.str.strip() 
+                .str.lower()   
+                .str.replace(" ", "_") 
+            )
+
+            df_counts["s_user"] = 1
+
+            for col in ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]:
+                if col not in df_counts.columns:
+                    df_counts[col] = 0
+            
+            df_counts = df_counts.groupby("course_id", as_index=False).sum()
+            
+            df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
+
+        return analysis_config

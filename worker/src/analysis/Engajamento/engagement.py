@@ -88,12 +88,12 @@ class Engagement:
     
     def print_load(self, processed, total):
         percent = (processed / total) * 100
-        bar_length = 40
-        filled_length = int(bar_length * processed // total)
-        bar = '#' * filled_length + '-' * (bar_length - filled_length)
-
-        # sobrescreve a linha atual
-        sys.stdout.write(f'\rGlobal Analysis: |{bar}| {percent:.2f}% Complete')
+        bar_length = 20
+        filled = "#" * (bar_length * processed // total)
+        empty = "-" * (bar_length - len(filled))
+        
+        # \033[{row};0H move o cursor para a linha "row"
+        sys.stdout.write(f"\033[{5};0H Análise Global Engajamento|{filled}{empty}| {percent:.2f}%")
         sys.stdout.flush()
 
         if processed == total:

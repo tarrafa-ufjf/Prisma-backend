@@ -7,6 +7,19 @@ class Performance:
     def __init__(self, mapper):
         self.mapper = mapper
         load_dotenv()
+        self.columns = [
+            "course_id",
+            "firstname",
+            "media_nota_normalizada",
+            "media_percentual",
+            "performance_label_global",
+            "qtd_aprovado",
+            "qtd_reprovado",
+            "qtd_ressalva",
+            "qtd_cursos",
+            "qtd_ri",
+            "user_id"
+        ]
     
     def get_connector(self):
         DB_USER = os.getenv("DB_USER")
@@ -138,15 +151,15 @@ class Performance:
         # Função de discretização
         def discretize_performance(x, lim_inf, q1, q3, lim_sup):
             if x <= lim_inf:
-                return "Muito baixo"
+                return 0
             elif x <= q1:
-                return "Baixo"
+                return 1
             elif x <= q3:
-                return "Médio"
+                return 2
             elif x <= lim_sup:
-                return "Alto"
+                return 3
             else:
-                return "Muito alto"
+                return 4
 
         # Aplica discretização
         df_norm["performance_label_global"] = df_norm["media_nota_normalizada"].apply(
@@ -157,12 +170,12 @@ class Performance:
     
     def print_load(self, processed, total):
         percent = (processed / total) * 100
-        bar_length = 40
-        filled_length = int(bar_length * processed // total)
-        bar = '#' * filled_length + '-' * (bar_length - filled_length)
-
-        # sobrescreve a linha atual
-        sys.stdout.write(f'\rGlobal Analysis: |{bar}| {percent:.2f}% Complete')
+        bar_length = 20
+        filled = "#" * (bar_length * processed // total)
+        empty = "-" * (bar_length - len(filled))
+        
+        # \033[{row};0H move o cursor para a linha "row"
+        sys.stdout.write(f"\033[{6};0H Análise Global Performance|{filled}{empty}| {percent:.2f}%")
         sys.stdout.flush()
 
         if processed == total:
@@ -180,67 +193,35 @@ class Performance:
             analysis_config["total"] = len(df_courses)
 
         total = analysis_config["total"]
-        df = pd.DataFrame(columns=['course_id', 'full_name', 'num_posts_required', 'posts_required_label', 'user_id'])
+
+        # Lista para acumular resultados
+        results = []
 
         # Processar cursos a partir do ponto onde parou
         for i in range(processed + 1, total + 1):
-            result = self.course_analysis(i, version, connector)
-            df = pd.concat([df, result], ignore_index=True)
+            result = self.discretized_performance(i, version, connector)
+
+            if not result.empty:
+                result["course_id"] = i
+                results.append(result)
+
             analysis_config["processed"] += 1
 
             self.print_load(analysis_config["processed"], total)
 
             # Quando atingir batch_size, salvar e retornar
-            if analysis_config["processed"] % batch_size == 0:
-                df_counts = (
-                    df.groupby(['course_id', 'posts_required_label'])
-                    .size()
-                    .unstack(fill_value=0)
-                    .reset_index()
-                )
-
-                df_counts.columns = (
-                    df_counts.columns.str.strip()  
-                    .str.lower()                   
-                    .str.replace(" ", "_")        
-                )
-
-                df_counts["s_user"] = 1 
-                for col in ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]:
-                    if col not in df_counts.columns:
-                        df_counts[col] = 0
-                
-                df_counts = df_counts.groupby("course_id", as_index=False).sum()
-
-                df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
-
-                df = pd.DataFrame(columns=['course_id', 'full_name', 'num_posts_required', 'posts_required_label', 'user_id'])
+            if analysis_config["processed"] % batch_size == 0 and results:
+                df = pd.concat(results, ignore_index=True)
+                df["s_user"] = 1 
+                df.to_sql("performance_global", engine, if_exists="append", index=False)
+                results = []  # limpa lista
 
                 return analysis_config
 
         # Se terminar todos os cursos (salva o que restou)
-        if not df.empty:
-            df_counts = (
-                df.groupby(['course_id', 'posts_required_label'])
-                .size()
-                .unstack(fill_value=0)
-                .reset_index()
-            )
-
-            df_counts.columns = (
-                df_counts.columns.str.strip() 
-                .str.lower()   
-                .str.replace(" ", "_") 
-            )
-
-            df_counts["s_user"] = 1
-
-            for col in ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]:
-                if col not in df_counts.columns:
-                    df_counts[col] = 0
-            
-            df_counts = df_counts.groupby("course_id", as_index=False).sum()
-            
-            df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
+        if results:
+            df = pd.concat(results, ignore_index=True)
+            df["s_user"] = 1 
+            df.to_sql("performance_global", engine, if_exists="append", index=False)
 
         return analysis_config

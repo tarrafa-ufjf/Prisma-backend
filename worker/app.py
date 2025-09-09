@@ -2,6 +2,7 @@ from database import db, Database
 import pandas as pd
 from src.analysis.analysis import Analyzer
 from sqlalchemy import and_, create_engine, MetaData, Table, Column, Integer, String
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 import pika
 import json
 import os
@@ -40,16 +41,19 @@ def get_global_analysis_table():
 
 def update_global_analysis_status(s_user: int, indicator: int, status: str):
     engine = get_connector()
-    global_analysis = get_global_analysis_table()
+    table = get_global_analysis_table()
 
-    with engine.connect() as conn:
-        insert_stmt = global_analysis.update().values(
-            s_user=s_user,
-            indicator=indicator,
-            status=status
-        )
-        conn.execute(insert_stmt)
-        conn.commit()
+    stmt = pg_insert(table).values(
+        s_user=s_user,
+        indicator=indicator,
+        status=status
+    ).on_conflict_do_update(
+        constraint="gl_indicators_status_pkey",
+        set_={"status": status}
+    )
+
+    with engine.begin() as conn:
+        conn.execute(stmt)
 
 def create_rabbit_connection():
     credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
@@ -58,7 +62,7 @@ def create_rabbit_connection():
             host=RABBITMQ_HOST,
             port=RABBITMQ_PORT,
             credentials=credentials,
-            heartbeat=600,  # mantém a conexão viva
+            heartbeat=600,
             blocked_connection_timeout=300
         )
     )
@@ -114,6 +118,31 @@ def get_version(message):
     version = analyzer.get_moodle_version(connector)
 
     return version
+
+def global_analysis_performance(message):
+    global connector, version, analyzer
+
+    body = message["body"]
+
+    if connector is None:
+        config = body["db_config"]
+        connector = conn.get_connection_with_config(config)
+    if version is None:
+        version = body["version"]
+
+    res = analyzer.general_performance_analysis(connector, version, body["analysis_config"])
+    if res["processed"] != res["total"]:
+        publish_message("tasks_to_process", {
+            "name": "user:global_analysis_performance",
+            "version": message["version"],
+            "body": {
+                "type": "global_analysis_performance",
+                "db_config": body["db_config"],
+                "analysis_config": res
+            }
+        }, priority=0)
+    else:
+        update_global_analysis_status(1, 2, 'D')
 
 def global_analysis_engagement(message):
     global connector, version, analyzer
@@ -171,6 +200,8 @@ def continuously_listen():
             publish_message("Done", done_message)
         elif analysis_type == "global_analysis_engagement":
             global_analysis_engagement(message)
+        elif analysis_type == "global_analysis_performance":
+            global_analysis_performance(message)
         elif analysis_type == "version":
             version = get_version(message.get("body"))
             channel.basic_publish(

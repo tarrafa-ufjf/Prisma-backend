@@ -1,7 +1,7 @@
 import os
 import pika
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, DECIMAL, PrimaryKeyConstraint
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, Float, String, DECIMAL, PrimaryKeyConstraint
 from sqlalchemy.exc import SQLAlchemyError
 
 # Carregar variáveis do arquivo .env
@@ -78,6 +78,25 @@ if __name__ == "__main__":
 
     primary_keys = ["s_user", "indicator"]
     create_table("gl_indicators_status", columns_indicators_status, primary_key=primary_keys)
+
+    columns_performance_global = {
+        "s_user": Integer, 
+        "course_id": Integer, 
+        "firstname": String(100), 
+        "media_nota_normalizada": Float,
+        "media_percentual": Float,
+        "performance_label_global": Integer,
+        "qtd_aprovado": Integer,
+        "qtd_reprovado": Integer,
+        "qtd_ressalva": Integer,
+        "qtd_cursos": Integer,
+        "qtd_ri": Integer,
+        "user_id": Integer
+    }
+
+    primary_keys = ["s_user", "course_id", "user_id"]
+
+    create_table("performance_global", columns_performance_global, primary_key=primary_keys)
 
     channel.queue_declare(
         queue="tasks_to_process",

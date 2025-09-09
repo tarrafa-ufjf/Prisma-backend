@@ -142,7 +142,9 @@ def performance():
         "id" : course_id
     }
 
-    if type_ != 'geral':
+    print("Type:", type_)
+
+    if type_ != 'general':
         name = "user:performance"
         task = {
             "name" : name,
@@ -159,7 +161,7 @@ def performance():
     else:
         name = "user:global_analysis_performance"
         wait_until_done(1, 2, 'D')  # Indicador 2: performance, Status 'D' (Done)
-        rows = get_all_engajamento_global()
+        rows = get_all_performance_global()
         data = [dict(row) for row in rows]  
         return jsonify(data), 200
 
@@ -209,6 +211,16 @@ def get_all_engajamento_global():
         result = conn.execute(query).mappings().all()  # retorna lista de dicts
         return result
 
+def get_all_performance_global():
+    engine = get_connector()
+    metadata = MetaData()
+    performance_global = Table("performance_global", metadata, autoload_with=engine)
+
+    with engine.connect() as conn:
+        query = select(performance_global).where(performance_global.c.s_user == 1) #TODO
+        result = conn.execute(query).mappings().all()  # retorna lista de dicts
+        return result
+
 @app.route("/analysis", methods=["GET"])
 def analysis():
     global version, db_config, channel
@@ -237,7 +249,8 @@ def analysis():
     body = get_done_message(name)
     version = body['version']
 
-    indicators = ["Engagement"]
+    indicators = ["Engagement", "Performance"]
+    counter = 1
     for indicator in indicators:
         task = {
             "name" : f"user:set_global_{indicator.lower()}",
@@ -256,7 +269,8 @@ def analysis():
         }
 
         try:
-            insert_global_analysis_status(1, 1, 'P')  # Indicador 1: Engagement, Status 'I' (Idle
+            insert_global_analysis_status(1, counter, 'P')  # Indicador 1: Engagement, Status 'I' (Idle
+            counter += 1
             publish_message("tasks_to_process", task, priority=1)
         except Exception as e:
             continue

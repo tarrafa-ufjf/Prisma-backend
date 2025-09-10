@@ -98,6 +98,20 @@ if __name__ == "__main__":
 
     create_table("performance_global", columns_performance_global, primary_key=primary_keys)
 
+    columns_configs = {
+        "s_user": Integer,
+        "version": String(40),
+        "host": String,
+        "port": Integer,
+        "database": String,
+        "user": String,
+        "password": String
+    }
+
+    primary_keys = ["s_user", "version"]
+
+    create_table("configs", columns_configs, primary_key=primary_keys)
+
     channel.queue_declare(
         queue="tasks_to_process",
         durable=True,

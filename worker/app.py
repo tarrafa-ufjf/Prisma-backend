@@ -111,7 +111,6 @@ def get_version(message):
     global connector, version, analyzer
 
     config = message["db_inst_config"]
-    print(f'config := {config}')
     
     connector = conn.get_connection_with_config(config)
 

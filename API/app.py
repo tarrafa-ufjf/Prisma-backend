@@ -94,7 +94,7 @@ def get_done_message(name):
             nome = message.get("name") 
 
             if nome == name:
-                print(f"[x] Mensagem encontrada: {message}")
+                # print(f"[x] Mensagem encontrada: {message}")
                 # Confirma a retirada da fila
                 channel.basic_ack(delivery_tag=method_frame.delivery_tag)
                 found = True
@@ -134,15 +134,13 @@ def performance():
     course_id = request.args.get('performance-id', type=int)
     type_ = request.args.get('performance-query')
 
-    if not course_id and request.args.get('performance-query') != 'geral':
+    if not course_id and request.args.get('performance-query') != 'general':
         return jsonify({"error": "Course ID is required"}), 400
     
     analysis_config = {
         "type" : request.args.get('performance-query'),
         "id" : course_id
     }
-
-    print("Type:", type_)
 
     if type_ != 'general':
         name = "user:performance"
@@ -221,6 +219,49 @@ def get_all_performance_global():
         result = conn.execute(query).mappings().all()  # retorna lista de dicts
         return result
 
+def get_version_in_database(user):
+    engine = get_connector()
+    metadata = MetaData()
+    configs = Table("configs", metadata, autoload_with=engine)
+
+    with engine.connect() as conn:
+        query = select(configs).where(configs.c.s_user == user)
+        result = conn.execute(query).mappings().all()  # retorna lista de dicts
+        if len(result) > 0:
+            return result[0]['version']
+        else:
+            return None
+
+def insert_version_in_database(user, version, db_config):
+    engine = get_connector()
+    metadata = MetaData()
+    configs = Table("configs", metadata, autoload_with=engine)
+
+    with engine.connect() as conn:
+        insert_stmt = configs.insert().values(
+            s_user=user,
+            version=version,
+            host=db_config['host'],
+            port=db_config['port'],
+            database=db_config['db'],
+            user=db_config['user'],
+            password=db_config['password']
+        )
+        conn.execute(insert_stmt)
+        conn.commit()
+
+def verify_if_there_is_version_in_database(user):
+    engine = get_connector()
+    metadata = MetaData()
+    configs = Table("configs", metadata, autoload_with=engine)
+
+    with engine.connect() as conn:
+        query = select(configs).where(configs.c.s_user == user)
+        result = conn.execute(query).mappings().all()  # retorna lista de dicts
+        if len(result) > 0:
+            return True
+        return False
+
 @app.route("/analysis", methods=["GET"])
 def analysis():
     global version, db_config, channel
@@ -233,21 +274,38 @@ def analysis():
         'password': request.args['password'],
     }
 
-    name = "user:get_version"
-    task = {
-        "name" : name,
-        "version" : "",
-        "body" : {
-            "db_inst_config" : db_config,
-            "type" : "version",
-            "analysis_config": {}
-        },
-    }
-    
-    publish_message("tasks_to_process", task)
-
-    body = get_done_message(name)
-    version = body['version']
+    if verify_if_there_is_version_in_database(1):
+        version = get_version_in_database(1)
+        if version is None:
+            name = "user:get_version"
+            task = {
+                "name" : name,
+                "version" : "",
+                "body" : {
+                    "db_inst_config" : db_config,
+                    "type" : "version",
+                    "analysis_config": {}
+                },
+            }
+            publish_message("tasks_to_process", task)
+            body = get_done_message(name)
+            version = body['version']
+            insert_version_in_database(1, version, db_config)
+    else:
+        name = "user:get_version"
+        task = {
+            "name" : name,
+            "version" : "",
+            "body" : {
+                "db_inst_config" : db_config,
+                "type" : "version",
+                "analysis_config": {}
+            },
+        }
+        publish_message("tasks_to_process", task)
+        body = get_done_message(name)
+        version = body['version']
+        insert_version_in_database(1, version, db_config)
 
     indicators = ["Engagement", "Performance"]
     counter = 1

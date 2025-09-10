@@ -6,7 +6,13 @@ primeiramente rode o comando para inicializar os bancos e serviços com o docker
 docker compose up -d
 ```
 
-Após isso, Entre no diretório **worker** e rode os comando:
+Se o comando acima não funcionar, tente:
+
+```bash
+docker-compose up -d
+```
+
+Após todos os containers estarem executando, entre no diretório **worker** e rode os comando:
 
 ```bash
 poetry install
@@ -16,7 +22,21 @@ poetry install
 poetry run python install.py
 ```
 
-**Observação:** Pretendemos, futuramente, simplificar todos os processos utilizando um arquivo bash.
+Feito isso, entre no diretório da **API** e rode o comando:
+
+```bash
+poetry install
+```
+
+# Como executar o sistema
+
+Feita a instalação mostrada no passo anterior, para rodar o sistema será necessário abrir 2 terminais: um para o diretório da **API** e outro para o diretório **worker**. Em ambos os terminais, rode o comando a seguir:
+
+```bash
+poetry run python app.py
+```
+
+Feito isso, no terminal da **API**, acesse o link disponibilizado pelo Flask. Irá abrir uma página no navegador onde o usuário irá inserir as informações de acesso ao banco de dados institucional, como o link do host, a porta, o usuário, etc. Após inserir os dados, o sistema irá iniciar a análise global enquanto o usuário pode fazer as análises locais.
 
 # Modelo das Tasks
 

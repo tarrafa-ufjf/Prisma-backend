@@ -112,6 +112,18 @@ if __name__ == "__main__":
 
     create_table("configs", columns_configs, primary_key=primary_keys)
 
+    columns_configs = {
+        "s_user": Integer,
+        "course_id": Integer,
+        "user_id": Integer,
+        "forum_id_unrequired": Integer,
+        "num_posts_unrequired": Integer,
+        "full_name": String(100),
+    }
+
+    primary_keys = ["s_user", "course_id", "user_id"]
+    create_table("motivation_global", columns_configs, primary_key=primary_keys)
+
     channel.queue_declare(
         queue="tasks_to_process",
         durable=True,

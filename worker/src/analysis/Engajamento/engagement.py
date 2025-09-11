@@ -1,51 +1,9 @@
 import pandas as pd
-from sqlalchemy import Table, Column, Integer, MetaData, String, create_engine
-import os, sys
-from dotenv import load_dotenv
+from src.analysis.indicator import Indicator
 
-class Engagement:
+class Engagement(Indicator):
     def __init__(self, mapper):
-        self.mapper = mapper
-        load_dotenv()
-    
-    def get_connector(self):
-        DB_USER = os.getenv("DB_USER")
-        DB_PASSWORD = os.getenv("DB_PASSWORD")
-        DB_HOST = os.getenv("DB_HOST", "localhost")
-        DB_PORT = int(os.getenv("DB_PORT", 5432))
-        DB_NAME = os.getenv("DB_DATABASE")
-
-        engine = create_engine(
-            f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        )
-        return engine
-    
-
-    def get_global_analysis_table(self):
-        metadata = MetaData()
-        global_analysis = Table(
-            'gl_indicators_status', metadata,
-            Column('s_user', Integer, primary_key=True),
-            Column('course_id', Integer, primary_key=True),
-            Column('indicator', Integer, primary_key=True),
-            Column('status', String(1), nullable=False)
-        )
-        return global_analysis
-    
-    def insert_global_analysis_status(self, s_user: int, course_id: int, indicator: int, status: str):
-        engine = self.get_connector()
-        global_analysis = self.get_global_analysis_table()
-
-        with engine.connect() as conn:
-            insert_stmt = global_analysis.insert().values(
-                s_user=s_user,
-                course_id=course_id,
-                indicator=indicator,
-                status=status
-            )
-            conn.execute(insert_stmt)
-            conn.commit()
-        
+        super().__init__(mapper)
 
     def course_analysis(self, course_id, version, connector):
         df_posts = self.mapper.get_engagement_data(connector, course_id, version)
@@ -85,19 +43,6 @@ class Engagement:
 
         # Teste
         return df_final
-    
-    def print_load(self, processed, total):
-        percent = (processed / total) * 100
-        bar_length = 20
-        filled = "#" * (bar_length * processed // total)
-        empty = "-" * (bar_length - len(filled))
-        
-        # \033[{row};0H move o cursor para a linha "row"
-        sys.stdout.write(f"\033[{5};0H Análise Global Engajamento|{filled}{empty}| {percent:.2f}%")
-        sys.stdout.flush()
-
-        if processed == total:
-            print(' ✅\n')
 
     
     def general_analysis(self, version, connector, analysis_config):
@@ -120,7 +65,7 @@ class Engagement:
             df = pd.concat([df, result], ignore_index=True)
             analysis_config["processed"] += 1
 
-            self.print_load(analysis_config["processed"], total)
+            self.print_load("Engajamento", analysis_config["processed"], total, 5)
 
             # Quando atingir batch_size, salvar e retornar
             if analysis_config["processed"] % batch_size == 0:

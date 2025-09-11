@@ -84,14 +84,28 @@ def publish_message(queue_name, task, priority=None):
         channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(priority=priority, delivery_mode=2))
     connection.close()
 
-def performance(body):
+def performance(message):
+    body = message.get("body")
+    connector = conn.get_connection_with_config(body["db_inst_config"])
+
     analysis_config = body.get("analysis_config")
-    res = analyzer.performance_analysis(analysis_config["id"], analysis_config["type"], version, connector)
+    res = analyzer.performance_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
     return res.to_dict(orient="records")
 
-def engagement(body):
+def engagement(message):
+    body = message["body"]
+    connector = conn.get_connection_with_config(body["db_inst_config"])
+
     analysis_config = body.get("analysis_config")
-    res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], version, connector)
+    res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
+    return res.to_dict(orient="records")
+
+def motivation(message):
+    body = message["body"]
+    connector = conn.get_connection_with_config(body["db_inst_config"])
+
+    analysis_config = body.get("analysis_config")
+    res = analyzer.motivation_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
     return res.to_dict(orient="records")
 
 def analysis(message):
@@ -124,7 +138,7 @@ def global_analysis_performance(message):
     body = message["body"]
 
     if connector is None:
-        config = body["db_config"]
+        config = body["db_inst_config"]
         connector = conn.get_connection_with_config(config)
     if version is None:
         version = body["version"]
@@ -136,7 +150,7 @@ def global_analysis_performance(message):
             "version": message["version"],
             "body": {
                 "type": "global_analysis_performance",
-                "db_config": body["db_config"],
+                "db_inst_config": body["db_inst_config"],
                 "analysis_config": res
             }
         }, priority=0)
@@ -161,12 +175,37 @@ def global_analysis_engagement(message):
             "version": message["version"],
             "body": {
                 "type": "global_analysis_engagement",
-                "db_config": body["db_config"],
+                "db_inst_config": body["db_inst_config"],
                 "analysis_config": res
             }
         }, priority=0)
     else:
         update_global_analysis_status(1, 1, 'D')
+
+def global_analysis_motivation(message):
+    global connector, version, analyzer
+
+    body = message["body"]
+
+    if connector is None:
+        config = body["db_config"]
+        connector = conn.get_connection_with_config(config)
+    if version is None:
+        version = body["version"]
+
+    res = analyzer.general_motivation_analysis(connector, version, body["analysis_config"])
+    if res["processed"] != res["total"]:
+        publish_message("tasks_to_process", {
+            "name": "user:global_analysis_motivation",
+            "version": message["version"],
+            "body": {
+                "type": "global_analysis_motivation",
+                "db_inst_config": body["db_inst_config"],
+                "analysis_config": res
+            }
+        }, priority=0)
+    else:
+        update_global_analysis_status(1, 3, 'D')
 
 def continuously_listen():
     global channel
@@ -178,7 +217,7 @@ def continuously_listen():
         # print(f"[x] Mensagem recebida para análise: {message}")
 
         if analysis_type == "engagement":
-            response = engagement(message.get("body"))
+            response = engagement(message)
             done_message = {
                 "name" : message.get("name"),
                 "body" : {
@@ -188,7 +227,17 @@ def continuously_listen():
             }
             publish_message("Done", done_message)
         elif analysis_type == "performance":
-            response = performance(message.get("body"))
+            response = performance(message)
+            done_message = {
+                "name" : message.get("name"),
+                "body" : {
+                    "version" : message.get("version"),
+                    "results" : response,
+                }
+            }
+            publish_message("Done", done_message)
+        elif analysis_type == "motivation":
+            response = motivation(message)
             done_message = {
                 "name" : message.get("name"),
                 "body" : {
@@ -201,6 +250,8 @@ def continuously_listen():
             global_analysis_engagement(message)
         elif analysis_type == "global_analysis_performance":
             global_analysis_performance(message)
+        elif analysis_type == "global_analysis_motivation":
+            global_analysis_motivation(message)
         elif analysis_type == "version":
             version = get_version(message.get("body"))
             channel.basic_publish(

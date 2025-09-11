@@ -1,12 +1,9 @@
 import pandas as pd
-from sqlalchemy import Table, Column, Integer, MetaData, String, create_engine
-import os, sys
-from dotenv import load_dotenv
+from src.analysis.indicator import Indicator
 
-class Performance:
+class Performance(Indicator):
     def __init__(self, mapper):
-        self.mapper = mapper
-        load_dotenv()
+        super().__init__(mapper)
         self.columns = [
             "course_id",
             "firstname",
@@ -20,30 +17,6 @@ class Performance:
             "qtd_ri",
             "user_id"
         ]
-    
-    def get_connector(self):
-        DB_USER = os.getenv("DB_USER")
-        DB_PASSWORD = os.getenv("DB_PASSWORD")
-        DB_HOST = os.getenv("DB_HOST", "localhost")
-        DB_PORT = int(os.getenv("DB_PORT", 5432))
-        DB_NAME = os.getenv("DB_DATABASE")
-
-        engine = create_engine(
-            f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        )
-        return engine
-    
-
-    def get_global_analysis_table(self):
-        metadata = MetaData()
-        global_analysis = Table(
-            'gl_indicators_status', metadata,
-            Column('s_user', Integer, primary_key=True),
-            Column('course_id', Integer, primary_key=True),
-            Column('indicator', Integer, primary_key=True),
-            Column('status', String(1), nullable=False)
-        )
-        return global_analysis
     
     def course_analysis(self, course_id, version, connector):
         df = self.mapper.get_grades(connector, course_id, version)
@@ -168,19 +141,6 @@ class Performance:
 
         return df_norm
     
-    def print_load(self, processed, total):
-        percent = (processed / total) * 100
-        bar_length = 20
-        filled = "#" * (bar_length * processed // total)
-        empty = "-" * (bar_length - len(filled))
-        
-        # \033[{row};0H move o cursor para a linha "row"
-        sys.stdout.write(f"\033[{6};0H Análise Global Performance|{filled}{empty}| {percent:.2f}%")
-        sys.stdout.flush()
-
-        if processed == total:
-            print(' ✅\n')
-    
     def general_analysis(self, version, connector, analysis_config):
         batch_size = analysis_config.get("batch_size")
         processed = analysis_config.get("processed", 0)
@@ -207,7 +167,7 @@ class Performance:
 
             analysis_config["processed"] += 1
 
-            self.print_load(analysis_config["processed"], total)
+            self.print_load("Desempenho", analysis_config["processed"], total, 6)
 
             # Quando atingir batch_size, salvar e retornar
             if analysis_config["processed"] % batch_size == 0 and results:

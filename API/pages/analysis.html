@@ -72,6 +72,19 @@
         <button type="submit">Consultar Desempenho</button>
     </form>
 
+    <h2>Motivação</h2>
+    <form id="form-motivacao" action="/motivation" method="get">
+        <label for="motivation-query">Selecione o tipo de consulta:</label>
+        <select name="motivation-query" id="motivation-query" onchange="toggleInput(this)">
+            <option value="general">Geral</option>
+            <option value="user">Por Usuário</option>
+            <option value="course">Por Curso</option>
+        </select>
+        <label for="motivation-id">Informe o ID:</label>
+        <input type="text" id="motivation-id" name="motivation-id" disabled>
+        <button type="submit">Consultar Motivação</button>
+    </form>
+
     <h2>Profundidade Cognitiva</h2>
     <form id="form-profundidade" action="#" method="get">
         <label for="depth-query">Selecione o tipo de consulta:</label>

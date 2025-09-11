@@ -2,6 +2,7 @@ from mapper.map import Mapper
 import pandas as pd
 from analysis.Engajamento.engagement import Engagement
 from analysis.Desempenho.performance import Performance
+from analysis.Motivacao.motivation import Motivation
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import Optional
@@ -27,6 +28,12 @@ class Analyzer:
         analysis_config = performance.general_analysis(version, connector, analysis_config)
 
         return analysis_config
+    
+    def general_motivation_analysis(self, connector, version, analysis_config):
+        motivation = Motivation(self.mapper)
+        analysis_config = motivation.general_analysis(version, connector, analysis_config)
+
+        return analysis_config
 
     def engagement_analysis(self, course_id, type_query, version, connector):
         engagement = Engagement(self.mapper)
@@ -46,5 +53,16 @@ class Analyzer:
             pass
         elif type_query == 'course': 
             res = performance.discretized_performance(course_id, version, connector)
+
+        return res
+    
+    def motivation_analysis(self, course_id, type_query, version, connector):
+        motivation = Motivation(self.mapper)
+        res = None
+
+        if type_query == 'user':
+            pass
+        elif type_query == 'course': 
+            res = motivation.course_analysis(course_id, version, connector)
 
         return res

@@ -163,9 +163,47 @@ def performance():
         data = [dict(row) for row in rows]  
         return jsonify(data), 200
 
+@app.route("/motivation", methods=["GET"])
+def motivation():
+    global db_config, channel, version
+
+    course_id = request.args.get('motivation-id', type=int)
+    type_ = request.args.get('motivation-query')
+
+    if not course_id and request.args.get('motivation-query') != 'general':
+        return jsonify({"error": "Course ID is required"}), 400
+    
+    analysis_config = {
+        "type" : request.args.get('motivation-query'),
+        "id" : course_id
+    }
+
+    if type_ != 'general':
+        name = "user:motivation"
+        task = {
+            "name" : name,
+            "version" : version,
+            "body" : {
+                "db_inst_config" : db_config,
+                "analysis_config" : analysis_config,
+                "type" : "motivation",
+            }
+        }
+        publish_message("tasks_to_process", task, priority=2)
+        body = get_done_message(name)
+        return jsonify(body), 200
+    else:
+        name = "user:global_analysis_motivation"
+        wait_until_done(1, 3, 'D')  # Indicador 3: Motivation, Status 'D' (Done)
+        rows = get_all_motivation_global()
+        data = [dict(row) for row in rows]  
+        return jsonify(data), 200
+
 @app.route("/engagement", methods=["GET"])
 def engagement():
     global db_config, channel, version
+
+    version = get_version_in_database(1)
 
     course_id = request.args.get('engagement-id', type=int)
     type_ = request.args.get('engagement-query')
@@ -189,6 +227,7 @@ def engagement():
                 "type" : "engagement",
             }
         }
+        print(f"Publishing task: {task}")
         publish_message("tasks_to_process", task, priority=2)
         body = get_done_message(name)
         return jsonify(body), 200
@@ -216,6 +255,16 @@ def get_all_performance_global():
 
     with engine.connect() as conn:
         query = select(performance_global).where(performance_global.c.s_user == 1) #TODO
+        result = conn.execute(query).mappings().all()  # retorna lista de dicts
+        return result
+
+def get_all_motivation_global():
+    engine = get_connector()
+    metadata = MetaData()
+    motivation_global = Table("motivation_global", metadata, autoload_with=engine)
+
+    with engine.connect() as conn:
+        query = select(motivation_global).where(motivation_global.c.s_user == 1) #TODO
         result = conn.execute(query).mappings().all()  # retorna lista de dicts
         return result
 
@@ -276,6 +325,7 @@ def analysis():
 
     if verify_if_there_is_version_in_database(1):
         version = get_version_in_database(1)
+        print(f"Version found in database: {version}")
         if version is None:
             name = "user:get_version"
             task = {
@@ -307,14 +357,15 @@ def analysis():
         version = body['version']
         insert_version_in_database(1, version, db_config)
 
-    indicators = ["Engagement", "Performance"]
+    # indicators = ["Engagement", "Performance", "Motivation"]
+    indicators = ["Motivation"]
     counter = 1
     for indicator in indicators:
         task = {
             "name" : f"user:set_global_{indicator.lower()}",
             "version" : version,
             "body" : {
-                "db_config" : db_config,
+                "db_inst_config" : db_config,
                 "type" : f"global_analysis_{indicator.lower()}",
                 "analysis_config" : {
                     "id" : None,

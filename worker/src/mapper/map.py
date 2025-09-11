@@ -63,3 +63,7 @@ class Mapper:
     def get_grades(self, connector, course_id, version):
         moodle = self.get_moodle(connector, version)
         return moodle.get_grades_by_course(course_id)
+    
+    def get_foruns_non_required(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_foruns_non_required_by_course(course_id)

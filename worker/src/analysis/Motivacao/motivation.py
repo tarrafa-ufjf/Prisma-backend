@@ -1,5 +1,8 @@
 import pandas as pd
+import numpy as np
 from src.analysis.indicator import Indicator
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import MetaData, Table
 
 class Motivation(Indicator):
     def __init__(self, mapper):
@@ -24,7 +27,6 @@ class Motivation(Indicator):
         processed = analysis_config["processed"]
         engine = self.get_connector()
 
-        # Se total ainda não foi definido, calcular (baseado no banco fonte)
         if analysis_config["total"] == 0:
             df_courses = self.mapper.get_courses(connector, version)  
             df_courses = pd.DataFrame(df_courses, columns=['course_id'])
@@ -35,19 +37,49 @@ class Motivation(Indicator):
 
         for i in range(processed + 1, total + 1):
             result = self.course_analysis(i, version, connector)
+            result = self._fillna_mixed(result)
             df = pd.concat([df, result], ignore_index=True)
             analysis_config["processed"] += 1
 
             self.print_load("Motivação", analysis_config["processed"], total, 7)
 
             if analysis_config["processed"] % batch_size == 0:
-                df = df.infer_objects(copy=False)
-                df["s_user"] = 1
-                df.to_sql('motivation_global', con=engine, if_exists='append', index=False)
+                self._insert_ignore_conflicts(df, engine, "motivation_global")
                 return analysis_config
         
         if not df.empty:
-            df = df.infer_objects(copy=False)
-            df["s_user"] = 1
-            df.to_sql('motivation_global', con=engine, if_exists='append', index=False)
+            self._insert_ignore_conflicts(df, engine, "motivation_global")
+
         return analysis_config
+
+    def _fillna_mixed(self, dataframe):
+        for col in dataframe.columns:
+            if pd.api.types.is_numeric_dtype(dataframe[col]):
+                # Substitui NaN/inf por 0
+                dataframe[col] = dataframe[col].replace([np.nan, np.inf, -np.inf], 0)
+
+                # força para int64 se não tiver decimais
+                if dataframe[col].dropna().apply(lambda x: float(x).is_integer()).all():
+                    dataframe[col] = dataframe[col].astype(int)
+            else:
+                dataframe[col] = dataframe[col].fillna('')
+        return dataframe
+
+    def _insert_ignore_conflicts(self, df, engine, table_name):
+        """Insere no banco ignorando duplicatas (PostgreSQL)."""
+        df = df.infer_objects(copy=False)
+        df["s_user"] = 1
+
+        # Substitui NaN ou None por 0 em todas as colunas inteiras
+        for col in df.select_dtypes(include=['int64', 'float64']).columns:
+            df[col] = df[col].fillna(0).astype(int)
+
+        metadata = MetaData()
+        metadata.reflect(bind=engine, only=[table_name])
+        table = metadata.tables[table_name]
+
+        with engine.begin() as conn:
+            for _, row in df.iterrows():
+                stmt = insert(table).values(row.to_dict())
+                stmt = stmt.on_conflict_do_nothing()  # IGNORA duplicatas
+                conn.execute(stmt)

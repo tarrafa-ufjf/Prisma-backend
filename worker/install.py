@@ -121,7 +121,7 @@ if __name__ == "__main__":
         "full_name": String(100),
     }
 
-    primary_keys = ["s_user", "course_id", "user_id"]
+    primary_keys = ["s_user", "course_id", "user_id", "forum_id_unrequired", "num_posts_unrequired"]
     create_table("motivation_global", columns_configs, primary_key=primary_keys)
 
     channel.queue_declare(

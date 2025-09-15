@@ -24,7 +24,8 @@ connection = pika.BlockingConnection(
     pika.ConnectionParameters(
         host=RABBITMQ_HOST,
         port=RABBITMQ_PORT,
-        credentials=credentials
+        credentials=credentials,
+        heartbeat=600,
     )
 )
 channel = connection.channel()   
@@ -357,8 +358,8 @@ def analysis():
         version = body['version']
         insert_version_in_database(1, version, db_config)
 
-    # indicators = ["Engagement", "Performance", "Motivation"]
-    indicators = ["Motivation"]
+    indicators = ["Engagement", "Performance"]
+    # indicators = ["Motivation"]
     counter = 1
     for indicator in indicators:
         task = {

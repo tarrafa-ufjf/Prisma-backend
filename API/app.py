@@ -128,146 +128,76 @@ def wait_until_done(s_user, indicator, status, poll_interval=2):
 
         time.sleep(poll_interval)  # espera antes de checar de novo
 
-@app.route("/performance", methods=["GET"])
-def performance():
-    global db_config, channel, version
 
-    course_id = request.args.get('performance-id', type=int)
-    type_ = request.args.get('performance-query')
-
-    if not course_id and request.args.get('performance-query') != 'general':
-        return jsonify({"error": "Course ID is required"}), 400
-    
-    analysis_config = {
-        "type" : request.args.get('performance-query'),
-        "id" : course_id
-    }
-
-    if type_ != 'general':
-        name = "user:performance"
-        task = {
-            "name" : name,
-            "version" : version,
-            "body" : {
-                "db_inst_config" : db_config,
-                "analysis_config" : analysis_config,
-                "type" : "performance",
-            }
-        }
-        publish_message("tasks_to_process", task, priority=2)
-        body = get_done_message(name)
-        return jsonify(body), 200
-    else:
-        name = "user:global_analysis_performance"
-        wait_until_done(1, 2, 'D')  # Indicador 2: performance, Status 'D' (Done)
-        rows = get_all_performance_global()
-        data = [dict(row) for row in rows]  
-        return jsonify(data), 200
-
-@app.route("/motivation", methods=["GET"])
-def motivation():
-    global db_config, channel, version
-
-    course_id = request.args.get('motivation-id', type=int)
-    type_ = request.args.get('motivation-query')
-
-    if not course_id and request.args.get('motivation-query') != 'general':
-        return jsonify({"error": "Course ID is required"}), 400
-    
-    analysis_config = {
-        "type" : request.args.get('motivation-query'),
-        "id" : course_id
-    }
-
-    if type_ != 'general':
-        name = "user:motivation"
-        task = {
-            "name" : name,
-            "version" : version,
-            "body" : {
-                "db_inst_config" : db_config,
-                "analysis_config" : analysis_config,
-                "type" : "motivation",
-            }
-        }
-        publish_message("tasks_to_process", task, priority=2)
-        body = get_done_message(name)
-        return jsonify(body), 200
-    else:
-        name = "user:global_analysis_motivation"
-        wait_until_done(1, 3, 'D')  # Indicador 3: Motivation, Status 'D' (Done)
-        rows = get_all_motivation_global()
-        data = [dict(row) for row in rows]  
-        return jsonify(data), 200
-
-@app.route("/engagement", methods=["GET"])
-def engagement():
+def handle_analysis(analysis_type, global_fn, indicator_index=0):
     global db_config, channel, version
 
     version = get_version_in_database(1)
 
-    course_id = request.args.get('engagement-id', type=int)
-    type_ = request.args.get('engagement-query')
+    prefix = analysis_type
 
-    if not course_id and request.args.get('engagement-query') != 'general':
+    course_id = request.args.get(f"{prefix}-id", type=int)
+    type_ = request.args.get(f"{prefix}-query")
+
+    if not course_id and type_ != "general":
         return jsonify({"error": "Course ID is required"}), 400
-    
-    analysis_config = {
-        "type" : request.args.get('engagement-query'),
-        "id" : course_id
-    }
 
-    if type_ != 'general':
-        name = "user:engagement"
+    analysis_config = {"type": type_, "id": course_id}
+
+    if type_ != "general":
+        name = f"user:{analysis_type}"
         task = {
-            "name" : name,
-            "version" : version,
-            "body" : {
-                "db_inst_config" : db_config,
-                "analysis_config" : analysis_config,
-                "type" : "engagement",
-            }
+            "name": name,
+            "version": version,
+            "body": {
+                "db_inst_config": db_config,
+                "analysis_config": analysis_config,
+                "type": analysis_type,
+            },
         }
-        print(f"Publishing task: {task}")
         publish_message("tasks_to_process", task, priority=2)
         body = get_done_message(name)
         return jsonify(body), 200
+
     else:
-        name = "user:global_analysis_engagement"
-        wait_until_done(1, 1, 'D')  # Indicador 1: Engagement, Status 'D' (Done)
-        rows = get_all_engajamento_global()
-        data = [dict(row) for row in rows]  
+        name = f"user:global_analysis_{analysis_type}"
+        wait_until_done(1, indicator_index, "D")
+        rows = global_fn()
+        data = [dict(row) for row in rows]
         return jsonify(data), 200
 
-def get_all_engajamento_global():
+@app.route("/performance", methods=["GET"])
+def performance():
+    return handle_analysis("performance", get_all_performance_global, indicator_index=2)
+
+@app.route("/motivation", methods=["GET"])
+def motivation():
+    return handle_analysis("motivation", get_all_motivation_global, indicator_index=3)
+
+@app.route("/engagement", methods=["GET"])
+def engagement():
+    return handle_analysis("engagement", get_all_engajamento_global, indicator_index=1)
+
+def get_all_from_table(table_name, user_id=1):
     engine = get_connector()
     metadata = MetaData()
-    engajamento_global = Table("engajamento_global", metadata, autoload_with=engine)
+    table = Table(table_name, metadata, autoload_with=engine)
 
     with engine.connect() as conn:
-        query = select(engajamento_global).where(engajamento_global.c.s_user == 1) #TODO
-        result = conn.execute(query).mappings().all()  # retorna lista de dicts
-        return result
+        query = select(table).where(table.c.s_user == user_id)  # TODO
+        return conn.execute(query).mappings().all()
 
-def get_all_performance_global():
-    engine = get_connector()
-    metadata = MetaData()
-    performance_global = Table("performance_global", metadata, autoload_with=engine)
 
-    with engine.connect() as conn:
-        query = select(performance_global).where(performance_global.c.s_user == 1) #TODO
-        result = conn.execute(query).mappings().all()  # retorna lista de dicts
-        return result
+def get_all_engajamento_global(user_id=1):
+    return get_all_from_table("engajamento_global", user_id)
 
-def get_all_motivation_global():
-    engine = get_connector()
-    metadata = MetaData()
-    motivation_global = Table("motivation_global", metadata, autoload_with=engine)
 
-    with engine.connect() as conn:
-        query = select(motivation_global).where(motivation_global.c.s_user == 1) #TODO
-        result = conn.execute(query).mappings().all()  # retorna lista de dicts
-        return result
+def get_all_performance_global(user_id=1):
+    return get_all_from_table("performance_global", user_id)
+
+
+def get_all_motivation_global(user_id=1):
+    return get_all_from_table("motivation_global", user_id)
 
 def get_version_in_database(user):
     engine = get_connector()
@@ -343,22 +273,30 @@ def analysis():
             version = body['version']
             insert_version_in_database(1, version, db_config)
     else:
-        name = "user:get_version"
-        task = {
-            "name" : name,
-            "version" : "",
-            "body" : {
-                "db_inst_config" : db_config,
-                "type" : "version",
-                "analysis_config": {}
-            },
-        }
-        publish_message("tasks_to_process", task)
-        body = get_done_message(name)
-        version = body['version']
-        insert_version_in_database(1, version, db_config)
+        set_version_task()
 
     indicators = ["Engagement", "Performance", "Motivation"]
+    set_global_analysis(indicators)
+
+    return send_from_directory('pages', 'analysis.html'), 200
+
+def set_version_task():
+    name = "user:get_version"
+    task = {
+        "name" : name,
+        "version" : "",
+        "body" : {
+            "db_inst_config" : db_config,
+            "type" : "version",
+            "analysis_config": {}
+        },
+    }
+    publish_message("tasks_to_process", task)
+    body = get_done_message(name)
+    version = body['version']
+    insert_version_in_database(1, version, db_config)
+
+def set_global_analysis(indicators):
     counter = 1
     for indicator in indicators:
         task = {
@@ -383,9 +321,6 @@ def analysis():
             publish_message("tasks_to_process", task, priority=1)
         except Exception as e:
             continue
-
-    return send_from_directory('pages', 'analysis.html'), 200
-
 
 @app.route("/")
 def hello():

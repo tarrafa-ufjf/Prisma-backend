@@ -358,8 +358,7 @@ def analysis():
         version = body['version']
         insert_version_in_database(1, version, db_config)
 
-    indicators = ["Engagement", "Performance"]
-    # indicators = ["Motivation"]
+    indicators = ["Engagement", "Performance", "Motivation"]
     counter = 1
     for indicator in indicators:
         task = {

@@ -67,3 +67,15 @@ class Mapper:
     def get_foruns_non_required(self, connector, course_id, version):
         moodle = self.get_moodle(connector, version)
         return moodle.get_foruns_non_required_by_course(course_id)
+
+    def get_forum_data(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_forum_data(course_id)
+    
+    def get_private_messages(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_private_messages(course_id)
+    
+    def get_tutor_access_frequency(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_tutor_access_frequency(course_id)

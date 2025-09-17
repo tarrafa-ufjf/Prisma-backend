@@ -108,6 +108,14 @@ def motivation(message):
     res = analyzer.motivation_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
     return res.to_dict(orient="records")
 
+def pedagogic(message):
+    body = message["body"]
+    connector = conn.get_connection_with_config(body["db_inst_config"])
+
+    analysis_config = body.get("analysis_config")
+    res = analyzer.pedagogic_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
+    return res.to_dict(orient="records")
+
 def analysis(message):
     global connector, analyzer
     
@@ -206,6 +214,31 @@ def global_analysis_motivation(message):
         }, priority=0)
     else:
         update_global_analysis_status(1, 3, 'D')
+    
+def global_analysis_pedagogic(message):
+    global connector, version, analyzer
+
+    body = message["body"]
+
+    if connector is None:
+        config = body["db_config"]
+        connector = conn.get_connection_with_config(config)
+    if version is None:
+        version = body["version"]
+
+    res = analyzer.general_pedagogic_analysis(connector, version, body["analysis_config"])
+    if res["processed"] != res["total"]:
+        publish_message("tasks_to_process", {
+            "name": "user:global_analysis_pedagogic",
+            "version": message["version"],
+            "body": {
+                "type": "global_analysis_pedagogic",
+                "db_inst_config": body["db_inst_config"],
+                "analysis_config": res
+            }
+        }, priority=0)
+    else:
+        update_global_analysis_status(1, 4, 'D')
 
 def continuously_listen():
     global channel
@@ -246,6 +279,16 @@ def continuously_listen():
                 }
             }
             publish_message("Done", done_message)
+        elif analysis_type == "pedagogic":
+            response = pedagogic(message)
+            done_message = {
+                "name" : message.get("name"),
+                "body" : {
+                    "version" : message.get("version"),
+                    "results" : response,
+                }
+            }
+            publish_message("Done", done_message)
         elif analysis_type == "global_analysis_engagement":
             global_analysis_engagement(message)
         elif analysis_type == "global_analysis_performance":
@@ -274,7 +317,11 @@ def continuously_listen():
     channel.basic_consume(queue='tasks_to_process', on_message_callback=callback)
 
     print(' [*] Aguardando mensagens. Para sair pressione CTRL+C')
-    channel.start_consuming()
+    while True:
+        try:
+            channel.start_consuming()
+        except Exception as e:
+            print(e)
 
 if __name__ == '__main__':
     print("Worker iniciado. Aguardando mensagens...")

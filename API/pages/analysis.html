@@ -85,17 +85,17 @@
         <button type="submit">Consultar Motivação</button>
     </form>
 
-    <h2>Profundidade Cognitiva</h2>
-    <form id="form-profundidade" action="#" method="get">
-        <label for="depth-query">Selecione o tipo de consulta:</label>
-        <select name="depth-query" id="depth-query" onchange="toggleInput(this)">
+    <h2>Pedagógico</h2>
+    <form id="form-pedagogico" action="/pedagogic" method="get">
+        <label for="pedagogic-query">Selecione o tipo de consulta:</label>
+        <select name="pedagogic-query" id="pedagogic-query" onchange="toggleInput(this)">
             <option value="general">Geral</option>
             <option value="user">Por Usuário</option>
             <option value="course">Por Curso</option>
         </select>
-        <label for="depth-id">Informe o ID:</label>
-        <input type="text" id="depth-id" name="depth-id" disabled>
-        <button type="submit">Consultar Profundidade</button>
+        <label for="pedagogic-id">Informe o ID:</label>
+        <input type="text" id="pedagogic-id" name="pedagogic-id" disabled>
+        <button type="submit">Consultar indicador Pedagógico</button>
     </form>
 
     <script>

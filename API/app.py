@@ -88,6 +88,7 @@ def get_done_message(name):
     res = None
     while not found:
         # Pega apenas 1 mensagem da fila (não bloqueia)
+        time.sleep(0.25)
         method_frame, _, body = channel.basic_get(queue="Done", auto_ack=False)
 
         if method_frame:
@@ -105,7 +106,7 @@ def get_done_message(name):
                 channel.basic_nack(delivery_tag=method_frame.delivery_tag, requeue=True)
                 time.sleep(0.1)
         else:
-            time.sleep(0.5)
+            time.sleep(0.25)
     return res
 
 def wait_until_done(s_user, indicator, status, poll_interval=2):
@@ -166,6 +167,10 @@ def handle_analysis(analysis_type, global_fn, indicator_index=0):
         data = [dict(row) for row in rows]
         return jsonify(data), 200
 
+@app.route("/pedagogic", methods=["GET"])
+def pedagogic():
+    return handle_analysis("pedagogic", get_all_from_table, indicator_index=4)
+
 @app.route("/performance", methods=["GET"])
 def performance():
     return handle_analysis("performance", get_all_performance_global, indicator_index=2)
@@ -198,6 +203,9 @@ def get_all_performance_global(user_id=1):
 
 def get_all_motivation_global(user_id=1):
     return get_all_from_table("motivation_global", user_id)
+
+def get_all_pedagogic_global(user_id=1):
+    return get_all_from_table("pedagogic_global", user_id)
 
 def get_version_in_database(user):
     engine = get_connector()

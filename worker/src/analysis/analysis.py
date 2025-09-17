@@ -3,10 +3,12 @@ import pandas as pd
 from analysis.Engajamento.engagement import Engagement
 from analysis.Desempenho.performance import Performance
 from analysis.Motivacao.motivation import Motivation
+from analysis.Pedagogico.pedagogic import Pedagogic
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import Optional
 from database import Database
+
 
 class Analyzer:
     def __init__(self):
@@ -64,5 +66,16 @@ class Analyzer:
             pass
         elif type_query == 'course': 
             res = motivation.course_analysis(course_id, version, connector)
+
+        return res
+    
+    def pedagogic_analysis(self, course_id, type_query, version, connector):
+        pedagogic = Pedagogic(self.mapper)
+        res = None
+
+        if type_query == 'user':
+            pass
+        elif type_query == 'course': 
+            res = pedagogic.course_analysis(course_id, version, connector)
 
         return res

@@ -135,10 +135,8 @@ def handle_analysis(analysis_type, global_fn, indicator_index=0):
 
     version = get_version_in_database(1)
 
-    prefix = analysis_type
-
-    course_id = request.args.get(f"{prefix}-id", type=int)
-    type_ = request.args.get(f"{prefix}-query")
+    course_id = request.args.get("id", type=int)
+    type_ = request.args.get("query")
 
     if not course_id and type_ != "general":
         return jsonify({"error": "Course ID is required"}), 400
@@ -250,43 +248,45 @@ def verify_if_there_is_version_in_database(user):
             return True
         return False
 
-@app.route("/analysis", methods=["GET"])
+@app.route("/analysis", methods=["POST"])
 def analysis():
-    global version, db_config, channel
-    port = request.args.get('port', type=int)
-    db_config = {
-        'host':     request.args['host'],
-        'port':     port,
-        'db':       request.args['database'],
-        'user':     request.args['user'],
-        'password': request.args['password'],
-    }
+    try:
+        global version, db_config, channel
+        data = request.get_json()
+        db_config = {
+            'host':     data['host'],
+            'port':     data['port'],
+            'db':       data['database'],
+            'user':     data['user'],
+            'password': data['password'],
+        }
 
-    if verify_if_there_is_version_in_database(1):
-        version = get_version_in_database(1)
-        print(f"Version found in database: {version}")
-        if version is None:
-            name = "user:get_version"
-            task = {
-                "name" : name,
-                "version" : "",
-                "body" : {
-                    "db_inst_config" : db_config,
-                    "type" : "version",
-                    "analysis_config": {}
-                },
-            }
-            publish_message("tasks_to_process", task)
-            body = get_done_message(name)
-            version = body['version']
-            insert_version_in_database(1, version, db_config)
-    else:
-        set_version_task()
+        if verify_if_there_is_version_in_database(1):
+            version = get_version_in_database(1)
+            if version is None:
+                name = "user:get_version"
+                task = {
+                    "name" : name,
+                    "version" : "",
+                    "body" : {
+                        "db_inst_config" : db_config,
+                        "type" : "version",
+                        "analysis_config": {}
+                    },
+                }
+                publish_message("tasks_to_process", task)
+                body = get_done_message(name)
+                version = body['version']
+                insert_version_in_database(1, version, db_config)
+        else:
+            set_version_task()
 
-    indicators = ["Engagement", "Performance", "Motivation"]
-    set_global_analysis(indicators)
+        indicators = ["Engagement", "Performance", "Motivation"]
+        set_global_analysis(indicators)
 
-    return send_from_directory('pages', 'analysis.html'), 200
+        return jsonify({"status": "ok"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 def set_version_task():
     name = "user:get_version"

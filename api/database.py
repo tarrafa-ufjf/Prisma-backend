@@ -1,8 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 import os
 import pymysql
-from sqlalchemy import and_, create_engine, MetaData, Table, Column, Integer, String, DECIMAL
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import and_, select, create_engine, MetaData, Table, Column, Integer, String, DECIMAL
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from dotenv import load_dotenv
 
@@ -87,6 +86,58 @@ class DatabaseAdmin:
         with engine.begin() as conn:
             conn.execute(stmt)
     
+    def get_all_from_table(self, table_name, user_id=1):
+        engine = self.get_connector()
+        metadata = MetaData()
+        table = Table(table_name, metadata, autoload_with=engine)
+
+        with engine.connect() as conn:
+            query = select(table).where(table.c.s_user == user_id)  # TODO
+            return conn.execute(query).mappings().all()
+    
+    def get_version_in_database(self, user):
+        engine = self.get_connector()
+        metadata = MetaData()
+        configs = Table("configs", metadata, autoload_with=engine)
+
+        with engine.connect() as conn:
+            query = select(configs).where(configs.c.s_user == user)
+            result = conn.execute(query).mappings().all()  # retorna lista de dicts
+            if len(result) > 0:
+                return result[0]['version']
+            else:
+                return None
+    
+    def verify_if_there_is_version_in_database(self, user):
+        engine = self.get_connector()
+        metadata = MetaData()
+        configs = Table("configs", metadata, autoload_with=engine)
+
+        with engine.connect() as conn:
+            query = select(configs).where(configs.c.s_user == user)
+            result = conn.execute(query).mappings().all()  # retorna lista de dicts
+            if len(result) > 0:
+                return True
+            return False
+    
+    def insert_version_in_database(self, user, version, db_config):
+        engine = self.get_connector()
+        metadata = MetaData()
+        configs = Table("configs", metadata, autoload_with=engine)
+
+        with engine.connect() as conn:
+            insert_stmt = configs.insert().values(
+                s_user=user,
+                version=version,
+                host=db_config['host'],
+                port=db_config['port'],
+                database=db_config['db'],
+                user=db_config['user'],
+                password=db_config['password']
+            )
+            conn.execute(insert_stmt)
+            conn.commit()
+    
     def global_analysis_status(self, indicator, user_id=1):
         db_config = self.get_db_config_from_database()
         engine = create_engine(
@@ -99,5 +150,21 @@ class DatabaseAdmin:
                                                         global_analysis.c.indicator == indicator))
             result = conn.execute(query).mappings().all()
             return {row['indicator']: row['status'] for row in result}
+    
+    def insert_global_analysis_status(self, s_user: int, indicator: int, status: str):
+        engine = self.get_connector()
+        table = self.get_global_analysis_table()
+
+        stmt = pg_insert(table).values(
+            s_user=s_user,
+            indicator=indicator,
+            status=status
+        ).on_conflict_do_update(
+            constraint="gl_indicators_status_pkey",
+            set_={"status": status}
+        )
+
+        with engine.begin() as conn:
+            conn.execute(stmt)
 
 db = SQLAlchemy()

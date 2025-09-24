@@ -1,5 +1,5 @@
 from database import Database, DatabaseAdmin
-from worker.rabbit import RabbitMQAdmin
+from rabbit import RabbitMQAdmin
 import json
 import requests
 
@@ -33,34 +33,31 @@ class Worker:
         self.db_admin = DatabaseAdmin()
 
     def global_analysis(self, message):
-        global connector, version, analyzer
+        global analyzer
 
         body = message["body"]
         analysis_type = body["type"]
+        version = self.db_admin.get_version_in_database(1)
 
         if analysis_type not in ANALYSIS_MAP:
             raise ValueError(f"Tipo de análise desconhecido: {analysis_type}")
 
         config = body.get("db_inst_config") or body.get("db_config")
 
-        if connector is None:
-            connector = conn.get_connection_with_config(config)
-        if version is None:
-            version = body["version"]
-
         entry = ANALYSIS_MAP[analysis_type]
         res = requests.put(
-            "http://localhost:5000/analysis/start",
+            "http://localhost:5000/analysis",
             json={
                 "type": analysis_type,
                 "db_inst_config": config,
                 "version": version
             }).json()
         
+        print(f"Resultado da análise {analysis_type}: {res}")
+        
         if res["processed"] != res["total"]:
             self.rabbit_admin.publish_message("tasks_to_process", {
                 "name": f"user:{analysis_type}",
-                "version": message["version"],
                 "body": {
                     "type": analysis_type,
                     "db_inst_config": config,

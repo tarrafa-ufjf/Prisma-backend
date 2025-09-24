@@ -1,11 +1,11 @@
-from flask import request, jsonify, Flask, send_file, send_from_directory
+from flask import request, jsonify, Flask
 from sqlalchemy import and_, select, create_engine, MetaData, Table, Column, Integer, String
 from src.analysis.analysis import Analyzer
 import os
 from dotenv import load_dotenv
 import pika
-import json, time
-from database import Database
+import time
+from database import Database, DatabaseAdmin
 
 app = Flask(__name__)
 conn = Database()
@@ -175,6 +175,47 @@ def motivation():
 def engagement():
     return handle_analysis("engagement", get_all_engajamento_global, indicator_index=1)
 
+@app.route("/set_version", methods=["POST"])
+def set_version():
+    global db_config, version
+
+    try:
+        db_config = request.json.get("db_inst_config")
+        db_admin = DatabaseAdmin()
+        version = get_version(db_config)
+        db_admin.insert_version_in_database(1, version, db_config)
+        return jsonify({"status": "ok"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+    
+@app.route("/analysis", methods=["PUT"])
+def analysis():
+    body = request.get_json()
+    analysis_type = body["type"]
+
+    print(f"corpo da mensagem: {body}")
+
+    if analysis_type not in ["global_analysis_performance", "global_analysis_engagement", "global_analysis_motivation", "global_analysis_pedagogic"]:
+        return jsonify({"error": "Tipo de análise desconhecido"}), 400
+
+    config = body.get("db_inst_config") or db_config
+
+    analysis_config = body.get("analysis_config", {})
+    if not analysis_config:
+        return jsonify({"error": "Configuração de análise ausente"}), 400
+
+    message = {
+        "body": {
+            "db_inst_config": config,
+            "analysis_config": analysis_config,
+            "type": analysis_type,
+        },
+        "version": body.get("version")
+    }
+
+    result = select_indicator(analysis_type, message)
+    return jsonify(result), 200
+
 def get_all_from_table(table_name, user_id=1):
     engine = get_connector()
     metadata = MetaData()
@@ -185,13 +226,9 @@ def get_all_from_table(table_name, user_id=1):
         return conn.execute(query).mappings().all()
 
 #Função que retorna o valor da versão do Moodle
-def get_version(message):
-    global connector, version, analyzer
-
-    config = message["db_inst_config"]
-    
+def get_version(config):
+    global analyzer
     connector = conn.get_connection_with_config(config)
-
     version = analyzer.get_moodle_version(connector)
 
     return version

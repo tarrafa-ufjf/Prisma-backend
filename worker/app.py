@@ -1,19 +1,11 @@
-from database import db, Database
-import pandas as pd
-from sqlalchemy import and_, create_engine, MetaData, Table, Column, Integer, String
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-import pika
+from database import Database, DatabaseAdmin
+from worker.rabbit import RabbitMQAdmin
 import json
-import os
 import requests
 
 conn = Database()
 connector = None
 
-RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
-RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
-RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))
 
 ANALYSIS_MAP = {
     "global_analysis_performance": {
@@ -34,92 +26,6 @@ ANALYSIS_MAP = {
     },
 }
 
-class DatabaseAdmin:
-    @staticmethod
-    def get_connector():
-        DB_USER = os.getenv("DB_USER")
-        DB_PASSWORD = os.getenv("DB_PASSWORD")
-        DB_HOST = os.getenv("DB_HOST", "localhost")
-        DB_PORT = int(os.getenv("DB_PORT", 5432))
-        DB_NAME = os.getenv("DB_DATABASE")
-
-        engine = create_engine(
-            f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        )
-        return engine
-
-    def get_global_analysis_table(self):
-        metadata = MetaData()
-        global_analysis = Table(
-            'gl_indicators_status', metadata,
-            Column('s_user', Integer, primary_key=True),
-            Column('indicator', Integer, primary_key=True),
-            Column('status', String(1), nullable=False)
-        )
-        return global_analysis
-    
-    def update_global_analysis_status(self, s_user: int, indicator: int, status: str):
-        engine = self.get_connector()
-        table = self.get_global_analysis_table()
-
-        stmt = pg_insert(table).values(
-            s_user=s_user,
-            indicator=indicator,
-            status=status
-        ).on_conflict_do_update(
-            constraint="gl_indicators_status_pkey",
-            set_={"status": status}
-        )
-
-        with engine.begin() as conn:
-            conn.execute(stmt)
-    
-    def global_analysis_status(self, indicator, user_id=1):
-        db_config = self.get_db_config_from_database()
-        engine = create_engine(
-            f"postgresql+psycopg://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['db']}"
-        )
-        metadata = MetaData()
-        global_analysis = Table('gl_indicators_status', metadata, autoload_with=engine)
-        with engine.connect() as conn:
-            query = global_analysis.select().where(and_(global_analysis.c.s_user == user_id,
-                                                        global_analysis.c.indicator == indicator))
-            result = conn.execute(query).mappings().all()
-            return {row['indicator']: row['status'] for row in result}
-
-class RabbitMQAdmin:
-    def __init__(self):
-        self.channel = self.create_rabbit_connection()
-        
-    @staticmethod
-    def create_rabbit_connection():
-        credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(
-                host=RABBITMQ_HOST,
-                port=RABBITMQ_PORT,
-                credentials=credentials,
-                heartbeat=600,
-                blocked_connection_timeout=300
-            )
-        )
-        channel = connection.channel()
-        return channel
-
-    def publish_message(self, queue_name, task, priority=None):
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(
-                host=RABBITMQ_HOST,
-                port=RABBITMQ_PORT,
-                credentials=pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
-            )
-        )
-        channel = connection.channel()
-        if priority is None:
-            channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(delivery_mode=2))
-        else:
-            channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(priority=priority, delivery_mode=2))
-        connection.close()
 
 class Worker:
     def __init__(self, rabbit_admin):

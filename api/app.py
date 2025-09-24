@@ -1,11 +1,15 @@
 from flask import request, jsonify, Flask, send_file, send_from_directory
 from sqlalchemy import and_, select, create_engine, MetaData, Table, Column, Integer, String
+from src.analysis.analysis import Analyzer
 import os
 from dotenv import load_dotenv
 import pika
 import json, time
+from database import Database
 
 app = Flask(__name__)
+conn = Database()
+analyzer = Analyzer()
 connector = None
 version = None
 db_config = None
@@ -66,49 +70,6 @@ def insert_global_analysis_status(s_user: int, indicator: int, status: str):
         conn.execute(insert_stmt)
         conn.commit()
 
-def publish_message(queue_name, task, priority=None):
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(
-            host=RABBITMQ_HOST,
-            port=RABBITMQ_PORT,
-            credentials=credentials
-        )
-    )
-    channel = connection.channel()
-    if priority is None:
-        channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(delivery_mode=2))
-    else:
-        channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(priority=priority, delivery_mode=2))
-    connection.close()
-
-
-def get_done_message(name):
-    global channel
-    found = False
-    res = None
-    while not found:
-        # Pega apenas 1 mensagem da fila (não bloqueia)
-        time.sleep(0.25)
-        method_frame, _, body = channel.basic_get(queue="Done", auto_ack=False)
-
-        if method_frame:
-            message = json.loads(body.decode())
-            nome = message.get("name") 
-
-            if nome == name:
-                # print(f"[x] Mensagem encontrada: {message}")
-                # Confirma a retirada da fila
-                channel.basic_ack(delivery_tag=method_frame.delivery_tag)
-                found = True
-                res = message.get("body")
-            else:
-                # Recoloca a mensagem no final da fila
-                channel.basic_nack(delivery_tag=method_frame.delivery_tag, requeue=True)
-                time.sleep(0.1)
-        else:
-            time.sleep(0.25)
-    return res
-
 def wait_until_done(s_user, indicator, status, poll_interval=2):
     engine = get_connector()
     global_analysis = get_global_analysis_table()
@@ -130,10 +91,31 @@ def wait_until_done(s_user, indicator, status, poll_interval=2):
         time.sleep(poll_interval)  # espera antes de checar de novo
 
 
+def get_db_config_from_database():
+    engine = get_connector()
+    metadata = MetaData()
+    configs = Table("configs", metadata, autoload_with=engine)
+
+    with engine.connect() as conn:
+        query = select(configs).where(configs.c.s_user == 1)  # TODO
+        result = conn.execute(query).mappings().all()  # retorna lista de dicts
+        if len(result) > 0:
+            return {
+                "host": result[0]['host'],
+                "port": result[0]['port'],
+                "db": result[0]['database'],
+                "user": result[0]['user'],
+                "password": result[0]['password']
+            }
+        else:
+            return None
+
 def handle_analysis(analysis_type, global_fn, indicator_index=0):
     global db_config, channel, version
 
     version = get_version_in_database(1)
+
+    db_config = get_db_config_from_database()
 
     course_id = request.args.get("id", type=int)
     type_ = request.args.get("query")
@@ -154,8 +136,7 @@ def handle_analysis(analysis_type, global_fn, indicator_index=0):
                 "type": analysis_type,
             },
         }
-        publish_message("tasks_to_process", task, priority=2)
-        body = get_done_message(name)
+        body = select_indicator(analysis_type, task)
         return jsonify(body), 200
 
     else:
@@ -164,6 +145,19 @@ def handle_analysis(analysis_type, global_fn, indicator_index=0):
         rows = global_fn()
         data = [dict(row) for row in rows]
         return jsonify(data), 200
+
+def select_indicator(indicator, message):
+    if indicator == "performance":
+        return performance(message)
+    elif indicator == "engagement":
+        return engagement(message)
+    elif indicator == "motivation":
+        return motivation(message)
+    elif indicator == "pedagogic":
+        return pedagogic(message)
+    else:
+        return {"error": "Invalid indicator"}, 400
+    
 
 @app.route("/pedagogic", methods=["GET"])
 def pedagogic():
@@ -189,6 +183,51 @@ def get_all_from_table(table_name, user_id=1):
     with engine.connect() as conn:
         query = select(table).where(table.c.s_user == user_id)  # TODO
         return conn.execute(query).mappings().all()
+
+#Função que retorna o valor da versão do Moodle
+def get_version(message):
+    global connector, version, analyzer
+
+    config = message["db_inst_config"]
+    
+    connector = conn.get_connection_with_config(config)
+
+    version = analyzer.get_moodle_version(connector)
+
+    return version
+
+
+def performance(message):
+    body = message.get("body")
+    connector = conn.get_connection_with_config(body["db_inst_config"])
+
+    analysis_config = body.get("analysis_config")
+    res = analyzer.performance_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
+    return res.to_dict(orient="records")
+
+def engagement(message):
+    body = message["body"]
+    connector = conn.get_connection_with_config(body["db_inst_config"])
+
+    analysis_config = body.get("analysis_config")
+    res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
+    return res.to_dict(orient="records")
+
+def motivation(message):
+    body = message["body"]
+    connector = conn.get_connection_with_config(body["db_inst_config"])
+
+    analysis_config = body.get("analysis_config")
+    res = analyzer.motivation_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
+    return res.to_dict(orient="records")
+
+def pedagogic(message):
+    body = message["body"]
+    connector = conn.get_connection_with_config(body["db_inst_config"])
+
+    analysis_config = body.get("analysis_config")
+    res = analyzer.pedagogic_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
+    return res.to_dict(orient="records")
 
 
 def get_all_engajamento_global(user_id=1):
@@ -217,6 +256,7 @@ def get_version_in_database(user):
             return result[0]['version']
         else:
             return None
+
 
 def insert_version_in_database(user, version, db_config):
     engine = get_connector()
@@ -248,93 +288,9 @@ def verify_if_there_is_version_in_database(user):
             return True
         return False
 
-@app.route("/analysis", methods=["POST"])
-def analysis():
-    try:
-        global version, db_config, channel
-        data = request.get_json()
-        db_config = {
-            'host':     data['host'],
-            'port':     data['port'],
-            'db':       data['database'],
-            'user':     data['user'],
-            'password': data['password'],
-        }
-
-        if verify_if_there_is_version_in_database(1):
-            version = get_version_in_database(1)
-            if version is None:
-                name = "user:get_version"
-                task = {
-                    "name" : name,
-                    "version" : "",
-                    "body" : {
-                        "db_inst_config" : db_config,
-                        "type" : "version",
-                        "analysis_config": {}
-                    },
-                }
-                publish_message("tasks_to_process", task)
-                body = get_done_message(name)
-                version = body['version']
-                insert_version_in_database(1, version, db_config)
-        else:
-            set_version_task()
-
-        indicators = ["Engagement", "Performance", "Motivation"]
-        set_global_analysis(indicators)
-
-        return jsonify({"status": "ok"}), 200
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
-
-def set_version_task():
-    name = "user:get_version"
-    task = {
-        "name" : name,
-        "version" : "",
-        "body" : {
-            "db_inst_config" : db_config,
-            "type" : "version",
-            "analysis_config": {}
-        },
-    }
-    publish_message("tasks_to_process", task)
-    body = get_done_message(name)
-    version = body['version']
-    insert_version_in_database(1, version, db_config)
-
-def set_global_analysis(indicators):
-    counter = 1
-    for indicator in indicators:
-        task = {
-            "name" : f"user:set_global_{indicator.lower()}",
-            "version" : version,
-            "body" : {
-                "db_inst_config" : db_config,
-                "type" : f"global_analysis_{indicator.lower()}",
-                "analysis_config" : {
-                    "id" : None,
-                    "type" : "geral",
-                    "batch_size" : 20,
-                    "processed" : 0,
-                    "total" : 0
-                }
-            }
-        }
-
-        try:
-            insert_global_analysis_status(1, counter, 'P')  # Indicador 1: Engagement, Status 'I' (Idle
-            counter += 1
-            publish_message("tasks_to_process", task, priority=1)
-        except Exception as e:
-            continue
-
 @app.route("/")
 def hello():
-    return send_file('pages/app.html',
-        mimetype='text/html',
-        download_name='app.html'), 200
+    return jsonify({"status" : "OK"}), 200
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)

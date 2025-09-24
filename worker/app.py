@@ -1,14 +1,13 @@
 from database import db, Database
 import pandas as pd
-from src.analysis.analysis import Analyzer
 from sqlalchemy import and_, create_engine, MetaData, Table, Column, Integer, String
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 import pika
 import json
 import os
+import requests
 
 conn = Database()
-analyzer = Analyzer()
 connector = None
 
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
@@ -16,314 +15,182 @@ RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))
 
-def get_connector():
-    DB_USER = os.getenv("DB_USER")
-    DB_PASSWORD = os.getenv("DB_PASSWORD")
-    DB_HOST = os.getenv("DB_HOST", "localhost")
-    DB_PORT = int(os.getenv("DB_PORT", 5432))
-    DB_NAME = os.getenv("DB_DATABASE")
+ANALYSIS_MAP = {
+    "global_analysis_performance": {
+        "func": "general_performance_analysis",
+        "status_index": 2,
+    },
+    "global_analysis_engagement": {
+        "func": "general_engagement_analysis",
+        "status_index": 1,
+    },
+    "global_analysis_motivation": {
+        "func": "general_motivation_analysis",
+        "status_index": 3,
+    },
+    "global_analysis_pedagogic": {
+        "func": "general_pedagogic_analysis",
+        "status_index": 4,
+    },
+}
 
-    engine = create_engine(
-        f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
-    return engine
-    
+class DatabaseAdmin:
+    @staticmethod
+    def get_connector():
+        DB_USER = os.getenv("DB_USER")
+        DB_PASSWORD = os.getenv("DB_PASSWORD")
+        DB_HOST = os.getenv("DB_HOST", "localhost")
+        DB_PORT = int(os.getenv("DB_PORT", 5432))
+        DB_NAME = os.getenv("DB_DATABASE")
 
-def get_global_analysis_table():
-    metadata = MetaData()
-    global_analysis = Table(
-        'gl_indicators_status', metadata,
-        Column('s_user', Integer, primary_key=True),
-        Column('indicator', Integer, primary_key=True),
-        Column('status', String(1), nullable=False)
-    )
-    return global_analysis
-
-def update_global_analysis_status(s_user: int, indicator: int, status: str):
-    engine = get_connector()
-    table = get_global_analysis_table()
-
-    stmt = pg_insert(table).values(
-        s_user=s_user,
-        indicator=indicator,
-        status=status
-    ).on_conflict_do_update(
-        constraint="gl_indicators_status_pkey",
-        set_={"status": status}
-    )
-
-    with engine.begin() as conn:
-        conn.execute(stmt)
-
-def create_rabbit_connection():
-    credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(
-            host=RABBITMQ_HOST,
-            port=RABBITMQ_PORT,
-            credentials=credentials,
-            heartbeat=600,
-            blocked_connection_timeout=300
+        engine = create_engine(
+            f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
         )
-    )
-    channel = connection.channel()
-    return channel
+        return engine
 
-def publish_message(queue_name, task, priority=None):
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(
-            host=RABBITMQ_HOST,
-            port=RABBITMQ_PORT,
-            credentials=pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
+    def get_global_analysis_table(self):
+        metadata = MetaData()
+        global_analysis = Table(
+            'gl_indicators_status', metadata,
+            Column('s_user', Integer, primary_key=True),
+            Column('indicator', Integer, primary_key=True),
+            Column('status', String(1), nullable=False)
         )
-    )
-    channel = connection.channel()
-    if priority is None:
-        channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(delivery_mode=2))
-    else:
-        channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(priority=priority, delivery_mode=2))
-    connection.close()
-
-def performance(message):
-    body = message.get("body")
-    connector = conn.get_connection_with_config(body["db_inst_config"])
-
-    analysis_config = body.get("analysis_config")
-    res = analyzer.performance_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
-    return res.to_dict(orient="records")
-
-def engagement(message):
-    body = message["body"]
-    connector = conn.get_connection_with_config(body["db_inst_config"])
-
-    analysis_config = body.get("analysis_config")
-    res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
-    return res.to_dict(orient="records")
-
-def motivation(message):
-    body = message["body"]
-    connector = conn.get_connection_with_config(body["db_inst_config"])
-
-    analysis_config = body.get("analysis_config")
-    res = analyzer.motivation_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
-    return res.to_dict(orient="records")
-
-def pedagogic(message):
-    body = message["body"]
-    connector = conn.get_connection_with_config(body["db_inst_config"])
-
-    analysis_config = body.get("analysis_config")
-    res = analyzer.pedagogic_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
-    return res.to_dict(orient="records")
-
-def analysis(message):
-    global connector, analyzer
+        return global_analysis
     
-    connector = conn.get_connection_with_config(message["db_config"])
+    def update_global_analysis_status(self, s_user: int, indicator: int, status: str):
+        engine = self.get_connector()
+        table = self.get_global_analysis_table()
 
-    version = message["version"]
+        stmt = pg_insert(table).values(
+            s_user=s_user,
+            indicator=indicator,
+            status=status
+        ).on_conflict_do_update(
+            constraint="gl_indicators_status_pkey",
+            set_={"status": status}
+        )
 
-    analyzer.general_query(connector, version)
-
-    return analyzer.global_engagement
-
-
-#Função que retorna o valor da versão do Moodle
-def get_version(message):
-    global connector, version, analyzer
-
-    config = message["db_inst_config"]
+        with engine.begin() as conn:
+            conn.execute(stmt)
     
-    connector = conn.get_connection_with_config(config)
+    def global_analysis_status(self, indicator, user_id=1):
+        db_config = self.get_db_config_from_database()
+        engine = create_engine(
+            f"postgresql+psycopg://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['db']}"
+        )
+        metadata = MetaData()
+        global_analysis = Table('gl_indicators_status', metadata, autoload_with=engine)
+        with engine.connect() as conn:
+            query = global_analysis.select().where(and_(global_analysis.c.s_user == user_id,
+                                                        global_analysis.c.indicator == indicator))
+            result = conn.execute(query).mappings().all()
+            return {row['indicator']: row['status'] for row in result}
 
-    version = analyzer.get_moodle_version(connector)
+class RabbitMQAdmin:
+    def __init__(self):
+        self.channel = self.create_rabbit_connection()
+        
+    @staticmethod
+    def create_rabbit_connection():
+        credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(
+                host=RABBITMQ_HOST,
+                port=RABBITMQ_PORT,
+                credentials=credentials,
+                heartbeat=600,
+                blocked_connection_timeout=300
+            )
+        )
+        channel = connection.channel()
+        return channel
 
-    return version
+    def publish_message(self, queue_name, task, priority=None):
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(
+                host=RABBITMQ_HOST,
+                port=RABBITMQ_PORT,
+                credentials=pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
+            )
+        )
+        channel = connection.channel()
+        if priority is None:
+            channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(delivery_mode=2))
+        else:
+            channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(task), properties=pika.BasicProperties(priority=priority, delivery_mode=2))
+        connection.close()
 
-def global_analysis_performance(message):
-    global connector, version, analyzer
+class Worker:
+    def __init__(self, rabbit_admin):
+        self.rabbit_admin = rabbit_admin
+        self.db_admin = DatabaseAdmin()
 
-    body = message["body"]
+    def global_analysis(self, message):
+        global connector, version, analyzer
 
-    if connector is None:
-        config = body["db_inst_config"]
-        connector = conn.get_connection_with_config(config)
-    if version is None:
-        version = body["version"]
+        body = message["body"]
+        analysis_type = body["type"]
 
-    res = analyzer.general_performance_analysis(connector, version, body["analysis_config"])
-    if res["processed"] != res["total"]:
-        publish_message("tasks_to_process", {
-            "name": "user:global_analysis_performance",
-            "version": message["version"],
-            "body": {
-                "type": "global_analysis_performance",
-                "db_inst_config": body["db_inst_config"],
-                "analysis_config": res
-            }
-        }, priority=0)
-    else:
-        update_global_analysis_status(1, 2, 'D')
+        if analysis_type not in ANALYSIS_MAP:
+            raise ValueError(f"Tipo de análise desconhecido: {analysis_type}")
 
-def global_analysis_engagement(message):
-    global connector, version, analyzer
+        config = body.get("db_inst_config") or body.get("db_config")
 
-    body = message["body"]
+        if connector is None:
+            connector = conn.get_connection_with_config(config)
+        if version is None:
+            version = body["version"]
 
-    if connector is None:
-        config = body["db_config"]
-        connector = conn.get_connection_with_config(config)
-    if version is None:
-        version = body["version"]
-
-    res = analyzer.general_engagement_analysis(connector, version, body["analysis_config"])
-    if res["processed"] != res["total"]:
-        publish_message("tasks_to_process", {
-            "name": "user:global_analysis_engagement",
-            "version": message["version"],
-            "body": {
-                "type": "global_analysis_engagement",
-                "db_inst_config": body["db_inst_config"],
-                "analysis_config": res
-            }
-        }, priority=0)
-    else:
-        update_global_analysis_status(1, 1, 'D')
-
-def global_analysis_motivation(message):
-    global connector, version, analyzer
-
-    body = message["body"]
-
-    if connector is None:
-        config = body["db_config"]
-        connector = conn.get_connection_with_config(config)
-    if version is None:
-        version = body["version"]
-
-    res = analyzer.general_motivation_analysis(connector, version, body["analysis_config"])
-    if res["processed"] != res["total"]:
-        publish_message("tasks_to_process", {
-            "name": "user:global_analysis_motivation",
-            "version": message["version"],
-            "body": {
-                "type": "global_analysis_motivation",
-                "db_inst_config": body["db_inst_config"],
-                "analysis_config": res
-            }
-        }, priority=0)
-    else:
-        update_global_analysis_status(1, 3, 'D')
-    
-def global_analysis_pedagogic(message):
-    global connector, version, analyzer
-
-    body = message["body"]
-
-    if connector is None:
-        config = body["db_config"]
-        connector = conn.get_connection_with_config(config)
-    if version is None:
-        version = body["version"]
-
-    res = analyzer.general_pedagogic_analysis(connector, version, body["analysis_config"])
-    if res["processed"] != res["total"]:
-        publish_message("tasks_to_process", {
-            "name": "user:global_analysis_pedagogic",
-            "version": message["version"],
-            "body": {
-                "type": "global_analysis_pedagogic",
-                "db_inst_config": body["db_inst_config"],
-                "analysis_config": res
-            }
-        }, priority=0)
-    else:
-        update_global_analysis_status(1, 4, 'D')
+        entry = ANALYSIS_MAP[analysis_type]
+        res = requests.put(
+            "http://localhost:5000/analysis/start",
+            json={
+                "type": analysis_type,
+                "db_inst_config": config,
+                "version": version
+            }).json()
+        
+        if res["processed"] != res["total"]:
+            self.rabbit_admin.publish_message("tasks_to_process", {
+                "name": f"user:{analysis_type}",
+                "version": message["version"],
+                "body": {
+                    "type": analysis_type,
+                    "db_inst_config": config,
+                    "analysis_config": res
+                }
+            }, priority=0)
+        else:
+            self.db_admin.update_global_analysis_status(1, entry["status_index"], 'D')
 
 def continuously_listen():
-    global channel
+    rabbit_admin = RabbitMQAdmin()
 
     def callback(ch, method, properties, body):
         message = json.loads(body.decode())
         analysis_type = message.get("body").get("type")
+        worker = Worker(rabbit_admin)
 
-        # print(f"[x] Mensagem recebida para análise: {message}")
-
-        if analysis_type == "engagement":
-            response = engagement(message)
-            done_message = {
-                "name" : message.get("name"),
-                "body" : {
-                    "version" : message.get("version"),
-                    "results" : response,
-                }
-            }
-            publish_message("Done", done_message)
-        elif analysis_type == "performance":
-            response = performance(message)
-            done_message = {
-                "name" : message.get("name"),
-                "body" : {
-                    "version" : message.get("version"),
-                    "results" : response,
-                }
-            }
-            publish_message("Done", done_message)
-        elif analysis_type == "motivation":
-            response = motivation(message)
-            done_message = {
-                "name" : message.get("name"),
-                "body" : {
-                    "version" : message.get("version"),
-                    "results" : response,
-                }
-            }
-            publish_message("Done", done_message)
-        elif analysis_type == "pedagogic":
-            response = pedagogic(message)
-            done_message = {
-                "name" : message.get("name"),
-                "body" : {
-                    "version" : message.get("version"),
-                    "results" : response,
-                }
-            }
-            publish_message("Done", done_message)
-        elif analysis_type == "global_analysis_engagement":
-            global_analysis_engagement(message)
-        elif analysis_type == "global_analysis_performance":
-            global_analysis_performance(message)
-        elif analysis_type == "global_analysis_motivation":
-            global_analysis_motivation(message)
-        elif analysis_type == "version":
-            version = get_version(message.get("body"))
-            channel.basic_publish(
-                exchange="",
-                routing_key="Done",
-                body=json.dumps({
-                    "name": "user:get_version",
-                    "body": {
-                        "version": version
-                    }
-                })
-            )
+        if (analysis_type == "global_analysis_engagement" or
+            analysis_type == "global_analysis_pedagogic" or
+            analysis_type == "global_analysis_performance" or
+            analysis_type == "global_analysis_motivation"):
+            worker.global_analysis(message)
         else:
             print(f"[!] Tipo de análise desconhecido: {analysis_type}")
-
         ch.basic_ack(delivery_tag=method.delivery_tag)
-        # print("[x] Análise concluída e mensagem removida da fila.")
 
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue='tasks_to_process', on_message_callback=callback)
+    rabbit_admin.channel.basic_qos(prefetch_count=1)
+    rabbit_admin.channel.basic_consume(queue='tasks_to_process', on_message_callback=callback)
 
     print(' [*] Aguardando mensagens. Para sair pressione CTRL+C')
     while True:
         try:
-            channel.start_consuming()
+            rabbit_admin.channel.start_consuming()
         except Exception as e:
-            print(e)
+            print(f"Erro: {e}")
 
 if __name__ == '__main__':
     print("Worker iniciado. Aguardando mensagens...")
-    channel = create_rabbit_connection()
     continuously_listen()

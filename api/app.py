@@ -90,32 +90,33 @@ def wait_until_done(s_user, indicator, status, poll_interval=2):
 
         time.sleep(poll_interval)  # espera antes de checar de novo
 
-
-def get_db_config_from_database():
+def get_db_config_from_database(user_id: int):
     engine = get_connector()
     metadata = MetaData()
     configs = Table("configs", metadata, autoload_with=engine)
 
     with engine.connect() as conn:
-        query = select(configs).where(configs.c.s_user == 1)  # TODO
-        result = conn.execute(query).mappings().all()  # retorna lista de dicts
-        if len(result) > 0:
+        query = select(configs).where(configs.c.s_user == user_id)
+        result = conn.execute(query).mappings().first()  # pega apenas o primeiro
+
+        if result:
             return {
-                "host": result[0]['host'],
-                "port": result[0]['port'],
-                "db": result[0]['database'],
-                "user": result[0]['user'],
-                "password": result[0]['password']
+                "host": result["host"],
+                "port": result["port"],
+                "db": result["database"],
+                "user": result["user"],
+                "password": result["password"]
             }
-        else:
-            return None
+        
+        return None
+
 
 def handle_analysis(analysis_type, global_fn, indicator_index=0):
     global db_config, channel, version
 
     version = get_version_in_database(1)
 
-    db_config = get_db_config_from_database()
+    db_config = get_db_config_from_database(user_id=1)
 
     course_id = request.args.get("id", type=int)
     type_ = request.args.get("query")
@@ -138,7 +139,6 @@ def handle_analysis(analysis_type, global_fn, indicator_index=0):
         }
         body = select_indicator(analysis_type, task)
         return jsonify(body), 200
-
     else:
         name = f"user:global_analysis_{analysis_type}"
         wait_until_done(1, indicator_index, "D")
@@ -147,13 +147,13 @@ def handle_analysis(analysis_type, global_fn, indicator_index=0):
         return jsonify(data), 200
 
 def select_indicator(indicator, message):
-    if indicator == "performance":
+    if indicator == "global_analysis_performance" or indicator == "performance":
         return performance(message)
-    elif indicator == "engagement":
+    elif indicator == "global_analysis_engagement" or indicator == "engagement":
         return engagement(message)
-    elif indicator == "motivation":
+    elif indicator == "global_analysis_motivation" or indicator == "motivation":
         return motivation(message)
-    elif indicator == "pedagogic":
+    elif indicator == "global_analysis_pedagogic" or indicator == "pedagogic":
         return pedagogic(message)
     else:
         return {"error": "Invalid indicator"}, 400
@@ -190,10 +190,9 @@ def set_version():
     
 @app.route("/analysis", methods=["PUT"])
 def analysis():
-    body = request.get_json()
+    message = request.get_json()
+    body = message.get("body", {})
     analysis_type = body["type"]
-
-    print(f"corpo da mensagem: {body}")
 
     if analysis_type not in ["global_analysis_performance", "global_analysis_engagement", "global_analysis_motivation", "global_analysis_pedagogic"]:
         return jsonify({"error": "Tipo de análise desconhecido"}), 400
@@ -210,7 +209,7 @@ def analysis():
             "analysis_config": analysis_config,
             "type": analysis_type,
         },
-        "version": body.get("version")
+        "version": message.get("version")
     }
 
     result = select_indicator(analysis_type, message)
@@ -239,6 +238,9 @@ def performance(message):
     connector = conn.get_connection_with_config(body["db_inst_config"])
 
     analysis_config = body.get("analysis_config")
+    if analysis_config["type"] == 'general':
+        res = analyzer.general_performance_analysis(connector, message.get("version"), analysis_config)
+        return res
     res = analyzer.performance_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
     return res.to_dict(orient="records")
 
@@ -247,7 +249,11 @@ def engagement(message):
     connector = conn.get_connection_with_config(body["db_inst_config"])
 
     analysis_config = body.get("analysis_config")
+    if analysis_config["type"] == 'general':
+        res = analyzer.general_engagement_analysis(connector, message.get("version"), analysis_config)
+        return res
     res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
+    
     return res.to_dict(orient="records")
 
 def motivation(message):
@@ -255,14 +261,20 @@ def motivation(message):
     connector = conn.get_connection_with_config(body["db_inst_config"])
 
     analysis_config = body.get("analysis_config")
+    if analysis_config["type"] == 'general':
+        res = analyzer.general_motivation_analysis(connector, message.get("version"), analysis_config)
+        return res
     res = analyzer.motivation_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
-    return res.to_dict(orient="records")
+    return res
 
 def pedagogic(message):
     body = message["body"]
     connector = conn.get_connection_with_config(body["db_inst_config"])
 
     analysis_config = body.get("analysis_config")
+    if analysis_config["type"] == 'general':
+        res = analyzer.general_pedagogic_analysis(connector, message.get("version"), analysis_config)
+        return res
     res = analyzer.pedagogic_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
     return res.to_dict(orient="records")
 

@@ -1,0 +1,130 @@
+import json, time
+from rabbit import RabbitMQAdmin
+from sqlalchemy import and_, select
+from database import DatabaseAdmin
+import requests
+
+class Processor:
+    def __init__(self, user=None):
+        self.rabbit_admin = RabbitMQAdmin()
+        self.db_admin = DatabaseAdmin()
+        self.user = user
+        self.db_config = None
+    
+    def get_db_config_from_database(self, user_id=1):
+        engine = self.db_admin.get_connector()
+        global_analysis = self.db_admin.get_global_analysis_table()
+        query = select(global_analysis.c.db_config).where(global_analysis.c.s_user == user_id).limit(1)
+        with engine.connect() as conn:
+            result = conn.execute(query).fetchone()
+            if result:
+                return json.loads(result.db_config)
+            else:
+                return None
+
+    def get_done_message(self, name):
+        global channel
+        found = False
+        res = None
+        while not found:
+            time.sleep(0.25)
+            method_frame, _, body = self.rabbit_admin.channel.basic_get(queue="Done", auto_ack=False)
+            if method_frame:
+                message = json.loads(body.decode())
+                nome = message.get("name") 
+                if nome == name:
+                    channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+                    found = True
+                    res = message.get("body")
+                else:
+                    channel.basic_nack(delivery_tag=method_frame.delivery_tag, requeue=True)
+                    time.sleep(0.1)
+            else:
+                time.sleep(0.25)
+        return res
+
+    def wait_until_done(self, s_user, indicator, status, poll_interval=2):
+        engine = self.db_admin.get_connector()
+        global_analysis = self.db_admin.get_global_analysis_table()
+
+        while True:
+            with engine.connect() as conn:
+                query = select(global_analysis.c.status).where(
+                    and_(
+                        global_analysis.c.s_user == s_user,
+                        global_analysis.c.status == status,
+                        global_analysis.c.indicator == indicator
+                    )
+                )
+                result = conn.execute(query).fetchone()
+
+                if result and result.status == "D":
+                    return True
+
+            time.sleep(poll_interval)  # espera antes de checar de novo
+
+    def handle_analysis(self, analysis_type, global_fn, request, indicator_index=0):
+        self.version = self.db_admin.get_version_in_database(1)
+        course_id = request.args.get("id", type=int)
+        type_ = request.args.get("query")
+        if not course_id and type_ != "general":
+            return {"error": "Course ID is required"}, 400
+
+        analysis_config = {"query": type_, "id": course_id}
+        if type_ != "general":
+            body = requests.get(f"http://localhost:5000/{analysis_type}", params=analysis_config).json()
+            return body, 200
+        else:
+            # name = f"user:global_analysis_{analysis_type}"
+            self.wait_until_done(1, indicator_index, "D")
+
+            if global_fn == 'get_all_from_table':
+                self.db_admin.get_all_from_table(analysis_type, user_id=1)
+            elif global_fn == 'get_all_performance_global':
+                rows = self.get_all_performance_global(user_id=1)
+            elif global_fn == 'get_all_engajamento_global':
+                rows = self.get_all_engajamento_global(user_id=1)
+            elif global_fn == 'get_all_motivation_global':
+                rows = self.get_all_motivation_global(user_id=1)
+            elif global_fn == 'get_all_pedagogic_global':
+                rows = self.get_all_pedagogic_global(user_id=1)
+
+            data = [dict(row) for row in rows]
+            return data, 200
+    
+    def get_all_engajamento_global(self, user_id=1):
+        return self.db_admin.get_all_from_table("engajamento_global", user_id)
+
+    def get_all_performance_global(self, user_id=1):
+        return self.db_admin.get_all_from_table("performance_global", user_id)
+
+    def get_all_motivation_global(self, user_id=1):
+        return self.db_admin.get_all_from_table("motivation_global", user_id)
+
+    def get_all_pedagogic_global(self, user_id=1):
+        return self.db_admin.get_all_from_table("pedagogic_global", user_id)
+    
+    def set_global_analysis(self, indicators, db_config=None):
+        counter = 1
+        for indicator in indicators:
+            task = {
+                "name" : f"user:global_analysis_{indicator.lower()}",
+                "body" : {
+                    "db_inst_config" : db_config,
+                    "type" : f"global_analysis_{indicator.lower()}",
+                    "analysis_config" : {
+                        "id" : None,
+                        "type" : "general",
+                        "batch_size" : 20,
+                        "processed" : 0,
+                        "total" : 0
+                    }
+                }
+            }
+
+            try:
+                self.db_admin.insert_global_analysis_status(1, counter, 'P')  # Indicador 1: Engagement, Status 'I' (Idle
+                counter += 1
+                self.rabbit_admin.publish_message("tasks_to_process", task, priority=1)
+            except Exception as e:
+                print(f"Erro ao inserir status para {indicator}: {e}")

@@ -38,6 +38,7 @@ class Worker:
         body = message["body"]
         analysis_type = body["type"]
         version = self.db_admin.get_version_in_database(1)
+        message["version"] = version
 
         if analysis_type not in ANALYSIS_MAP:
             raise ValueError(f"Tipo de análise desconhecido: {analysis_type}")
@@ -47,13 +48,7 @@ class Worker:
         entry = ANALYSIS_MAP[analysis_type]
         res = requests.put(
             "http://localhost:5000/analysis",
-            json={
-                "type": analysis_type,
-                "db_inst_config": config,
-                "version": version
-            }).json()
-        
-        print(f"Resultado da análise {analysis_type}: {res}")
+            json=message).json()
         
         if res["processed"] != res["total"]:
             self.rabbit_admin.publish_message("tasks_to_process", {
@@ -62,7 +57,8 @@ class Worker:
                     "type": analysis_type,
                     "db_inst_config": config,
                     "analysis_config": res
-                }
+                },
+                "version": version
             }, priority=0)
         else:
             self.db_admin.update_global_analysis_status(1, entry["status_index"], 'D')

@@ -196,6 +196,42 @@ def analysis():
     result = select_indicator(analysis_type, message)
     return jsonify(result), 200
 
+@app.route("/handle-analysis", methods=["POST"])
+def handleAnalysis():
+    global db_config, channel, version
+    data = request.get_json()
+    version = get_version_in_database(1)
+
+    db_config = get_db_config_from_database(user_id=1)
+
+    course_id = data["id"]
+    type_ = data["query"]
+
+    if not course_id and type_ != "general":
+        return jsonify({"error": "Course ID is required"}), 400
+
+    analysis_config = {"type": type_, "id": course_id}
+
+    if type_ != "general":
+        name = f"user:{data['analysis_type']}"
+        task = {
+            "name": name,
+            "version": version,
+            "body": {
+                "db_inst_config": db_config,
+                "analysis_config": analysis_config,
+                "type": data['analysis_type'],
+            },
+        }
+        body = select_indicator(data['analysis_type'], task)
+        return jsonify(body), 200
+    else:
+        name = f"user:global_analysis_{data['analysis_type']}"
+        wait_until_done(1, data['indicator_index'], "D")
+        rows = get_all_from_table(data['analysis_type'], 1)
+        data = [dict(row) for row in rows]
+        return jsonify(data), 200
+
 def get_all_from_table(table_name, user_id=1):
     engine = get_connector()
     metadata = MetaData()
@@ -220,10 +256,10 @@ def performance(message):
 
     analysis_config = body.get("analysis_config")
     if analysis_config["type"] == 'general':
-        res = analyzer.general_performance_analysis(connector, message.get("version"), analysis_config)
-        return res
-    res = analyzer.performance_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
-    return res.to_dict(orient="records")
+        response = analyzer.general_performance_analysis(connector, message.get("version"), analysis_config)
+        return response
+    response = analyzer.performance_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
+    return response.to_dict(orient="records")
 
 def engagement(message):
     body = message["body"]

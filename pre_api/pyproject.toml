@@ -19,7 +19,10 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{include = "tarrafa", from = "src"}]
+packages = [
+    { include = "tarrafa", from = "." },
+    { include = "src", from = ".." } # Isso adiciona o diretório 'raiz/src'
+]
 
 
 [build-system]

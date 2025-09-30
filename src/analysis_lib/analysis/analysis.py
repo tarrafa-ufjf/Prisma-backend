@@ -1,9 +1,8 @@
-from mapper.map import Mapper
-from analysis.Engajamento.engagement import Engagement
-from analysis.Desempenho.performance import Performance
-from analysis.Motivacao.motivation import Motivation
-from analysis.Pedagogico.pedagogic import Pedagogic
-from typing import Optional
+from ..mapper.map import Mapper
+from .Engajamento.engagement import Engagement
+from .Desempenho.performance import Performance
+from .Motivacao.motivation import Motivation
+from .Pedagogico.pedagogic import Pedagogic
 
 
 class Analyzer:

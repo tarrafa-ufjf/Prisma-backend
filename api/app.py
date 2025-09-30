@@ -1,6 +1,6 @@
 from flask import request, jsonify, Flask
 from sqlalchemy import and_, select, create_engine, MetaData, Table, Column, Integer, String
-from analysis import Analyzer
+from src.analysis_lib.analysis.analysis import Analyzer
 import os
 from dotenv import load_dotenv
 import pika
@@ -14,25 +14,6 @@ connector = None
 version = None
 db_config = None
 load_dotenv()
-
-RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
-RABBITMQ_PASS = os.getenv("RABBITMQ_PASSWORD", "guest")
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
-RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))
-
-# Criar credenciais
-credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
-
-# Criar conexão
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(
-        host=RABBITMQ_HOST,
-        port=RABBITMQ_PORT,
-        credentials=credentials,
-        heartbeat=600,
-    )
-)
-channel = connection.channel()   
 
 def get_connector():
     DB_USER = os.getenv("DB_USER")
@@ -112,7 +93,7 @@ def get_db_config_from_database(user_id: int):
 
 
 def handle_analysis(analysis_type, global_fn, indicator_index=0):
-    global db_config, channel, version
+    global db_config, version
 
     version = get_version_in_database(1)
 

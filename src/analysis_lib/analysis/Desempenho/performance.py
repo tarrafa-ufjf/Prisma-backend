@@ -1,5 +1,5 @@
 import pandas as pd
-from src.analysis.indicator import Indicator
+from ..indicator import Indicator
 
 class Performance(Indicator):
     def __init__(self, mapper):

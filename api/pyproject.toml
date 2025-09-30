@@ -18,8 +18,11 @@ dependencies = [
     "pandas (>=2.3.2,<3.0.0)",
 ]
 
-[tool.poetry.dependencies]
-src = { path = "../src", develop = true }
+[tool.poetry]
+packages = [
+    { include = "tarrafa", from = "." },
+    { include = "src", from = ".." } # Isso adiciona o diretório 'raiz/src'
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

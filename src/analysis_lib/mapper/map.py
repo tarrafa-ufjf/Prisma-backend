@@ -2,7 +2,7 @@
 Neste arquivo, devemos criar a lógica do mapeamento das consultas.
 '''
 import re
-from mapper.connectors.moodle3_1 import Moodle31
+from .connectors.moodle3_1 import Moodle31
 
 class Mapper:
     def __init__(self):

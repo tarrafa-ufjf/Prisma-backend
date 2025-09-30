@@ -1,5 +1,5 @@
 from flask import jsonify
-from mapper.moodle import Moodle
+from ..moodle import Moodle
 import csv
 import pandas as pd
 

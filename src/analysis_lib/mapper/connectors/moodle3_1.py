@@ -68,18 +68,23 @@ class Moodle31(Moodle):
         conn = self.connector
         with conn.cursor() as cur:
             cur.execute('''
-                SELECT p.userid AS user_id, f.id AS forum_id_required, p.id AS post_id_required, p.created AS post_date_required
-                FROM mdl_forum f
-                JOIN mdl_forum_discussions d ON d.forum = f.id 
-                JOIN mdl_forum_posts p ON p.discussion = d.id
-                JOIN mdl_user u ON u.id = p.userid
-                JOIN mdl_role_assignments ra ON ra.userid = u.id
-                JOIN mdl_context ctxt ON ctxt.id = ra.contextid
-                WHERE f.course = %s AND 
-                    ra.roleid = 5 AND 
-                    ctxt.contextlevel = 50 AND 
-                    ctxt.instanceid = f.course AND 
-                    f.assessed <> 0;
+                SELECT p.userid AS user_id, f.id AS forum_id_required, p.id AS post_id_required
+                FROM mdl_forum_posts p
+                JOIN mdl_user u ON u.id = p.userid                      
+                JOIN mdl_forum_discussions d ON d.id = p.discussion
+                JOIN mdl_forum f ON f.id = d.forum
+                WHERE f.course = %s AND f.assessed <> 0
+                    AND EXISTS (
+                        SELECT 1
+                        FROM mdl_role_assignments ra2
+                        JOIN mdl_role r2 ON r2.id = ra2.roleid
+                        JOIN mdl_context c2 ON c2.id = ra2.contextid
+                        WHERE ra2.userid = p.userid
+                            AND r2.id IN (5)            
+                            AND c2.contextlevel = 50
+                            AND c2.instanceid = f.course
+                    )
+                ORDER BY d.id, p.created;
             ''', (course_id, ))
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -169,17 +174,22 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT p.userid AS user_id, f.id AS forum_id_unrequired, p.id AS post_id_unrequired
-                FROM mdl_forum f
-                JOIN mdl_forum_discussions d ON d.forum = f.id 
-                JOIN mdl_forum_posts p ON p.discussion = d.id
-                JOIN mdl_user u ON u.id = p.userid
-                JOIN mdl_role_assignments ra ON ra.userid = u.id
-                JOIN mdl_context ctxt ON ctxt.id = ra.contextid
-                WHERE f.course = %s AND 
-                    ra.roleid = 5 AND 
-                    ctxt.contextlevel = 50 AND 
-                    ctxt.instanceid = f.course AND 
-                    f.assessed = 0;
+                FROM mdl_forum_posts p
+                JOIN mdl_user u ON u.id = p.userid                      
+                JOIN mdl_forum_discussions d ON d.id = p.discussion
+                JOIN mdl_forum f ON f.id = d.forum
+                WHERE f.course = %s AND f.assessed = 0
+                    AND EXISTS (
+                        SELECT 1
+                        FROM mdl_role_assignments ra2
+                        JOIN mdl_role r2 ON r2.id = ra2.roleid
+                        JOIN mdl_context c2 ON c2.id = ra2.contextid
+                        WHERE ra2.userid = p.userid
+                            AND r2.id IN (5)            
+                            AND c2.contextlevel = 50
+                            AND c2.instanceid = f.course
+                    )
+                ORDER BY d.id, p.created;
             ''', (course_id, ))
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]

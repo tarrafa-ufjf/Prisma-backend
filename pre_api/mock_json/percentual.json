@@ -1,0 +1,30 @@
+[
+  {
+    "id": 222,
+    "boa_interação_avaliativa": 17.86,
+    "bom_desempenho": 74.34,
+    "boa_interação_não_avalativa": 1.79,
+    "relação_aluno_professor": 0.0
+  },
+  {
+    "id": 223,
+    "boa_interação_avaliativa": 25.240000000000002,
+    "bom_desempenho": 71.7,
+    "boa_interação_não_avalativa": 3.81,
+    "relação_aluno_professor": 0.0
+  },
+  {
+    "id": 224,
+    "boa_interação_avaliativa": 20.53,
+    "bom_desempenho": 75.0,
+    "boa_interação_não_avalativa": 2.68,
+    "relação_aluno_professor": 0.0
+  },
+  {
+    "id": 225,
+    "boa_interação_avaliativa": 23.330000000000002,
+    "bom_desempenho": 72.72,
+    "boa_interação_não_avalativa": 6.67,
+    "relação_aluno_professor": 0.0
+  }
+]

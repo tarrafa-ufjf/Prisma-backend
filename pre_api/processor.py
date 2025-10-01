@@ -1,8 +1,8 @@
 import json, time
 from rabbit import RabbitMQAdmin
 from sqlalchemy import and_, select
-from database import DatabaseAdmin
-import requests
+from database import DatabaseAdmin, Database
+from src.analysis_lib.analysis.analysis import Analyzer
 
 class Processor:
     def __init__(self, user=None):
@@ -10,17 +10,15 @@ class Processor:
         self.db_admin = DatabaseAdmin()
         self.user = user
         self.db_config = None
-    
-    def get_db_config_from_database(self, user_id=1):
-        engine = self.db_admin.get_connector()
-        global_analysis = self.db_admin.get_global_analysis_table()
-        query = select(global_analysis.c.db_config).where(global_analysis.c.s_user == user_id).limit(1)
-        with engine.connect() as conn:
-            result = conn.execute(query).fetchone()
-            if result:
-                return json.loads(result.db_config)
-            else:
-                return None
+        self.analysis = Analyzer()
+        self.connector_inst = Database()
+
+    _ANALYSIS_MAP = {
+        "performance": ("general_performance_analysis", "performance_analysis"),
+        "engagement": ("general_engagement_analysis", "engagement_analysis"),
+        "motivation": ("general_motivation_analysis", "motivation_analysis"),
+        "pedagogic": ("general_pedagogic_analysis", "pedagogic_analysis"),
+    }
 
     def get_done_message(self, name):
         global channel
@@ -64,22 +62,33 @@ class Processor:
             time.sleep(poll_interval)  # espera antes de checar de novo
 
     def handle_analysis(self, analysis_type, global_fn, request, indicator_index=0):
-        self.version = self.db_admin.get_version_in_database(1)
+        version = self.db_admin.get_version_in_database(1)
         course_id = request.args.get("id", type=int)
         type_ = request.args.get("query")
+        db_config = self.db_admin.get_db_config_from_database(1)
+
         if not course_id and type_ != "general":
             return {"error": "Course ID is required"}, 400
 
         analysis_config = {"query": type_, "id": course_id}
         if type_ != "general":
-            body = requests.get(f"http://localhost:5000/{analysis_type}", params=analysis_config).json()
+            name = f"user:{analysis_type}"
+            task = {
+                "name": name,
+                "version": version,
+                "body": {
+                    "db_inst_config": db_config,
+                    "analysis_config": analysis_config,
+                    "type": analysis_type,
+                },
+            }
+            body = self.select_indicator(analysis_type, task)
             return body, 200
         else:
-            # name = f"user:global_analysis_{analysis_type}"
             self.wait_until_done(1, indicator_index, "D")
 
             if global_fn == 'get_all_from_table':
-                self.db_admin.get_all_from_table(analysis_type, user_id=1)
+                rows = self.db_admin.get_all_from_table(analysis_type, user_id=1)
             elif global_fn == 'get_all_performance_global':
                 rows = self.get_all_performance_global(user_id=1)
             elif global_fn == 'get_all_engajamento_global':
@@ -91,6 +100,34 @@ class Processor:
 
             data = [dict(row) for row in rows]
             return data, 200
+    
+    def select_indicator(self, indicator, message):
+        body = message.get("body")
+        analysis_config = body.get("analysis_config")
+        simple_indicator = indicator.split("_")[-1]
+
+        if simple_indicator not in self._ANALYSIS_MAP:
+            return {"error": "Invalid indicator"}, 400
+        
+        general_func_name, specific_func_name = self._ANALYSIS_MAP[simple_indicator]
+
+        try:
+            connector = self.db_admin.get_connection_with_config(body["db_inst_config"])
+            version = message.get("version")
+        except KeyError:
+             return {"error": "Missing 'db_inst_config' in message body"}, 400
+
+        if analysis_config.get("query") == 'general':
+            analysis_func = getattr(self.analysis, general_func_name)
+            response = analysis_func(connector, version, analysis_config)
+        else:
+            analysis_func = getattr(self.analysis, specific_func_name)
+            analysis_id = analysis_config.get("id")
+            analysis_type = analysis_config.get("query")
+            response = analysis_func(analysis_id, analysis_type, version, connector)
+        
+        data = response.to_dict(orient='records')
+        return data
     
     def get_all_engajamento_global(self, user_id=1):
         return self.db_admin.get_all_from_table("engajamento_global", user_id)
@@ -128,3 +165,10 @@ class Processor:
                 self.rabbit_admin.publish_message("tasks_to_process", task, priority=1)
             except Exception as e:
                 print(f"Erro ao inserir status para {indicator}: {e}")
+
+    def get_version(self, user_id=1, db_config=None):
+        version = self.db_admin.get_version_in_database(user_id)
+        if version is None:
+            connector = self.connector_inst.get_connection_with_config(db_config)
+            version = self.analysis.get_moodle_version(connector)
+        return version

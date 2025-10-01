@@ -49,8 +49,6 @@ class Indicator:
         bar_length = 20
         filled = "#" * (bar_length * processed // total)
         empty = "-" * (bar_length - len(filled))
-
-        line = line + 10
         
         # \033[{row};0H move o cursor para a linha "row"
         sys.stdout.write(f"\033[{line};0H Análise Global {name}|{filled}{empty}| {percent:.2f}%")

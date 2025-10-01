@@ -1,3 +1,4 @@
+import json
 from flask_sqlalchemy import SQLAlchemy
 import os
 import pymysql
@@ -41,7 +42,7 @@ class Database:
             port = config['port'],
             user = config['user'],
             password = config['password'],
-            db = config['db'],
+            db = config['database'],
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
         )
@@ -69,6 +70,20 @@ class DatabaseAdmin:
             Column('status', String(1), nullable=False)
         )
         return global_analysis
+    
+    def get_configs_table(self):
+        metadata = MetaData()
+        configs = Table(
+            'configs', metadata,
+            Column('s_user', Integer, primary_key=True),
+            Column('version', String(50), nullable=False),
+            Column('host', String(100), nullable=False),
+            Column('port', Integer, nullable=False),
+            Column('database', String(100), nullable=False),
+            Column('user', String(100), nullable=False),
+            Column('password', String(100), nullable=False)
+        )
+        return configs
     
     def update_global_analysis_status(self, s_user: int, indicator: int, status: str):
         engine = self.get_connector()
@@ -131,7 +146,7 @@ class DatabaseAdmin:
                 version=version,
                 host=db_config['host'],
                 port=db_config['port'],
-                database=db_config['db'],
+                database=db_config['database'],
                 user=db_config['user'],
                 password=db_config['password']
             )
@@ -166,6 +181,40 @@ class DatabaseAdmin:
 
         with engine.begin() as conn:
             conn.execute(stmt)
+    
+    def get_db_config_from_database(self, user_id=1):
+        engine = self.get_connector()
+        configs = self.get_configs_table()
+
+        query = (
+            select(
+                configs.c.host,
+                configs.c.port,
+                configs.c.database,
+                configs.c.user,
+                configs.c.password,
+                configs.c.version,
+            )
+            .where(configs.c.s_user == user_id)
+            .limit(1)
+        )
+        with engine.connect() as conn:
+            result = conn.execute(query).mappings().fetchone()
+            if result:
+                return dict(result)
+            else:
+                return None
+    
+    def get_connection_with_config(self, config):
+        return pymysql.connect(
+            host = config['host'],
+            port = config['port'],
+            user = config['user'],
+            password = config['password'],
+            db = config['database'],
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
 
 
 db = SQLAlchemy()

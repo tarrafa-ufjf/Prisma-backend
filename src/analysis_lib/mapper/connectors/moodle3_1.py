@@ -334,3 +334,212 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
+    
+    '''
+    Consultas relacionadas ao indicador de profundidade cognitiva::
+    '''
+
+    # Fóruns
+    def get_course_forum_viewed(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT DISTINCT
+                    u.id AS user_id,
+                    u.firstname,
+                    lh.objectid AS forum_id,
+                    lh.timecreated AS timestamp
+                FROM mdl_logstore_standard_log lh
+                JOIN mdl_user u ON lh.userid = u.id
+                WHERE lh.courseid = %s
+                AND lh.eventname LIKE '%%course_module_viewed%%'
+                AND lh.component = 'mod_forum';
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    def get_forum_post_created(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT DISTINCT
+                    u.id AS user_id,
+                    u.firstname,
+                    lh.objectid AS post_id,
+                    p.discussion AS forum_id,
+                    lh.timecreated AS timestamp
+                FROM mdl_logstore_standard_log lh
+                JOIN mdl_forum_posts p ON lh.objectid = p.id
+                JOIN mdl_user u ON lh.userid = u.id
+                JOIN mdl_context ctx ON ctx.contextlevel = 50 AND ctx.instanceid = lh.courseid
+                WHERE lh.courseid = %s
+                AND (lh.eventname LIKE '%%post_created%%'
+                    OR lh.eventname LIKE '%%discussion_created%%')
+                AND lh.component = 'mod_forum';
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    def forum_reply_viewed(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT DISTINCT 
+                    p.userid AS user_id,
+                    d.id AS discussion_id,
+                    p.id AS original_post_id,
+                    reply.id AS reply_post_id,
+                    lh.timecreated AS timestamp
+                FROM mdl_forum_posts p
+                JOIN mdl_forum_discussions d ON p.discussion = d.id
+                JOIN mdl_logstore_standard_log lh 
+                    ON lh.objectid = d.id AND lh.userid = p.userid
+                JOIN mdl_forum_posts reply 
+                    ON reply.parent = p.id AND reply.userid <> p.userid
+                WHERE p.parent = 0
+                AND lh.courseid = %s
+                AND lh.eventname LIKE '%%discussion_viewed%%'
+                AND lh.timecreated >= reply.created  
+                AND lh.userid <> reply.userid
+                AND lh.component = 'mod_forum';
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    # Assign
+    def get_assign_submission_status_viewed(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT DISTINCT
+                    u.id AS user_id,
+                    u.firstname,
+                    lh.contextinstanceid AS assignment_id,
+                    lh.timecreated AS timestamp
+                FROM mdl_logstore_standard_log lh
+                JOIN mdl_user u ON lh.userid = u.id
+                JOIN mdl_context ctx ON ctx.contextlevel = 50 AND ctx.instanceid = lh.courseid
+                WHERE lh.courseid = %s
+                AND lh.eventname LIKE '%%submission_status_viewed%%'
+                    AND lh.component = 'mod_assign';
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    def get_assign_assessable_submitted(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT DISTINCT
+                    u.id AS user_id,
+                    u.firstname,
+                    lh.contextinstanceid AS assignment_id,
+                    lh.objectid AS submission_id,
+                    lh.timecreated AS timestamp
+                FROM mdl_logstore_standard_log lh
+                JOIN mdl_user u ON lh.userid = u.id
+                JOIN mdl_context ctx ON ctx.contextlevel = 50 AND ctx.instanceid = lh.courseid
+                WHERE lh.courseid = %s
+                AND lh.eventname LIKE '%%assessable_submitted%%'
+                        AND lh.component = 'mod_assign';
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    def get_assign_feedback_viewed(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT DISTINCT
+                    u.id AS user_id,
+                    u.firstname,
+                    lh.contextinstanceid AS assignment_id,
+                    lh.objectid AS submission_id,
+                    lh.timecreated AS timestamp
+                FROM mdl_logstore_standard_log lh
+                JOIN mdl_user u ON lh.userid = u.id
+                JOIN mdl_context ctx ON ctx.contextlevel = 50 AND ctx.instanceid = lh.courseid
+                WHERE lh.courseid = %s
+                AND lh.eventname LIKE '%%feedback_viewed%%'
+                        AND lh.component = 'mod_assign';
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    # Quizzes
+    def get_quizz_viewed(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT DISTINCT
+                    u.id AS user_id,
+                    u.firstname,
+                    lh.contextinstanceid AS quiz_id,
+                    lh.timecreated AS timestamp
+                FROM mdl_logstore_standard_log lh
+                JOIN mdl_user u ON lh.userid = u.id
+                JOIN mdl_context ctx ON ctx.contextlevel = 50 AND ctx.instanceid = lh.courseid
+                WHERE lh.courseid = %s
+                AND lh.eventname LIKE '%%course_module_viewed%%'
+                AND lh.component = 'mod_quiz';
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    def get_quizz_attempt_submitted(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT DISTINCT
+                    u.id AS user_id,
+                    u.firstname,
+                    lh.contextinstanceid AS quiz_id,
+                    lh.objectid AS attempt_id,
+                    lh.timecreated AS timestamp
+                FROM mdl_logstore_standard_log lh
+                JOIN mdl_user u ON lh.userid = u.id
+                JOIN mdl_context ctx ON ctx.contextlevel = 50 AND ctx.instanceid = lh.courseid
+                WHERE lh.courseid = %s
+                AND lh.eventname LIKE '%%attempt_submitted%%'
+                AND lh.component = 'mod_quiz';
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    def get_quizz_attempt_reviewd(self, course_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT DISTINCT
+                    u.id AS user_id,
+                    u.firstname,
+                    lh.contextinstanceid AS quiz_id,
+                    lh.objectid AS attempt_id,
+                    lh.timecreated AS timestamp
+                FROM mdl_logstore_standard_log lh
+                JOIN mdl_user u ON lh.userid = u.id
+                JOIN mdl_context ctx ON ctx.contextlevel = 50 AND ctx.instanceid = lh.courseid
+                WHERE lh.courseid = %s
+                AND lh.eventname LIKE '%%attempt_reviewed%%'
+                AND lh.component = 'mod_quiz';
+            ''', (course_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df

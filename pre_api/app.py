@@ -4,7 +4,11 @@ from dotenv import load_dotenv
 
 app = Flask(__name__)
 api_base_url = 'http://127.0.0.1:5000'
-indicator_index_translate = {"engagement": 1, "performance": 2, "motivation": 3,"pedagogic": 4}
+indicator_index_translate = {"engagement": 1, 
+                             "performance": 2,
+                              "motivation": 3,
+                              "pedagogic": 4,
+                              "cognitive": 5}
 load_dotenv()
 
 indicators = ["engagement", "performance", "motivation"]
@@ -16,7 +20,7 @@ def indicatorAnalysis(indicator):
 
     global indicator_index_translate
     if indicator not in indicator_index_translate:
-        return jsonify({"error": "indicator inválido"}), 400
+        return jsonify({"error": "indicador inválido"}), 400
 
     try: 
         response = processor.handle_analysis(indicator, 'get_all_'+indicator+'_global', request, indicator_index=indicator_index_translate[indicator])

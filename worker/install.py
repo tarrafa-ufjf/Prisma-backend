@@ -124,6 +124,19 @@ if __name__ == "__main__":
     primary_keys = ["s_user", "course_id", "user_id", "forum_id_unrequired", "num_posts_unrequired"]
     create_table("motivation_global", columns_configs, primary_key=primary_keys)
 
+    columns_configs = {
+        "s_user": Integer,
+        "course_id": Integer,
+        "full_name": String(100),
+        "assign_level": Integer,
+        "forum_level": Integer,
+        "quiz_level": Integer,
+        "user_id": Integer
+    }
+
+    primary_keys = ["s_user", "course_id", "user_id"]
+    create_table("cognitive_global", columns_configs, primary_key=primary_keys)
+
     channel.queue_declare(
         queue="tasks_to_process",
         durable=True,

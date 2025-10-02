@@ -79,3 +79,39 @@ class Mapper:
     def get_tutor_access_frequency(self, connector, course_id, version):
         moodle = self.get_moodle(connector, version)
         return moodle.get_tutor_access_frequency(course_id)
+    
+    def get_course_forum_viewed(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_course_forum_viewed(course_id)
+    
+    def get_forum_post_created(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_forum_post_created(course_id)
+    
+    def forum_reply_viewed(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.forum_reply_viewed(course_id)
+    
+    def get_assign_submission_status_viewed(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_assign_submission_status_viewed(course_id)
+    
+    def get_assign_assessable_submitted(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_assign_assessable_submitted(course_id)
+    
+    def get_assign_feedback_viewed(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_assign_feedback_viewed(course_id)
+    
+    def get_quizz_viewed(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_quizz_viewed(course_id)
+    
+    def get_quizz_attempt_submitted(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_quizz_attempt_submitted(course_id)
+    
+    def get_quizz_attempt_reviewd(self, connector, course_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_quizz_attempt_reviewd(course_id)

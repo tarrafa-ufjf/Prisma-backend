@@ -18,6 +18,7 @@ class Processor:
         "engagement": ("general_engagement_analysis", "engagement_analysis"),
         "motivation": ("general_motivation_analysis", "motivation_analysis"),
         "pedagogic": ("general_pedagogic_analysis", "pedagogic_analysis"),
+        "cognitive": ("general_cognitive_analysis", "cognitive_analysis"),
     }
 
     def get_done_message(self, name):

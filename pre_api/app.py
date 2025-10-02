@@ -1,5 +1,6 @@
 from flask import request, jsonify, Flask, send_file
 from processor import Processor
+import json
 from dotenv import load_dotenv
 
 app = Flask(__name__)
@@ -9,6 +10,95 @@ load_dotenv()
 
 indicators = ["engagement", "performance", "motivation"]
 
+@app.route("/analysis/general-data/<id>", methods=["GET"])
+def courseGeneralData(id):
+    try:
+        id = int(id)
+        try:
+            with open('mock_json/general_data.json', 'r') as file:
+                json_data = json.load(file)
+            found_item = next(filter(lambda item: item.get('course_id') == id, json_data), None)
+            if found_item:
+                return jsonify({"data": found_item}), 200
+            return jsonify({"data": {}, "error": "there is no course with id " + str(id)}), 404
+        except FileNotFoundError:
+            return jsonify({"error": "file not found"}), 404
+        except json.JSONDecodeError:
+            return jsonify({"error": "error to decode json"}), 500
+    except ValueError:
+        return jsonify({"error": "id must be a number"}), 400
+
+@app.route("/analysis/general-info/<id>", methods=["GET"])
+def courseGeneralInfo(id):
+    try:
+        id = int(id)
+        try:
+            with open('mock_json/general_info.json', 'r') as file:
+                json_data = json.load(file)
+            found_item = next(filter(lambda item: item.get('id') == id, json_data), None)
+            if found_item:
+                return jsonify({"data": found_item}), 200
+            return jsonify({"data": {}, "error": "there is no course with id " + str(id)}), 404
+        except FileNotFoundError:
+            return jsonify({"error": "file not found"}), 404
+        except json.JSONDecodeError:
+            return jsonify({"error": "error to decode json"}), 500
+    except ValueError:
+        return jsonify({"error": "id must be a number"}), 400
+
+@app.route("/analysis/graphs/<id>", methods=["GET"])
+def courseGraphs(id):
+    try:
+        id = int(id)
+        try:
+            with open('mock_json/graphs.json', 'r') as file:
+                json_data = json.load(file)
+            found_item = next(filter(lambda item: item.get('id') == id, json_data), None)
+            if found_item:
+                return jsonify({"data": found_item}), 200
+            return jsonify({"data": {}, "error": "there is no course with id " + str(id)}), 404
+        except FileNotFoundError:
+            return jsonify({"error": "file not found"}), 404
+        except json.JSONDecodeError:
+            return jsonify({"error": "error to decode json"}), 500
+    except ValueError:
+        return jsonify({"error": "id must be a number"}), 400
+
+@app.route("/analysis/percentual/<id>", methods=["GET"])
+def coursePercentual(id):
+    try:
+        id = int(id)
+        try:
+            with open('mock_json/percentual.json', 'r') as file:
+                json_data = json.load(file)
+            found_item = next(filter(lambda item: item.get('id') == id, json_data), None)
+            if found_item:
+                return jsonify({"data": found_item}), 200
+            return jsonify({"data": {}, "error": "there is no course with id " + str(id)}), 404
+        except FileNotFoundError:
+            return jsonify({"error": "file not found"}), 404
+        except json.JSONDecodeError:
+            return jsonify({"error": "error to decode json"}), 500
+    except ValueError:
+        return jsonify({"error": "id must be a number"}), 400
+
+@app.route("/analysis/ranking/<id>", methods=["GET"])
+def classRanking(id):
+    try:
+        id = int(id)
+        try:
+            with open('mock_json/rankings_students.json', 'r') as file:
+                json_data = json.load(file)
+            found_item = next(filter(lambda item: item.get('id') == id, json_data), None)
+            if found_item:
+                return jsonify({"data": found_item}), 200
+            return jsonify({"data": {}, "error": "there is no course with id " + str(id)}), 404
+        except FileNotFoundError:
+            return jsonify({"error": "file not found"}), 404
+        except json.JSONDecodeError:
+            return jsonify({"error": "error to decode json"}), 500
+    except ValueError:
+        return jsonify({"error": "id must be a number"}), 400
 @app.route("/analysis/<indicator>", methods=["GET"])
 def indicatorAnalysis(indicator):
     indicator = indicator.lower()

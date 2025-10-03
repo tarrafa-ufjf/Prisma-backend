@@ -160,12 +160,12 @@ class Processor:
                 }
             }
 
-            try:
-                self.db_admin.insert_global_analysis_status(1, counter, 'P')  # Indicador 1: Engagement, Status 'I' (Idle
-                counter += 1
-                self.rabbit_admin.publish_message("tasks_to_process", task, priority=1)
-            except Exception as e:
-                print(f"Erro ao inserir status para {indicator}: {e}")
+            # try:
+            self.db_admin.insert_global_analysis_status(1, counter, 'P')  # Indicador 1: Engagement, Status 'I' (Idle
+            counter += 1
+            self.rabbit_admin.publish_message("tasks_to_process", task, priority=1)
+            # except Exception as e:
+            #     print(f"Erro ao inserir status para {indicator}: {e}")
 
     def get_version(self, user_id=1, db_config=None):
         version = self.db_admin.get_version_in_database(user_id)

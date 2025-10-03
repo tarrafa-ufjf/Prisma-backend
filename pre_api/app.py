@@ -11,7 +11,7 @@ indicator_index_translate = {"engagement": 1,
                               "cognitive": 5}
 load_dotenv()
 
-indicators = ["engagement", "performance", "motivation"]
+indicators = ["engagement", "performance", "motivation", "cognitive"]
 
 @app.route("/analysis/<indicator>", methods=["GET"])
 def indicatorAnalysis(indicator):

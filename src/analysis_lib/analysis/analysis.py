@@ -29,6 +29,12 @@ class Analyzer:
         analysis_config = motivation.general_analysis(version, connector, analysis_config)
 
         return analysis_config
+    
+    def general_cognitive_analysis(self, connector, version, analysis_config):
+        cognitive = Cognitive(self.mapper)
+        analysis_config = cognitive.general_analysis(version, connector, analysis_config)
+
+        return analysis_config
 
     def engagement_analysis(self, course_id, type_query, version, connector):
         engagement = Engagement(self.mapper)

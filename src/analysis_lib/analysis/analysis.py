@@ -3,7 +3,7 @@ from .Engajamento.engagement import Engagement
 from .Desempenho.performance import Performance
 from .Motivacao.motivation import Motivation
 from .Pedagogico.pedagogic import Pedagogic
-
+from .Cognitivo.cognitive import Cognitive
 
 class Analyzer:
     def __init__(self):
@@ -27,6 +27,12 @@ class Analyzer:
     def general_motivation_analysis(self, connector, version, analysis_config):
         motivation = Motivation(self.mapper)
         analysis_config = motivation.general_analysis(version, connector, analysis_config)
+
+        return analysis_config
+    
+    def general_cognitive_analysis(self, connector, version, analysis_config):
+        cognitive = Cognitive(self.mapper)
+        analysis_config = cognitive.general_analysis(version, connector, analysis_config)
 
         return analysis_config
 
@@ -70,5 +76,17 @@ class Analyzer:
             pass
         elif type_query == 'course': 
             res = pedagogic.course_analysis(course_id, version, connector)
+
+        return res
+    
+    def cognitive_analysis(self, course_id, type_query, version, connector):
+        from .Cognitivo.cognitive import Cognitive
+        cognitive = Cognitive(self.mapper)
+        res = None
+
+        if type_query == 'user':
+            pass
+        elif type_query == 'course': 
+            res = cognitive.course_analysis(course_id, version, connector)
 
         return res

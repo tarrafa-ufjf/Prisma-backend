@@ -7,19 +7,19 @@ class Cognitive(Indicator):
     
     def course_analysis(self, course_id, version, connector):
         all_students = self.mapper.get_all_students(connector, course_id, version)
-        print('OK')
+
         assign_viewed = self.mapper.get_assign_submission_status_viewed(connector, course_id, version)
         assign_assessable_submitted = self.mapper.get_assign_assessable_submitted(connector, course_id, version)
         assign_feedback_viewed = self.mapper.get_assign_feedback_viewed(connector, course_id, version)
-        print('OK')
+
         forum_course_viewed = self.mapper.get_course_forum_viewed(connector, course_id, version)
         forum_post_created = self.mapper.get_forum_post_created(connector, course_id, version)
         forum_reply_viewed = self.mapper.forum_reply_viewed(connector, course_id, version)
-        print('OK')
+
         quiz_viewed = self.mapper.get_quizz_viewed(connector, course_id, version)
         quiz_attempt_submitted = self.mapper.get_quizz_attempt_submitted(connector, course_id, version)
         quiz_attempt_reviewed = self.mapper.get_quizz_attempt_reviewd(connector, course_id, version)
-        print('OK')
+
         '''
             Tratamento dos dados
         '''
@@ -183,14 +183,16 @@ class Cognitive(Indicator):
         total = analysis_config["total"]
         df = pd.DataFrame(columns=['course_id', 'full_name', 'assign_level', 'forum_level', 'quiz_level', 'user_id'])
 
+        if processed == 0:
+            processed = 1 
+
         # Processar cursos a partir do ponto onde parou
         for i in range(processed + 1, total + 1):
             result = self.course_analysis(i, version, connector)
-            print("Chegou aqui 1")
             df = pd.concat([df, result], ignore_index=True)
             analysis_config["processed"] += 1
 
-            self.print_load("Cognitivo", analysis_config["processed"], total, 5)
+            self.print_load("Cognitivo", analysis_config["processed"], total, 8)
 
             # Quando atingir batch_size, salvar e retornar
             if analysis_config["processed"] % batch_size == 0:
@@ -213,22 +215,22 @@ class Cognitive(Indicator):
 
                 return analysis_config
             
-            if not df.empty:
-                df_counts = (
-                    df.groupby(['course_id', 'assign_level', 'forum_level', 'quiz_level'])
-                    .size()
-                    .unstack(fill_value=0)
-                    .reset_index()
-                )
+        if not df.empty:
+            df_counts = (
+                df.groupby(['course_id', 'assign_level', 'forum_level', 'quiz_level'])
+                .size()
+                .unstack(fill_value=0)
+                .reset_index()
+            )
 
-                df_counts.columns = (
-                    df_counts.columns.str.strip()  
-                    .str.lower()                   
-                    .str.replace(" ", "_")        
-                )
+            df_counts.columns = (
+                df_counts.columns.str.strip()  
+                .str.lower()                   
+                .str.replace(" ", "_")        
+            )
 
-                df_counts["s_user"] = 1 
+            df_counts["s_user"] = 1 
 
-                df_counts.to_sql("cognitive_global", engine, if_exists="append", index=False)
-            
-            return analysis_config
+            df_counts.to_sql("cognitive_global", engine, if_exists="append", index=False)
+        
+        return analysis_config

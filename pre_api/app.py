@@ -48,19 +48,6 @@ def course_summary(id):
         return jsonify({"data": data}), 200
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
-# @app.route("/analysis/course/<int:id>/summary", methods=["GET"])
-# def course_summary(id):
-#     try:
-#         data = build_course_summary(id)  
-#         if not data:
-#             return jsonify({"data": {}, "error": f"there is no course with id {id}"}), 404
-#         return jsonify({"data": data}), 200
-#     except FileNotFoundError:
-#         return jsonify({"error": "file not found"}), 404
-#     except json.JSONDecodeError:
-#         return jsonify({"error": "error to decode json"}), 500
-#     except Exception as e:
-#         return jsonify({"error": f"internal error: {e}"}), 500
         
 
 @app.route("/analysis/general-data/<id>", methods=["GET"])

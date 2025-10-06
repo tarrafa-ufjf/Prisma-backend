@@ -24,14 +24,11 @@ def build_course_summary(course_id: int):
     processor_db = DatabaseAdmin()
     analyzer = Analyzer()
 
-    # pega configs/conexão e versão
     db_config = processor_db.get_db_config_from_database(1)
     connector = processor_db.get_connection_with_config(db_config)
     try:
         version = analyzer.get_moodle_version(connector)
-        # chama o summary da Analyzer (tipo 'course')
         data = analyzer.summary_analysis(course_id, 'course', version, connector)
-        # `summary_analysis` retorna o dict montado pelo Summary.course_analysis
         return data
     finally:
         try:

@@ -1,4 +1,6 @@
 from flask import request, jsonify, Flask, send_file
+from src.analysis_lib.analysis.analysis import Analyzer
+from database import DatabaseAdmin
 from processor import Processor
 from flasgger import Swagger
 import json
@@ -13,8 +15,53 @@ indicator_index_translate = {"engagement": 1,
                               "pedagogic": 4,
                               "cognitive": 5}
 load_dotenv()
+analyzer = Analyzer()
 
 indicators = ["engagement", "performance", "motivation", "cognitive"]
+
+
+def build_course_summary(course_id: int):
+    processor_db = DatabaseAdmin()
+    analyzer = Analyzer()
+
+    # pega configs/conexão e versão
+    db_config = processor_db.get_db_config_from_database(1)
+    connector = processor_db.get_connection_with_config(db_config)
+    try:
+        version = analyzer.get_moodle_version(connector)
+        # chama o summary da Analyzer (tipo 'course')
+        data = analyzer.summary_analysis(course_id, 'course', version, connector)
+        # `summary_analysis` retorna o dict montado pelo Summary.course_analysis
+        return data
+    finally:
+        try:
+            connector.close()
+        except Exception:
+            pass
+
+@app.route("/analysis/course/<int:id>/summary", methods=["GET"])
+def course_summary(id):
+    try:
+        data = build_course_summary(id)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no course with id {id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+# @app.route("/analysis/course/<int:id>/summary", methods=["GET"])
+# def course_summary(id):
+#     try:
+#         data = build_course_summary(id)  
+#         if not data:
+#             return jsonify({"data": {}, "error": f"there is no course with id {id}"}), 404
+#         return jsonify({"data": data}), 200
+#     except FileNotFoundError:
+#         return jsonify({"error": "file not found"}), 404
+#     except json.JSONDecodeError:
+#         return jsonify({"error": "error to decode json"}), 500
+#     except Exception as e:
+#         return jsonify({"error": f"internal error: {e}"}), 500
+        
 
 @app.route("/analysis/general-data/<id>", methods=["GET"])
 def courseGeneralData(id):

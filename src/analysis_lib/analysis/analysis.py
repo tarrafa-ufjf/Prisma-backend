@@ -90,3 +90,15 @@ class Analyzer:
             res = cognitive.course_analysis(course_id, version, connector)
 
         return res
+    
+    def summary_analysis(self, course_id, type_query, version, connector):
+        from .Summary.summary import Summary
+        summary = Summary(self.mapper)
+        res = None
+
+        if type_query == 'user':
+            pass
+        elif type_query == 'course': 
+            res = summary.course_analysis(course_id, version, connector)
+
+        return res

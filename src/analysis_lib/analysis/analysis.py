@@ -102,3 +102,15 @@ class Analyzer:
             res = summary.subject_analysis(subject_id, version, connector)
 
         return res
+    
+    def info_graphs_analysis(self, subject_id, type_query, version, connector):
+        from .Info_Graphs.info_graphs import Info_Graphs
+        info_graphs = Info_Graphs(self.mapper)
+        res = None
+
+        if type_query == 'user':
+            pass
+        elif type_query == 'subject': 
+            res = info_graphs.info_graphs(subject_id, version, connector)
+
+        return res

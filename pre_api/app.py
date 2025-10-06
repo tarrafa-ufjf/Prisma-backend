@@ -1,6 +1,7 @@
 from flask import request, jsonify, Flask, send_file
 from src.analysis_lib.analysis.analysis import Analyzer
 from pre_api.services.build_subject_summary import build_subject_summary
+from pre_api.services.build_subject_info_graphs import build_subject_info_graphs
 from database import DatabaseAdmin
 from processor import Processor
 from flasgger import Swagger
@@ -24,6 +25,16 @@ indicators = ["engagement", "performance", "motivation", "cognitive"]
 def subject_summary(id):
     try:
         data = build_subject_summary(id)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/subject/<int:id>/info_graphs", methods=["GET"])
+def subject_info_graphs(id):
+    try:
+        data = build_subject_info_graphs(id)
         if not data:
             return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
         return jsonify({"data": data}), 200

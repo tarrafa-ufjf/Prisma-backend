@@ -625,5 +625,34 @@ class Moodle31(Moodle):
         }]
         df = pd.DataFrame(data)
         return df
-        
-        
+    
+    def get_pct_usage_resource(self, subject_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT
+                    cm.course AS subject_id,
+                    m.name    AS modulo,
+                    COUNT(*)  AS qtd,
+                    ROUND(100.0 * COUNT(*) / 
+                    (
+                        SELECT COUNT(*)
+                        FROM mdl_course_modules cm2
+                        JOIN mdl_context ctx2
+                            ON ctx2.contextlevel = 50
+                        AND ctx2.instanceid   = cm2.course
+                        WHERE cm2.course = cm.course
+                        ),
+                        2
+                    ) AS pct_modulo_no_curso
+                FROM mdl_course_modules cm
+                JOIN mdl_modules m  ON m.id  = cm.module
+                JOIN mdl_context ctx ON ctx.contextlevel = 50 AND ctx.instanceid = cm.course
+                WHERE cm.course = %s
+                GROUP BY cm.course, m.name
+                ORDER BY pct_modulo_no_curso DESC, m.name;
+            ''', (subject_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df

@@ -116,10 +116,10 @@ class Mapper:
         moodle = self.get_moodle(connector, version)
         return moodle.get_quizz_attempt_reviewd(course_id)
     
-    def fetch_course_info(self, connector, course_id, version):
+    def fetch_class_info(self, connector, class_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_course_info(course_id)
+        return moodle.fetch_class_info(class_id)
     
-    def fetch_course_metrics(self, connector, course_id, version):
+    def fetch_class_metrics(self, connector, class_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_course_metrics(course_id)
+        return moodle.fetch_class_metrics(class_id)

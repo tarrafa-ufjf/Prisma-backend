@@ -3,7 +3,7 @@ from typing import Any, Dict
 from database import DatabaseAdmin, Database  
 from src.analysis_lib.analysis.analysis import Analyzer  
 
-def build_course_summary(course_id: int):
+def build_class_summary(class_id: int):
     processor_db = DatabaseAdmin()
     analyzer = Analyzer()
 
@@ -11,7 +11,7 @@ def build_course_summary(course_id: int):
     connector = processor_db.get_connection_with_config(db_config)
     try:
         version = analyzer.get_moodle_version(connector)
-        data = analyzer.summary_analysis(course_id, 'course', version, connector)
+        data = analyzer.summary_analysis(class_id, 'class', version, connector)
         return data
     finally:
         try:

@@ -547,24 +547,24 @@ class Moodle31(Moodle):
     '''
     Consultas relacionadas as informações gerais das disciplinas para povoar as telas:
     '''
-    def fetch_course_info(self, course_id):
+    def fetch_class_info(self, class_id):
         conn = self.connector
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT
-                    c.id        AS course_id,
+                    c.id        AS class_id,
                     c.fullname  AS name,
                     c.shortname AS abrev,
                     FROM_UNIXTIME(c.timecreated) AS date
                 FROM mdl_course c
                 WHERE c.id = %s;
-            ''', (course_id,))
+            ''', (class_id,))
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def fetch_course_metrics(self, course_id):
+    def fetch_class_metrics(self, class_id):
         conn = self.connector
         with conn.cursor() as cur:
             # 1) Total de alunos
@@ -578,7 +578,7 @@ class Moodle31(Moodle):
                 WHERE e.courseid = %s
                 AND ctx.contextlevel = 50
                 AND r.archetype = 'student';
-            ''', (course_id,))
+            ''', (class_id,))
             total_rows = cur.fetchall()
             total_enrolled = total_rows[0]["total_enrolled"] if total_rows else 0
 
@@ -589,7 +589,7 @@ class Moodle31(Moodle):
                 JOIN mdl_grade_items gi ON gi.id = gg.itemid
                 WHERE gi.itemtype = 'course'
                 AND gi.courseid = %s;
-            ''', (course_id,))
+            ''', (class_id,))
             avg_rows = cur.fetchall()
             avg_grade_all = avg_rows[0]["avg_grade_all"] if avg_rows else None
 
@@ -614,7 +614,7 @@ class Moodle31(Moodle):
                 ) students
                 JOIN mdl_grade_items gi ON gi.courseid = %s AND gi.itemtype = 'course'
                 LEFT JOIN mdl_grade_grades gg ON gg.itemid = gi.id AND gg.userid = students.userid;
-            ''', (course_id, course_id))
+            ''', (class_id, class_id))
             rate_rows = cur.fetchall()
             taxa_aprovacao = rate_rows[0]["taxa_aprovacao"] if rate_rows else None
 

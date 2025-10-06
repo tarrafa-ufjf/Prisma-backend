@@ -91,14 +91,14 @@ class Analyzer:
 
         return res
     
-    def summary_analysis(self, course_id, type_query, version, connector):
+    def summary_analysis(self, class_id, type_query, version, connector):
         from .Summary.summary import Summary
         summary = Summary(self.mapper)
         res = None
 
         if type_query == 'user':
             pass
-        elif type_query == 'course': 
-            res = summary.course_analysis(course_id, version, connector)
+        elif type_query == 'class': 
+            res = summary.class_analysis(class_id, version, connector)
 
         return res

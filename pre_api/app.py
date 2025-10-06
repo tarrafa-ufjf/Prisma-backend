@@ -1,6 +1,6 @@
 from flask import request, jsonify, Flask, send_file
 from src.analysis_lib.analysis.analysis import Analyzer
-from services.build_course_summary import build_course_summary
+from pre_api.services.build_class_summary import build_class_summary
 from database import DatabaseAdmin
 from processor import Processor
 from flasgger import Swagger
@@ -20,12 +20,12 @@ analyzer = Analyzer()
 
 indicators = ["engagement", "performance", "motivation", "cognitive"]
 
-@app.route("/analysis/course/<int:id>/summary", methods=["GET"])
-def course_summary(id):
+@app.route("/analysis/class/<int:id>/summary", methods=["GET"])
+def class_summary(id):
     try:
-        data = build_course_summary(id)
+        data = build_class_summary(id)
         if not data:
-            return jsonify({"data": {}, "error": f"there is no course with id {id}"}), 404
+            return jsonify({"data": {}, "error": f"there is no class with id {id}"}), 404
         return jsonify({"data": data}), 200
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500

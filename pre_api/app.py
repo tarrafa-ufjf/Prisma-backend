@@ -1,5 +1,6 @@
 from flask import request, jsonify, Flask, send_file
 from src.analysis_lib.analysis.analysis import Analyzer
+from services.build_course_summary import build_course_summary
 from database import DatabaseAdmin
 from processor import Processor
 from flasgger import Swagger
@@ -18,23 +19,6 @@ load_dotenv()
 analyzer = Analyzer()
 
 indicators = ["engagement", "performance", "motivation", "cognitive"]
-
-
-def build_course_summary(course_id: int):
-    processor_db = DatabaseAdmin()
-    analyzer = Analyzer()
-
-    db_config = processor_db.get_db_config_from_database(1)
-    connector = processor_db.get_connection_with_config(db_config)
-    try:
-        version = analyzer.get_moodle_version(connector)
-        data = analyzer.summary_analysis(course_id, 'course', version, connector)
-        return data
-    finally:
-        try:
-            connector.close()
-        except Exception:
-            pass
 
 @app.route("/analysis/course/<int:id>/summary", methods=["GET"])
 def course_summary(id):

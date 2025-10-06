@@ -1,3 +1,3 @@
-from .build_class_summary import build_class_summary
+from .build_subject_summary import build_subject_summary
 
-__all__ = ["build_class_summary"]
+__all__ = ["build_subject_summary"]

@@ -127,7 +127,3 @@ class Mapper:
     def get_pct_usage_resource(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
         return moodle.get_pct_usage_resource(subject_id)
-    
-    # def get_student_status_counts(self, connector, subject_id, version):
-    #     moodle = self.get_moodle(connector, version)
-    #     return moodle.fetch_subject_metrics(subject_id)

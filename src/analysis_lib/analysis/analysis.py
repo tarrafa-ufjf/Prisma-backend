@@ -125,3 +125,9 @@ class Analyzer:
             return rankings.subject_analysis(entity_id, version, connector, kind=kind, limit=limit)
         else:
             raise ValueError("invalid scope")
+        
+    def get_all_subjects(self, version, connector):
+        from .General.subjects import Subjects
+        subjects = Subjects(self.mapper)
+
+        return subjects.get_subjects(version, connector)

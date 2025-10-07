@@ -656,3 +656,20 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
+    
+    def get_all_subjects(self):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT
+                    c.id                           AS id,
+                    c.fullname                     AS fullname,
+                    c.shortname                    AS shortname,
+                    c.startdate                    AS startdate
+                FROM mdl_course c
+                WHERE c.id <> 1;
+            ''', ())
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df

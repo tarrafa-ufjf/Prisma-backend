@@ -3,6 +3,7 @@ from src.analysis_lib.analysis.analysis import Analyzer
 from pre_api.services.build_subject_summary import build_subject_summary
 from pre_api.services.build_subject_info_graphs import build_subject_info_graphs
 from pre_api.services.build_subject_rankings import build_subject_rankings
+from pre_api.services.build_all_subjects import build_all_subjects
 from database import DatabaseAdmin
 from processor import Processor
 from flasgger import Swagger
@@ -21,6 +22,16 @@ load_dotenv()
 analyzer = Analyzer()
 
 indicators = ["engagement", "performance", "motivation", "cognitive"]
+
+@app.route("/subjects", methods=["GET"])
+def get_all_subjects():
+    try:
+        data = build_all_subjects()
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
 
 @app.route("/analysis/subject/<int:id>/summary", methods=["GET"])
 def subject_summary(id):

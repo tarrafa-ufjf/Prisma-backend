@@ -19,14 +19,14 @@ class Indicator:
         )
         return engine
     
-    def insert_global_analysis_status(self, s_user: int, course_id: int, indicator: int, status: str):
+    def insert_global_analysis_status(self, institution_id: int, subject_id: int, indicator: int, status: str):
         engine = self.get_connector()
         global_analysis = self.get_global_analysis_table()
 
         with engine.connect() as conn:
             insert_stmt = global_analysis.insert().values(
-                s_user=s_user,
-                course_id=course_id,
+                institution_id=institution_id,
+                subject_id=subject_id,
                 indicator=indicator,
                 status=status
             )
@@ -37,8 +37,8 @@ class Indicator:
         metadata = MetaData()
         global_analysis = Table(
             'gl_indicators_status', metadata,
-            Column('s_user', Integer, primary_key=True),
-            Column('course_id', Integer, primary_key=True),
+            Column('institution_id', Integer, primary_key=True),
+            Column('subject_id', Integer, primary_key=True),
             Column('indicator', Integer, primary_key=True),
             Column('status', String(1), nullable=False)
         )

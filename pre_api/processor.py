@@ -42,7 +42,7 @@ class Processor:
                 time.sleep(0.25)
         return res
 
-    def wait_until_done(self, s_user, indicator, status, poll_interval=2):
+    def wait_until_done(self, institution_id, indicator, status, poll_interval=2):
         engine = self.db_admin.get_connector()
         global_analysis = self.db_admin.get_global_analysis_table()
 
@@ -50,7 +50,7 @@ class Processor:
             with engine.connect() as conn:
                 query = select(global_analysis.c.status).where(
                     and_(
-                        global_analysis.c.s_user == s_user,
+                        global_analysis.c.institution_id == institution_id,
                         global_analysis.c.status == status,
                         global_analysis.c.indicator == indicator
                     )
@@ -64,14 +64,14 @@ class Processor:
 
     def handle_analysis(self, analysis_type, global_fn, request, indicator_index=0):
         version = self.db_admin.get_version_in_database(1)
-        course_id = request.args.get("id", type=int)
+        subject_id = request.args.get("id", type=int)
         type_ = request.args.get("query")
         db_config = self.db_admin.get_db_config_from_database(1)
 
-        if not course_id and type_ != "general":
+        if not subject_id and type_ != "general":
             return {"error": "Course ID is required"}, 400
 
-        analysis_config = {"query": type_, "id": course_id}
+        analysis_config = {"query": type_, "id": subject_id}
         if type_ != "general":
             name = f"user:{analysis_type}"
             task = {
@@ -89,15 +89,15 @@ class Processor:
             self.wait_until_done(1, indicator_index, "D")
 
             if global_fn == 'get_all_from_table':
-                rows = self.db_admin.get_all_from_table(analysis_type, user_id=1)
+                rows = self.db_admin.get_all_from_table(analysis_type, institution_id=1)
             elif global_fn == 'get_all_performance_global':
-                rows = self.get_all_performance_global(user_id=1)
+                rows = self.get_all_performance_global(institution_id=1)
             elif global_fn == 'get_all_engajamento_global':
-                rows = self.get_all_engajamento_global(user_id=1)
+                rows = self.get_all_engajamento_global(institution_id=1)
             elif global_fn == 'get_all_motivation_global':
-                rows = self.get_all_motivation_global(user_id=1)
+                rows = self.get_all_motivation_global(institution_id=1)
             elif global_fn == 'get_all_pedagogic_global':
-                rows = self.get_all_pedagogic_global(user_id=1)
+                rows = self.get_all_pedagogic_global(institution_id=1)
 
             data = [dict(row) for row in rows]
             return data, 200
@@ -130,17 +130,17 @@ class Processor:
         data = response.to_dict(orient='records')
         return data
     
-    def get_all_engajamento_global(self, user_id=1):
-        return self.db_admin.get_all_from_table("engajamento_global", user_id)
+    def get_all_engajamento_global(self, institution_id=1):
+        return self.db_admin.get_all_from_table("engajamento_global", institution_id)
 
-    def get_all_performance_global(self, user_id=1):
-        return self.db_admin.get_all_from_table("performance_global", user_id)
+    def get_all_performance_global(self, institution_id=1):
+        return self.db_admin.get_all_from_table("performance_global", institution_id)
 
-    def get_all_motivation_global(self, user_id=1):
-        return self.db_admin.get_all_from_table("motivation_global", user_id)
+    def get_all_motivation_global(self, institution_id=1):
+        return self.db_admin.get_all_from_table("motivation_global", institution_id)
 
-    def get_all_pedagogic_global(self, user_id=1):
-        return self.db_admin.get_all_from_table("pedagogic_global", user_id)
+    def get_all_pedagogic_global(self, institution_id=1):
+        return self.db_admin.get_all_from_table("pedagogic_global", institution_id)
     
     def set_global_analysis(self, indicators, db_config=None):
         counter = 1
@@ -167,8 +167,8 @@ class Processor:
             # except Exception as e:
             #     print(f"Erro ao inserir status para {indicator}: {e}")
 
-    def get_version(self, user_id=1, db_config=None):
-        version = self.db_admin.get_version_in_database(user_id)
+    def get_version(self, institution_id=1, db_config=None):
+        version = self.db_admin.get_version_in_database(institution_id)
         if version is None:
             connector = self.connector_inst.get_connection_with_config(db_config)
             version = self.analysis.get_moodle_version(connector)

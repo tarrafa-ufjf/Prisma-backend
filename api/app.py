@@ -31,26 +31,26 @@ def get_global_analysis_table():
     metadata = MetaData()
     global_analysis = Table(
         'gl_indicators_status', metadata,
-        Column('s_user', Integer, primary_key=True),
+        Column('institution_id', Integer, primary_key=True),
         Column('indicator', Integer, primary_key=True),
         Column('status', String(1), nullable=False)
     )
     return global_analysis
 
-def insert_global_analysis_status(s_user: int, indicator: int, status: str):
+def insert_global_analysis_status(institution_id: int, indicator: int, status: str):
     engine = get_connector()
     global_analysis = get_global_analysis_table()
 
     with engine.connect() as conn:
         insert_stmt = global_analysis.insert().values(
-            s_user=s_user,
+            institution_id=institution_id,
             indicator=indicator,
             status=status
         )
         conn.execute(insert_stmt)
         conn.commit()
 
-def wait_until_done(s_user, indicator, status, poll_interval=2):
+def wait_until_done(institution_id, indicator, status, poll_interval=2):
     engine = get_connector()
     global_analysis = get_global_analysis_table()
 
@@ -58,7 +58,7 @@ def wait_until_done(s_user, indicator, status, poll_interval=2):
         with engine.connect() as conn:
             query = select(global_analysis.c.status).where(
                 and_(
-                    global_analysis.c.s_user == s_user,
+                    global_analysis.c.institution_id == institution_id,
                     global_analysis.c.status == status,
                     global_analysis.c.indicator == indicator
                 )
@@ -70,13 +70,13 @@ def wait_until_done(s_user, indicator, status, poll_interval=2):
 
         time.sleep(poll_interval)  # espera antes de checar de novo
 
-def get_db_config_from_database(user_id: int):
+def get_db_config_from_database(institution_id: int):
     engine = get_connector()
     metadata = MetaData()
     configs = Table("configs", metadata, autoload_with=engine)
 
     with engine.connect() as conn:
-        query = select(configs).where(configs.c.s_user == user_id)
+        query = select(configs).where(configs.c.institution_id == institution_id)
         result = conn.execute(query).mappings().first()  # pega apenas o primeiro
 
         if result:
@@ -96,15 +96,15 @@ def handle_analysis(analysis_type, global_fn, indicator_index=0):
 
     version = get_version_in_database(1)
 
-    db_config = get_db_config_from_database(user_id=1)
+    db_config = get_db_config_from_database(institution_id=1)
 
-    course_id = request.args.get("id", type=int)
+    subject_id = request.args.get("id", type=int)
     type_ = request.args.get("query")
 
-    if not course_id and type_ != "general":
+    if not subject_id and type_ != "general":
         return jsonify({"error": "Course ID is required"}), 400
 
-    analysis_config = {"type": type_, "id": course_id}
+    analysis_config = {"type": type_, "id": subject_id}
 
     if type_ != "general":
         name = f"user:{analysis_type}"
@@ -201,15 +201,15 @@ def handleAnalysis():
     data = request.get_json()
     version = get_version_in_database(1)
 
-    db_config = get_db_config_from_database(user_id=1)
+    db_config = get_db_config_from_database(institution_id=1)
 
-    course_id = data["id"]
+    subject_id = data["id"]
     type_ = data["query"]
 
-    if not course_id and type_ != "general":
+    if not subject_id and type_ != "general":
         return jsonify({"error": "Course ID is required"}), 400
 
-    analysis_config = {"type": type_, "id": course_id}
+    analysis_config = {"type": type_, "id": subject_id}
 
     if type_ != "general":
         name = f"user:{data['analysis_type']}"
@@ -231,13 +231,13 @@ def handleAnalysis():
         data = [dict(row) for row in rows]
         return jsonify(data), 200
 
-def get_all_from_table(table_name, user_id=1):
+def get_all_from_table(table_name, institution_id=1):
     engine = get_connector()
     metadata = MetaData()
     table = Table(table_name, metadata, autoload_with=engine)
 
     with engine.connect() as conn:
-        query = select(table).where(table.c.s_user == user_id)  # TODO
+        query = select(table).where(table.c.institution_id == institution_id)  # TODO
         return conn.execute(query).mappings().all()
 
 #Função que retorna o valor da versão do Moodle
@@ -295,19 +295,19 @@ def pedagogic(message):
     return res.to_dict(orient="records")
 
 
-def get_all_engajamento_global(user_id=1):
-    return get_all_from_table("engajamento_global", user_id)
+def get_all_engajamento_global(institution_id=1):
+    return get_all_from_table("engajamento_global", institution_id)
 
 
-def get_all_performance_global(user_id=1):
-    return get_all_from_table("performance_global", user_id)
+def get_all_performance_global(institution_id=1):
+    return get_all_from_table("performance_global", institution_id)
 
 
-def get_all_motivation_global(user_id=1):
-    return get_all_from_table("motivation_global", user_id)
+def get_all_motivation_global(institution_id=1):
+    return get_all_from_table("motivation_global", institution_id)
 
-def get_all_pedagogic_global(user_id=1):
-    return get_all_from_table("pedagogic_global", user_id)
+def get_all_pedagogic_global(institution_id=1):
+    return get_all_from_table("pedagogic_global", institution_id)
 
 def get_version_in_database(user):
     engine = get_connector()
@@ -315,7 +315,7 @@ def get_version_in_database(user):
     configs = Table("configs", metadata, autoload_with=engine)
 
     with engine.connect() as conn:
-        query = select(configs).where(configs.c.s_user == user)
+        query = select(configs).where(configs.c.institution_id == user)
         result = conn.execute(query).mappings().all()  # retorna lista de dicts
         if len(result) > 0:
             return result[0]['version']
@@ -330,7 +330,7 @@ def insert_version_in_database(user, version, db_config):
 
     with engine.connect() as conn:
         insert_stmt = configs.insert().values(
-            s_user=user,
+            institution_id=user,
             version=version,
             host=db_config['host'],
             port=db_config['port'],
@@ -347,7 +347,7 @@ def verify_if_there_is_version_in_database(user):
     configs = Table("configs", metadata, autoload_with=engine)
 
     with engine.connect() as conn:
-        query = select(configs).where(configs.c.s_user == user)
+        query = select(configs).where(configs.c.institution_id == user)
         result = conn.execute(query).mappings().all()  # retorna lista de dicts
         if len(result) > 0:
             return True

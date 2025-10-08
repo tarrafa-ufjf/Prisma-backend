@@ -10,13 +10,13 @@ def get_courses():
     connector.close()
     return jsonify(coursers), 200
 
-@app.route('/course/<int:course_id>')
-def get_course(course_id):
+@app.route('/course/<int:subject_id>')
+def get_course(subject_id):
     connector = conn.get_connection()
     with connector.cursor() as cursor:
         cursor.execute('''
             SELECT DISTINCT 
-                u.id AS user_id,
+                u.id AS institution_id,
                 u.firstname,
                 lh.objectid AS forum_id,
                 FROM_UNIXTIME(lh.timecreated) AS timestamp
@@ -29,7 +29,7 @@ def get_course(course_id):
             AND lh.eventname LIKE '%%course_module_viewed%%'
             AND lh.component = 'mod_forum'
             AND r.archetype = 'student';
-        ''', course_id)
+        ''', subject_id)
         
         courses = cursor.fetchall()
         df = pd.DataFrame(courses)

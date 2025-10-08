@@ -8,19 +8,47 @@ class Motivation(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
 
-    def course_analysis(self, course_id, version, connector):
-        df_posts = self.mapper.get_foruns_non_required(connector, course_id, version)
-        df_alunos = self.mapper.get_all_students(connector, course_id, version)
+    def course_analysis(self, subject_id, version, connector):
+        df_posts = self.mapper.get_foruns_non_required(connector, subject_id, version)
+        df_alunos = self.mapper.get_all_students(connector, subject_id, version)
 
-        df_alunos["course_id"] = course_id
+        df_alunos["subject_id"] = subject_id
 
-        posts_por_usuario = df_posts.groupby('user_id')['post_id_unrequired'].count().reset_index()
+        posts_por_usuario = df_posts.groupby('institution_id')['post_id_unrequired'].count().reset_index()
         posts_por_usuario = posts_por_usuario.rename(columns={'post_id_unrequired': 'num_posts_unrequired'})
 
-        df_final = df_alunos.merge(posts_por_usuario, on='user_id', how='left')
+        df_final = df_alunos.merge(posts_por_usuario, on='institution_id', how='left')
         df_final['num_posts_unrequired'] = df_final['num_posts_unrequired'].fillna(0).astype(int) 
 
         return df_final
+    
+    def discrete_analysis(self, subject_id, version, connector):
+        df_sit = self.course_analysis(subject_id, version, connector)
+        q1 = df_sit["num_posts_unrequired"].quantile(0.25)
+        q3 = df_sit["num_posts_unrequired"].quantile(0.75)
+        q2 = df_sit["num_posts_unrequired"].quantile(0.5)
+
+        iqr = q3 - q1
+        lim_inf = q1 - 1.5 * iqr
+        lim_sup = q3 + 1.5 * iqr
+
+        def discretize(x, lim_inf, q1, q3, lim_sup):
+            if x <= lim_inf:
+                return "muito_baixo"
+            elif x <= q1:
+                return "baixo"
+            elif x <= q3:
+                return "medio"
+            elif x <= lim_sup:
+                return "alto"
+            else:
+                return "muito_alto"
+
+        df_sit["label"] = df_sit["num_posts_unrequired"].apply(
+            lambda x: discretize(x, lim_inf, q1, q3, lim_sup)
+        )
+
+        return df_sit[['institution_id', 'subject_id','label']]
     
     def general_analysis(self, version, connector, analysis_config):
         batch_size = analysis_config["batch_size"]
@@ -29,14 +57,14 @@ class Motivation(Indicator):
 
         if analysis_config["total"] == 0:
             df_courses = self.mapper.get_courses(connector, version)  
-            df_courses = pd.DataFrame(df_courses, columns=['course_id'])
+            df_courses = pd.DataFrame(df_courses, columns=['subject_id'])
             analysis_config["total"] = len(df_courses)
 
         total = analysis_config["total"]
-        df = pd.DataFrame(columns=['user_id', 'course_id', 'forum_id_unrequired', 'num_posts_unrequired', 'full_name'])
+        df = pd.DataFrame(columns=['institution_id', 'subject_id','label'])
 
         for i in range(processed + 1, total + 1):
-            result = self.course_analysis(i, version, connector)
+            result = self.discrete_analysis(i, version, connector)
             result = self._fillna_mixed(result)
             df = pd.concat([df, result], ignore_index=True)
             analysis_config["processed"] += 1
@@ -68,18 +96,32 @@ class Motivation(Indicator):
     def _insert_ignore_conflicts(self, df, engine, table_name):
         """Insere no banco ignorando duplicatas (PostgreSQL)."""
         df = df.infer_objects(copy=False)
-        df["s_user"] = 1
+        df["institution_id"] = 1
 
-        # Substitui NaN ou None por 0 em todas as colunas inteiras
-        for col in df.select_dtypes(include=['int64', 'float64']).columns:
-            df[col] = df[col].fillna(0).astype(int)
+        df_counts = (
+            df.groupby(["institution_id", "subject_id", "label"])
+            .size()
+            .unstack(fill_value=0)
+            .reset_index()
+        )
+
+        labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
+        for lbl in labels:
+            if lbl not in df_counts.columns:
+                df_counts[lbl] = 0
+
+        df_counts = df_counts[["institution_id", "subject_id"] + labels]
+
+        metadata = MetaData()
+        metadata.reflect(bind=engine, only=[table_name])
+        table = metadata.tables[table_name]
 
         metadata = MetaData()
         metadata.reflect(bind=engine, only=[table_name])
         table = metadata.tables[table_name]
 
         with engine.begin() as conn:
-            for _, row in df.iterrows():
+            for _, row in df_counts.iterrows():
                 stmt = insert(table).values(row.to_dict())
                 stmt = stmt.on_conflict_do_nothing()  # IGNORA duplicatas
                 conn.execute(stmt)

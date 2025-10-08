@@ -67,7 +67,7 @@ As mensagens das tarefas foram padronizadas para que o seu consumo e leitura sej
         "db_inst_config" : db_config,
         "analysis_config" : {
             "type" : request.args.get('performance-query'),
-            "id" : course_id
+            "id" : subject_id
         },
         "type" : "performance",
     }

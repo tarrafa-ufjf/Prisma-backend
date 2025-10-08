@@ -5,37 +5,37 @@ class Cognitive(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
     
-    def course_analysis(self, course_id, version, connector):
-        all_students = self.mapper.get_all_students(connector, course_id, version)
+    def course_analysis(self, subject_id, version, connector):
+        all_students = self.mapper.get_all_students(connector, subject_id, version)
 
-        assign_viewed = self.mapper.get_assign_submission_status_viewed(connector, course_id, version)
-        assign_assessable_submitted = self.mapper.get_assign_assessable_submitted(connector, course_id, version)
-        assign_feedback_viewed = self.mapper.get_assign_feedback_viewed(connector, course_id, version)
+        assign_viewed = self.mapper.get_assign_submission_status_viewed(connector, subject_id, version)
+        assign_assessable_submitted = self.mapper.get_assign_assessable_submitted(connector, subject_id, version)
+        assign_feedback_viewed = self.mapper.get_assign_feedback_viewed(connector, subject_id, version)
 
-        forum_course_viewed = self.mapper.get_course_forum_viewed(connector, course_id, version)
-        forum_post_created = self.mapper.get_forum_post_created(connector, course_id, version)
-        forum_reply_viewed = self.mapper.forum_reply_viewed(connector, course_id, version)
+        forum_course_viewed = self.mapper.get_course_forum_viewed(connector, subject_id, version)
+        forum_post_created = self.mapper.get_forum_post_created(connector, subject_id, version)
+        forum_reply_viewed = self.mapper.forum_reply_viewed(connector, subject_id, version)
 
-        quiz_viewed = self.mapper.get_quizz_viewed(connector, course_id, version)
-        quiz_attempt_submitted = self.mapper.get_quizz_attempt_submitted(connector, course_id, version)
-        quiz_attempt_reviewed = self.mapper.get_quizz_attempt_reviewd(connector, course_id, version)
+        quiz_viewed = self.mapper.get_quizz_viewed(connector, subject_id, version)
+        quiz_attempt_submitted = self.mapper.get_quizz_attempt_submitted(connector, subject_id, version)
+        quiz_attempt_reviewed = self.mapper.get_quizz_attempt_reviewd(connector, subject_id, version)
 
         '''
             Tratamento dos dados
         '''
 
-        assign_viewed_grouped = (assign_viewed.groupby(['user_id', 'assignment_id'])['timestamp'].count().reset_index(name='count_recorrences'))
-        assign_submitted_grouped = (assign_assessable_submitted.groupby(['user_id', 'assignment_id'])['timestamp'].count().reset_index(name='count'))
+        assign_viewed_grouped = (assign_viewed.groupby(['institution_id', 'assignment_id'])['timestamp'].count().reset_index(name='count_recorrences'))
+        assign_submitted_grouped = (assign_assessable_submitted.groupby(['institution_id', 'assignment_id'])['timestamp'].count().reset_index(name='count'))
         if(not assign_feedback_viewed.empty):
-            assign_feedback_viewed_grouped = (assign_feedback_viewed.groupby(['user_id', 'assignment_id'])['timestamp'].count().reset_index(name='count'))
+            assign_feedback_viewed_grouped = (assign_feedback_viewed.groupby(['institution_id', 'assignment_id'])['timestamp'].count().reset_index(name='count'))
 
-        forum_course_viewed_grouped = (forum_course_viewed.groupby(['user_id', 'forum_id'])['timestamp'].count().reset_index(name='count'))
-        forum_post_created_grouped = (forum_post_created.groupby(['user_id', 'forum_id'])['timestamp'].count().reset_index(name='count'))
-        forum_reply_viewed_grouped = (forum_reply_viewed.groupby(['user_id', 'original_post_id'])['timestamp'].count().reset_index(name='count'))
+        forum_course_viewed_grouped = (forum_course_viewed.groupby(['institution_id', 'forum_id'])['timestamp'].count().reset_index(name='count'))
+        forum_post_created_grouped = (forum_post_created.groupby(['institution_id', 'forum_id'])['timestamp'].count().reset_index(name='count'))
+        forum_reply_viewed_grouped = (forum_reply_viewed.groupby(['institution_id', 'original_post_id'])['timestamp'].count().reset_index(name='count'))
 
-        quiz_viewed_grouped = (quiz_viewed.groupby(['user_id', 'quiz_id'])['timestamp'].count().reset_index(name='count'))
-        quiz_attempt_submitted_grouped = (quiz_attempt_submitted.groupby(['user_id', 'quiz_id'])['timestamp'].count().reset_index(name='count'))
-        quiz_attempt_reviewed_grouped = (quiz_attempt_reviewed.groupby(['user_id', 'quiz_id'])['timestamp'].count().reset_index(name='count'))
+        quiz_viewed_grouped = (quiz_viewed.groupby(['institution_id', 'quiz_id'])['timestamp'].count().reset_index(name='count'))
+        quiz_attempt_submitted_grouped = (quiz_attempt_submitted.groupby(['institution_id', 'quiz_id'])['timestamp'].count().reset_index(name='count'))
+        quiz_attempt_reviewed_grouped = (quiz_attempt_reviewed.groupby(['institution_id', 'quiz_id'])['timestamp'].count().reset_index(name='count'))
 
         '''
             Confere o nível de profundidade do estudante em cada atividade
@@ -58,19 +58,19 @@ class Cognitive(Indicator):
         assign_lvl3_users = set()
 
         if df_exists("assign_viewed_grouped"):
-            # pega todos os user_id presentes no DF de "visualizações" de assign
-            assign_lvl1_users = set(assign_viewed_grouped["user_id"].unique())
+            # pega todos os institution_id presentes no DF de "visualizações" de assign
+            assign_lvl1_users = set(assign_viewed_grouped["institution_id"].unique())
 
         if df_exists("assign_submitted_grouped"):
-            # pega todos os user_id presentes no DF de "submissões" de assign
-            assign_lvl2_users = set(assign_submitted_grouped["user_id"].unique())
+            # pega todos os institution_id presentes no DF de "submissões" de assign
+            assign_lvl2_users = set(assign_submitted_grouped["institution_id"].unique())
 
         if df_exists("assign_feedback_viewed_grouped"):
-            # pega todos os user_id presentes no DF de "feedback visto" de assign
-            assign_lvl3_users = set(assign_feedback_viewed_grouped["user_id"].unique())
+            # pega todos os institution_id presentes no DF de "feedback visto" de assign
+            assign_lvl3_users = set(assign_feedback_viewed_grouped["institution_id"].unique())
 
         # Agora calculamos o nível máximo do usuário em ASSIGN
-        assign_levels = {}  # user_id -> nível
+        assign_levels = {}  # institution_id -> nível
         all_assign_users = assign_lvl1_users | assign_lvl2_users | assign_lvl3_users
 
         for user in all_assign_users:
@@ -100,13 +100,13 @@ class Cognitive(Indicator):
         forum_lvl3_users = set()
 
         if df_exists("forum_course_viewed_grouped"):
-            forum_lvl1_users = set(forum_course_viewed_grouped["user_id"].unique())
+            forum_lvl1_users = set(forum_course_viewed_grouped["institution_id"].unique())
 
         if df_exists("forum_post_created_grouped"):
-            forum_lvl2_users = set(forum_post_created_grouped["user_id"].unique())
+            forum_lvl2_users = set(forum_post_created_grouped["institution_id"].unique())
 
         if df_exists("forum_reply_viewed_grouped"):
-            forum_lvl3_users = set(forum_reply_viewed_grouped["user_id"].unique())
+            forum_lvl3_users = set(forum_reply_viewed_grouped["institution_id"].unique())
 
         forum_levels = {}
         all_forum_users = forum_lvl1_users | forum_lvl2_users | forum_lvl3_users
@@ -130,13 +130,13 @@ class Cognitive(Indicator):
         quiz_lvl3_users = set()
 
         if df_exists("quiz_viewed_grouped"):
-            quiz_lvl1_users = set(quiz_viewed_grouped["user_id"].unique())
+            quiz_lvl1_users = set(quiz_viewed_grouped["institution_id"].unique())
 
         if df_exists("quiz_attempt_submitted_grouped"):
-            quiz_lvl2_users = set(quiz_attempt_submitted_grouped["user_id"].unique())
+            quiz_lvl2_users = set(quiz_attempt_submitted_grouped["institution_id"].unique())
 
         if df_exists("quiz_attempt_reviewed_grouped"):
-            quiz_lvl3_users = set(quiz_attempt_reviewed_grouped["user_id"].unique())
+            quiz_lvl3_users = set(quiz_attempt_reviewed_grouped["institution_id"].unique())
 
         quiz_levels = {}
         all_quiz_users = quiz_lvl1_users | quiz_lvl2_users | quiz_lvl3_users
@@ -154,10 +154,10 @@ class Cognitive(Indicator):
         #-----------------------------
         # 4) Compilar todos os alunos com seus níveis
         # -----------------------------
-        all_user_ids = all_students['user_id']
-        assign_list = [assign_levels.get(uid, 0) for uid in all_user_ids]
-        forum_list  = [forum_levels.get(uid, 0)  for uid in all_user_ids]
-        quiz_list   = [quiz_levels.get(uid, 0)   for uid in all_user_ids]
+        all_institution_ids = all_students['institution_id']
+        assign_list = [assign_levels.get(uid, 0) for uid in all_institution_ids]
+        forum_list  = [forum_levels.get(uid, 0)  for uid in all_institution_ids]
+        quiz_list   = [quiz_levels.get(uid, 0)   for uid in all_institution_ids]
 
         all_students_with_activities = all_students.copy()
         all_students_with_activities['assign_level'] = assign_list
@@ -177,11 +177,11 @@ class Cognitive(Indicator):
         # Se total ainda não foi definido, calcular (baseado no banco fonte)
         if analysis_config["total"] == 0:
             df_courses = self.mapper.get_courses(connector, version)  
-            df_courses = pd.DataFrame(df_courses, columns=['course_id'])
+            df_courses = pd.DataFrame(df_courses, columns=['subject_id'])
             analysis_config["total"] = len(df_courses)
 
         total = analysis_config["total"]
-        df = pd.DataFrame(columns=['course_id', 'full_name', 'assign_level', 'forum_level', 'quiz_level', 'user_id'])
+        df = pd.DataFrame(columns=['subject_id', 'full_name', 'assign_level', 'forum_level', 'quiz_level', 'institution_id'])
 
         if processed == 0:
             processed = 1 
@@ -197,7 +197,7 @@ class Cognitive(Indicator):
             # Quando atingir batch_size, salvar e retornar
             if analysis_config["processed"] % batch_size == 0:
                 df_counts = (
-                    df.groupby(['course_id', 'assign_level', 'forum_level', 'quiz_level'])
+                    df.groupby(['subject_id', 'assign_level', 'forum_level', 'quiz_level'])
                     .size()
                     .unstack(fill_value=0)
                     .reset_index()
@@ -209,7 +209,7 @@ class Cognitive(Indicator):
                     .str.replace(" ", "_")        
                 )
 
-                df_counts["s_user"] = 1 
+                df_counts["institution_id"] = 1 
 
                 df_counts.to_sql("cognitive_global", engine, if_exists="append", index=False)
 
@@ -217,7 +217,7 @@ class Cognitive(Indicator):
             
         if not df.empty:
             df_counts = (
-                df.groupby(['course_id', 'assign_level', 'forum_level', 'quiz_level'])
+                df.groupby(['subject_id', 'assign_level', 'forum_level', 'quiz_level'])
                 .size()
                 .unstack(fill_value=0)
                 .reset_index()
@@ -229,7 +229,7 @@ class Cognitive(Indicator):
                 .str.replace(" ", "_")        
             )
 
-            df_counts["s_user"] = 1 
+            df_counts["institution_id"] = 1 
 
             df_counts.to_sql("cognitive_global", engine, if_exists="append", index=False)
         

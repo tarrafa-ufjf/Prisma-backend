@@ -101,10 +101,10 @@ def continuously_listen():
 
     print(' [*] Aguardando mensagens. Para sair pressione CTRL+C')
     while True:
-        try:
-            rabbit_admin.channel.start_consuming()
-        except Exception as e:
-            print(f"Erro: {e}")
+        # try:
+        rabbit_admin.channel.start_consuming()
+        # except Exception as e:
+        #     print(f"Erro: {e}")
 
 if __name__ == '__main__':
     print("Worker iniciado. Aguardando mensagens...")

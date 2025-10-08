@@ -58,8 +58,8 @@ def create_table(table_name, columns, primary_key=None):
 
 if __name__ == "__main__":
     columns_engajamento_global = {
-        "s_user": Integer,
-        "course_id": Integer,
+        "institution_id": Integer,
+        "subject_id": Integer,
         "muito_baixo": Integer,
         "baixo": Integer,
         "medio": Integer,
@@ -67,39 +67,34 @@ if __name__ == "__main__":
         "muito_alto": Integer,
     }
 
-    primary_keys = ["s_user", "course_id"]
+    primary_keys = ["institution_id", "subject_id"]
     create_table("engajamento_global", columns_engajamento_global, primary_key=primary_keys)
 
     columns_indicators_status = {
-        "s_user": Integer,
+        "institution_id": Integer,
         "indicator": Integer,
         "status": String(1),
     }
 
-    primary_keys = ["s_user", "indicator"]
+    primary_keys = ["institution_id", "indicator"]
     create_table("gl_indicators_status", columns_indicators_status, primary_key=primary_keys)
 
-    columns_performance_global = {
-        "s_user": Integer, 
-        "course_id": Integer, 
-        "firstname": String(100), 
-        "media_nota_normalizada": Float,
-        "media_percentual": Float,
-        "performance_label_global": Integer,
-        "qtd_aprovado": Integer,
-        "qtd_reprovado": Integer,
-        "qtd_ressalva": Integer,
-        "qtd_cursos": Integer,
-        "qtd_ri": Integer,
-        "user_id": Integer
+    columns_configs = {
+        "institution_id": Integer,
+        "subject_id": Integer,
+        "muito_baixo": Integer,
+        "baixo": Integer,
+        "medio": Integer,
+        "alto": Integer,
+        "muito_alto": Integer,
     }
 
-    primary_keys = ["s_user", "course_id", "user_id"]
+    primary_keys = ["institution_id", "subject_id"]
 
-    create_table("performance_global", columns_performance_global, primary_key=primary_keys)
+    create_table("performance_global", columns_configs, primary_key=primary_keys)
 
     columns_configs = {
-        "s_user": Integer,
+        "institution_id": Integer,
         "version": String(40),
         "host": String,
         "port": Integer,
@@ -108,34 +103,47 @@ if __name__ == "__main__":
         "password": String
     }
 
-    primary_keys = ["s_user", "version"]
+    primary_keys = ["institution_id", "version"]
 
     create_table("configs", columns_configs, primary_key=primary_keys)
 
     columns_configs = {
-        "s_user": Integer,
-        "course_id": Integer,
-        "user_id": Integer,
-        "forum_id_unrequired": Integer,
-        "num_posts_unrequired": Integer,
-        "full_name": String(100),
+        "institution_id": Integer,
+        "subject_id": Integer,
+        "muito_baixo": Integer,
+        "baixo": Integer,
+        "medio": Integer,
+        "alto": Integer,
+        "muito_alto": Integer,
     }
 
-    primary_keys = ["s_user", "course_id", "user_id", "forum_id_unrequired", "num_posts_unrequired"]
+    primary_keys = ["institution_id", "subject_id"]
     create_table("motivation_global", columns_configs, primary_key=primary_keys)
 
     columns_configs = {
-        "s_user": Integer,
-        "course_id": Integer,
-        "full_name": String(100),
-        "assign_level": Integer,
-        "forum_level": Integer,
-        "quiz_level": Integer,
-        "user_id": Integer
+        "institution_id": Integer,
+        "subject_id": Integer,
+        "muito_baixo": Integer,
+        "baixo": Integer,
+        "medio": Integer,
+        "alto": Integer,
+        "muito_alto": Integer,
     }
 
-    primary_keys = ["s_user", "course_id", "user_id"]
+    primary_keys = ["institution_id", "subject_id"]
     create_table("cognitive_global", columns_configs, primary_key=primary_keys)
+
+    columns_configs = {
+        "institution_id": Integer,
+        "subject_id": Integer,
+        "rapida": Integer,
+        "normal": Integer,
+        "atrasada": Integer,
+        "sem_resposta": Integer,
+    }
+
+    primary_keys = ["institution_id", "subject_id"]
+    create_table("pedagogico_global", columns_configs, primary_key=primary_keys)
 
     channel.queue_declare(
         queue="tasks_to_process",

@@ -5,16 +5,16 @@ class Engagement(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
 
-    def course_analysis(self, course_id, version, connector):
-        df_posts = self.mapper.get_engagement_data(connector, course_id, version)
-        df_alunos = self.mapper.get_all_students(connector, course_id, version)
+    def course_analysis(self, subject_id, version, connector):
+        df_posts = self.mapper.get_engagement_data(connector, subject_id, version)
+        df_alunos = self.mapper.get_all_students(connector, subject_id, version)
 
-        df_alunos["course_id"] = course_id
+        df_alunos["subject_id"] = subject_id
         
-        posts_por_usuario = df_posts.groupby('user_id')['post_id_required'].count().reset_index()
+        posts_por_usuario = df_posts.groupby('institution_id')['post_id_required'].count().reset_index()
         posts_por_usuario = posts_por_usuario.rename(columns={'post_id_required': 'num_posts_required'})
 
-        df_final = df_alunos.merge(posts_por_usuario, on='user_id', how='left')
+        df_final = df_alunos.merge(posts_por_usuario, on='institution_id', how='left')
         df_final['num_posts_required'] = df_final['num_posts_required'].fillna(0).astype(int)
 
         q1 = df_final["num_posts_required"].quantile(0.25)
@@ -53,11 +53,11 @@ class Engagement(Indicator):
         # Se total ainda não foi definido, calcular (baseado no banco fonte)
         if analysis_config["total"] == 0:
             df_courses = self.mapper.get_courses(connector, version)  
-            df_courses = pd.DataFrame(df_courses, columns=['course_id'])
+            df_courses = pd.DataFrame(df_courses, columns=['subject_id'])
             analysis_config["total"] = len(df_courses)
 
         total = analysis_config["total"]
-        df = pd.DataFrame(columns=['course_id', 'full_name', 'num_posts_required', 'posts_required_label', 'user_id'])
+        df = pd.DataFrame(columns=['subject_id', 'full_name', 'num_posts_required', 'posts_required_label', 'institution_id'])
 
         # Processar cursos a partir do ponto onde parou
         for i in range(processed + 1, total + 1):
@@ -70,7 +70,7 @@ class Engagement(Indicator):
             # Quando atingir batch_size, salvar e retornar
             if analysis_config["processed"] % batch_size == 0:
                 df_counts = (
-                    df.groupby(['course_id', 'posts_required_label'])
+                    df.groupby(['subject_id', 'posts_required_label'])
                     .size()
                     .unstack(fill_value=0)
                     .reset_index()
@@ -82,23 +82,23 @@ class Engagement(Indicator):
                     .str.replace(" ", "_")        
                 )
 
-                df_counts["s_user"] = 1 
+                df_counts["institution_id"] = 1 
                 for col in ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]:
                     if col not in df_counts.columns:
                         df_counts[col] = 0
                 
-                df_counts = df_counts.groupby("course_id", as_index=False).sum()
+                df_counts = df_counts.groupby("subject_id", as_index=False).sum()
 
                 df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
 
-                df = pd.DataFrame(columns=['course_id', 'full_name', 'num_posts_required', 'posts_required_label', 'user_id'])
+                df = pd.DataFrame(columns=['subject_id', 'full_name', 'num_posts_required', 'posts_required_label', 'institution_id'])
 
                 return analysis_config
 
         # Se terminar todos os cursos (salva o que restou)
         if not df.empty:
             df_counts = (
-                df.groupby(['course_id', 'posts_required_label'])
+                df.groupby(['subject_id', 'posts_required_label'])
                 .size()
                 .unstack(fill_value=0)
                 .reset_index()
@@ -110,13 +110,13 @@ class Engagement(Indicator):
                 .str.replace(" ", "_") 
             )
 
-            df_counts["s_user"] = 1
+            df_counts["institution_id"] = 1
 
             for col in ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]:
                 if col not in df_counts.columns:
                     df_counts[col] = 0
             
-            df_counts = df_counts.groupby("course_id", as_index=False).sum()
+            df_counts = df_counts.groupby("subject_id", as_index=False).sum()
             
             df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
 

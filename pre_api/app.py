@@ -21,7 +21,12 @@ indicator_index_translate = {"engagement": 1,
 load_dotenv()
 analyzer = Analyzer()
 
-indicators = ["engagement", "performance", "motivation", "cognitive"]
+indicators = ["engagement", 
+              "performance", 
+                "motivation", 
+              "cognitive", 
+              "pedagogic"
+]
 
 @app.route("/subjects", methods=["GET"])
 def get_all_subjects():
@@ -487,18 +492,18 @@ def indicatorAnalysis(indicator):
     if indicator not in indicator_index_translate:
         return jsonify({"error": "indicador inválido"}), 400
 
-    try: 
-        response = processor.handle_analysis(indicator, 'get_all_'+indicator+'_global', request, indicator_index=indicator_index_translate[indicator])
-        return jsonify(response), 200
-    except Exception as error:
-        return jsonify({"error": f"erro interno: {str(error)}"}), 500
+    # try: 
+    response = processor.handle_analysis(indicator, 'get_all_'+indicator+'_global', request, indicator_index=indicator_index_translate[indicator])
+    return jsonify(response), 200
+    # except Exception as error:
+    #     return jsonify({"error": f"erro interno: {str(error)}"}), 500
 
 @app.route("/analysis", methods=["PUT"])
 def analysis():
     global indicators
     db_inst_config = request.get_json()
     processor = Processor(user=1)
-    version = processor.get_version(user_id=1, db_config=db_inst_config)
+    version = processor.get_version(institution_id=1, db_config=db_inst_config)
 
     try:
         processor.db_admin.insert_version_in_database(1, version, db_inst_config)

@@ -44,91 +44,66 @@ class Mapper:
         connector.close()
         return moodle.general_indicators()
 
-    def get_engagement_data(self, connector, course_id, version):
+    def get_engagement_data(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_all_posts_for_forum_required_by_course(course_id)
+        return moodle.get_all_posts_for_forum_required_by_course(subject_id)
     
-    def get_all_students(self, connector, course_id, version):
+    def get_all_students(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_all_students_by_course(course_id)
+        return moodle.get_all_students_by_course(subject_id)
     
     def get_courses(self, connector, version):
         moodle = self.get_moodle(connector, version)
         return moodle.get_courses()
     
-    def get_activity_weights(self, connector, course_id, version):
+    def get_activity_weights(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_activity_weights(course_id)
+        return moodle.get_activity_weights(subject_id)
     
-    def get_grades(self, connector, course_id, version):
+    def get_grades(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_grades_by_course(course_id)
+        return moodle.get_grades_by_course(subject_id)
     
-    def get_foruns_non_required(self, connector, course_id, version):
+    def get_foruns_non_required(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_foruns_non_required_by_course(course_id)
+        return moodle.get_foruns_non_required_by_course(subject_id)
 
-    def get_forum_data(self, connector, course_id, version):
+    def get_forum_data(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_forum_data(course_id)
+        return moodle.get_forum_data(subject_id)
     
-    def get_private_messages(self, connector, course_id, version):
+    def get_course_forum_viewed(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_private_messages(course_id)
+        return moodle.get_course_forum_viewed(subject_id)
     
-    def get_tutor_access_frequency(self, connector, course_id, version):
+    def get_forum_post_created(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_tutor_access_frequency(course_id)
+        return moodle.get_forum_post_created(subject_id)
     
-    def get_course_forum_viewed(self, connector, course_id, version):
+    def forum_reply_viewed(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_course_forum_viewed(course_id)
+        return moodle.forum_reply_viewed(subject_id)
     
-    def get_forum_post_created(self, connector, course_id, version):
+    def get_assign_submission_status_viewed(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_forum_post_created(course_id)
+        return moodle.get_assign_submission_status_viewed(subject_id)
     
-    def forum_reply_viewed(self, connector, course_id, version):
+    def get_assign_assessable_submitted(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.forum_reply_viewed(course_id)
+        return moodle.get_assign_assessable_submitted(subject_id)
     
-    def get_assign_submission_status_viewed(self, connector, course_id, version):
+    def get_assign_feedback_viewed(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_assign_submission_status_viewed(course_id)
+        return moodle.get_assign_feedback_viewed(subject_id)
     
-    def get_assign_assessable_submitted(self, connector, course_id, version):
+    def get_quizz_viewed(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_assign_assessable_submitted(course_id)
+        return moodle.get_quizz_viewed(subject_id)
     
-    def get_assign_feedback_viewed(self, connector, course_id, version):
+    def get_quizz_attempt_submitted(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_assign_feedback_viewed(course_id)
+        return moodle.get_quizz_attempt_submitted(subject_id)
     
-    def get_quizz_viewed(self, connector, course_id, version):
+    def get_quizz_attempt_reviewd(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_quizz_viewed(course_id)
-    
-    def get_quizz_attempt_submitted(self, connector, course_id, version):
-        moodle = self.get_moodle(connector, version)
-        return moodle.get_quizz_attempt_submitted(course_id)
-    
-    def get_quizz_attempt_reviewd(self, connector, course_id, version):
-        moodle = self.get_moodle(connector, version)
-        return moodle.get_quizz_attempt_reviewd(course_id)
-    
-    def fetch_subject_info(self, connector, subject_id, version):
-        moodle = self.get_moodle(connector, version)
-        return moodle.fetch_subject_info(subject_id)
-    
-    def fetch_subject_metrics(self, connector, subject_id, version):
-        moodle = self.get_moodle(connector, version)
-        return moodle.fetch_subject_metrics(subject_id)
-    
-    def get_pct_usage_resource(self, connector, subject_id, version):
-        moodle = self.get_moodle(connector, version)
-        return moodle.get_pct_usage_resource(subject_id)
-    
-    def get_all_subjects(self, connector, version):
-        moodle = self.get_moodle(connector, version)
-        return moodle.get_all_subjects()
-    
+        return moodle.get_quizz_attempt_reviewd(subject_id)

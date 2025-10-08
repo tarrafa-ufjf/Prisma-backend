@@ -64,18 +64,18 @@ class DatabaseAdmin:
         metadata = MetaData()
         global_analysis = Table(
             'gl_indicators_status', metadata,
-            Column('s_user', Integer, primary_key=True),
+            Column('institution_id', Integer, primary_key=True),
             Column('indicator', Integer, primary_key=True),
             Column('status', String(1), nullable=False)
         )
         return global_analysis
     
-    def update_global_analysis_status(self, s_user: int, indicator: int, status: str):
+    def update_global_analysis_status(self, institution_id: int, indicator: int, status: str):
         engine = self.get_connector()
         table = self.get_global_analysis_table()
 
         stmt = pg_insert(table).values(
-            s_user=s_user,
+            institution_id=institution_id,
             indicator=indicator,
             status=status
         ).on_conflict_do_update(
@@ -86,13 +86,13 @@ class DatabaseAdmin:
         with engine.begin() as conn:
             conn.execute(stmt)
     
-    def get_all_from_table(self, table_name, user_id=1):
+    def get_all_from_table(self, table_name, institution_id=1):
         engine = self.get_connector()
         metadata = MetaData()
         table = Table(table_name, metadata, autoload_with=engine)
 
         with engine.connect() as conn:
-            query = select(table).where(table.c.s_user == user_id)  # TODO
+            query = select(table).where(table.c.institution_id == institution_id)  # TODO
             return conn.execute(query).mappings().all()
     
     def get_version_in_database(self, user):
@@ -101,7 +101,7 @@ class DatabaseAdmin:
         configs = Table("configs", metadata, autoload_with=engine)
 
         with engine.connect() as conn:
-            query = select(configs).where(configs.c.s_user == user)
+            query = select(configs).where(configs.c.institution_id == user)
             result = conn.execute(query).mappings().all()  # retorna lista de dicts
             if len(result) > 0:
                 return result[0]['version']
@@ -114,7 +114,7 @@ class DatabaseAdmin:
         configs = Table("configs", metadata, autoload_with=engine)
 
         with engine.connect() as conn:
-            query = select(configs).where(configs.c.s_user == user)
+            query = select(configs).where(configs.c.institution_id == user)
             result = conn.execute(query).mappings().all()  # retorna lista de dicts
             if len(result) > 0:
                 return True
@@ -127,7 +127,7 @@ class DatabaseAdmin:
 
         with engine.connect() as conn:
             insert_stmt = configs.insert().values(
-                s_user=user,
+                institution_id=user,
                 version=version,
                 host=db_config['host'],
                 port=db_config['port'],
@@ -138,7 +138,7 @@ class DatabaseAdmin:
             conn.execute(insert_stmt)
             conn.commit()
     
-    def global_analysis_status(self, indicator, user_id=1):
+    def global_analysis_status(self, indicator, institution_id=1):
         db_config = self.get_db_config_from_database()
         engine = create_engine(
             f"postgresql+psycopg://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['db']}"
@@ -146,17 +146,17 @@ class DatabaseAdmin:
         metadata = MetaData()
         global_analysis = Table('gl_indicators_status', metadata, autoload_with=engine)
         with engine.connect() as conn:
-            query = global_analysis.select().where(and_(global_analysis.c.s_user == user_id,
+            query = global_analysis.select().where(and_(global_analysis.c.institution_id == institution_id,
                                                         global_analysis.c.indicator == indicator))
             result = conn.execute(query).mappings().all()
             return {row['indicator']: row['status'] for row in result}
     
-    def insert_global_analysis_status(self, s_user: int, indicator: int, status: str):
+    def insert_global_analysis_status(self, institution_id: int, indicator: int, status: str):
         engine = self.get_connector()
         table = self.get_global_analysis_table()
 
         stmt = pg_insert(table).values(
-            s_user=s_user,
+            institution_id=institution_id,
             indicator=indicator,
             status=status
         ).on_conflict_do_update(

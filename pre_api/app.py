@@ -10,8 +10,10 @@ from processor import Processor
 from flasgger import Swagger
 import json
 from dotenv import load_dotenv
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 swagger = Swagger(app)
 api_base_url = 'http://127.0.0.1:5000'
 indicator_index_translate = {"engagement": 1, 

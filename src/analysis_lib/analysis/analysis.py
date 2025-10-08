@@ -117,7 +117,7 @@ class Analyzer:
         if type_query == 'user':
             pass
         elif type_query == 'subject': 
-            res = indicators.subject_analysis(subject_id, version)
+            res = indicators.subject_analysis(subject_id)
 
         return res
     

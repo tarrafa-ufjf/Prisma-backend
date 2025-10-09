@@ -107,3 +107,19 @@ class Mapper:
     def get_quizz_attempt_reviewd(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
         return moodle.get_quizz_attempt_reviewd(subject_id)
+    
+    def fetch_subject_info(self, connector, subject_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_subject_info(subject_id)
+    
+    def fetch_subject_metrics(self, connector, subject_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_subject_metrics(subject_id)
+    
+    def get_pct_usage_resource(self, connector, subject_id, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_pct_usage_resource(subject_id)
+    
+    def get_all_subjects(self, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_all_subjects()

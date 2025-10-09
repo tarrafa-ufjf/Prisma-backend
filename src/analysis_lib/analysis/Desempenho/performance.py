@@ -265,3 +265,6 @@ class Performance(Indicator):
         })
 
         return pd.DataFrame(rows, columns=["subject_id", "Aprovado", "Reprovado", "RI"])
+    
+    def grades_students_analysis(self, version, connector, subject_id=None):
+        return self.course_analysis(subject_id, version, connector)

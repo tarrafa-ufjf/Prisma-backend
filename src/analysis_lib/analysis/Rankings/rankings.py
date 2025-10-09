@@ -39,53 +39,54 @@ class Rankings(Indicator):
         Monta rankings por disciplina (subject).
         kind: 'best-performance' | 'at-risk'
         """
-        # 1) Busca dataframe de desempenho por aluno na disciplina
         perf = Performance(self.mapper)
-        df = perf.discretized_performance(subject_id, version, connector)
+        df = perf.grades_students_analysis(version, connector, subject_id)
 
-        if df is None or df.empty:
+        if df is None or len(df) == 0:
             return {"id": subject_id, "type": kind, "ranking": []}
 
-        # 2) Normaliza colunas que serão usadas
-        df = self._ensure_numeric(df, [
-            "media_nota_normalizada", "media_percentual",
-            "qtd_aprovado", "qtd_reprovado", "qtd_ri",
-            "performance_label_global"
-        ])
+        df = df.copy()
+        df["percentual"] = pd.to_numeric(df.get("percentual", 0), errors="coerce").fillna(0.0)
+        df["nota_final"] = pd.to_numeric(df.get("nota_final", 0), errors="coerce").fillna(0.0)
+        df["grademax"]   = pd.to_numeric(df.get("grademax", 0), errors="coerce").fillna(0.0)
+        df["situacao"]   = df.get("situacao", "").astype(str)
+        df["firstname"]  = df.get("firstname", "").astype(str)
+        df["user_id"]    = pd.to_numeric(df.get("user_id", 0), errors="coerce").fillna(0).astype(int)
 
-        # 3) Ordena/filtra conforme o tipo
         if kind == "best-performance":
-            # Melhor desempenho primeiro:
-            #   - maior label de performance
-            #   - maior percentual
-            #   - maior nota normalizada
+            status_score = {"Aprovado": 0, "Reprovado": 1, "RI": 2}
+            df["_score"] = df["situacao"].map(status_score).fillna(3).astype(int)
             df_sorted = df.sort_values(
-                by=["performance_label_global", "media_percentual", "media_nota_normalizada"],
-                ascending=[False, False, False]
+                by=["_score", "percentual", "nota_final", "firstname"],
+                ascending=[True, False, False, True],
+                kind="mergesort",
             )
-
         elif kind == "at-risk":
-            # Em risco:
-            #   - baixa performance_label_global
-            #   - percentual baixo
-            #   - reprovações/RI pesam
-            mask = (
-                (df["performance_label_global"] <= 1) |
-                (df["media_percentual"] < 60) |
-                (df["qtd_reprovado"] > 0) |
-                (df["qtd_ri"] > 0)
-            )
-            df_sorted = df[mask].sort_values(
-                by=["performance_label_global", "media_percentual", "qtd_reprovado", "qtd_ri"],
-                ascending=[True, True, False, False]
+            risk_order = {"RI": 0, "Reprovado": 1, "Aprovado": 2}
+            mask = (df["situacao"].isin(["RI", "Reprovado"])) | (df["percentual"] < 69.0)
+            df_risk = df[mask].copy()
+            if df_risk.empty:
+                return {"id": subject_id, "type": kind, "ranking": []}
+            df_risk["_score"] = df_risk["situacao"].map(risk_order).fillna(3).astype(int)
+            df_sorted = df_risk.sort_values(
+                by=["_score", "percentual", "nota_final", "firstname"],
+                ascending=[True, True, True, True],
+                kind="mergesort",
             )
         else:
             raise ValueError("invalid 'type'")
 
-        ranking = self._to_ranking_rows(df_sorted, limit)
+        top = df_sorted.head(limit)
+        ranking = [
+            {
+                "user_id": int(r.user_id),
+                "student": str(r.firstname),
+                "percentual": float(r.percentual),
+                "nota_final": float(r.nota_final),
+                "grademax": float(r.grademax),
+                "situacao": str(r.situacao),
+            }
+            for _, r in top.iterrows()
+        ]
 
-        return {
-            "id": subject_id,
-            "type": kind,
-            "ranking": ranking
-        }
+        return {"id": subject_id, "type": kind, "ranking": ranking}

@@ -11,10 +11,10 @@ class Engagement(Indicator):
 
         df_alunos["subject_id"] = subject_id
         
-        posts_por_usuario = df_posts.groupby('institution_id')['post_id_required'].count().reset_index()
+        posts_por_usuario = df_posts.groupby('user_id')['post_id_required'].count().reset_index()
         posts_por_usuario = posts_por_usuario.rename(columns={'post_id_required': 'num_posts_required'})
 
-        df_final = df_alunos.merge(posts_por_usuario, on='institution_id', how='left')
+        df_final = df_alunos.merge(posts_por_usuario, on='user_id', how='left')
         df_final['num_posts_required'] = df_final['num_posts_required'].fillna(0).astype(int)
 
         q1 = df_final["num_posts_required"].quantile(0.25)
@@ -59,16 +59,20 @@ class Engagement(Indicator):
         total = analysis_config["total"]
         df = pd.DataFrame(columns=['subject_id', 'full_name', 'num_posts_required', 'posts_required_label', 'institution_id'])
 
+        batch_results = []
+
         # Processar cursos a partir do ponto onde parou
         for i in range(processed + 1, total + 1):
             result = self.course_analysis(i, version, connector)
-            df = pd.concat([df, result], ignore_index=True)
+            batch_results.append(result)
             analysis_config["processed"] += 1
 
             self.print_load("Engajamento", analysis_config["processed"], total, 5)
 
             # Quando atingir batch_size, salvar e retornar
             if analysis_config["processed"] % batch_size == 0:
+                df = pd.concat(batch_results, ignore_index=True)
+
                 df_counts = (
                     df.groupby(['subject_id', 'posts_required_label'])
                     .size()
@@ -91,7 +95,7 @@ class Engagement(Indicator):
 
                 df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
 
-                df = pd.DataFrame(columns=['subject_id', 'full_name', 'num_posts_required', 'posts_required_label', 'institution_id'])
+                df = pd.DataFrame(columns=['subject_id', 'full_name', 'num_posts_required', 'posts_required_label', 'user_id'])
 
                 return analysis_config
 

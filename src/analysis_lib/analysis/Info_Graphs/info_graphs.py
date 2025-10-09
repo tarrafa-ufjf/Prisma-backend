@@ -7,7 +7,9 @@ class Info_Graphs(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
 
-    def _build_situations(self, df: pd.DataFrame):
+    def _build_situations(self, df):
+        print(df)
+
         if df is None or df.empty:
             return [
                 {"situacao": "Reprovado", "qtd": 0},
@@ -37,12 +39,25 @@ class Info_Graphs(Indicator):
         ]
 
     def info_graphs(self, subject_id, version, connector):
-        df_pct_usage_resource = self.mapper.get_pct_usage_resource(connector, subject_id, version)
-        usage_by_module = df_pct_usage_resource.to_dict(orient="records") if not df_pct_usage_resource.empty else []
+        df_pct_usage_resource = pd.DataFrame(self.mapper.get_pct_usage_resource(connector, subject_id, version))
+        usage_by_module = [] if df_pct_usage_resource.empty else df_pct_usage_resource.to_dict(orient="records")
 
         performance = Performance(self.mapper)
-        df_perf = performance.discretized_performance(subject_id, version, connector)
-        situations = self._build_situations(df_perf)
+        df_perf = performance.status_students_analysis(version, connector, subject_id)
+
+        if df_perf.empty:
+            situations = [
+                {"qtd": 0, "situacao": "Aprovado"},
+                {"qtd": 0, "situacao": "Reprovado"},
+                {"qtd": 0, "situacao": "RI"},
+            ]
+        else:
+            row = df_perf.loc[:, ["Aprovado", "Reprovado", "RI"]].iloc[0].astype(int)
+            situations = [
+                {"qtd": int(row["Aprovado"]),  "situacao": "Aprovado"},
+                {"qtd": int(row["Reprovado"]), "situacao": "Reprovado"},
+                {"qtd": int(row["RI"]),        "situacao": "RI"},
+            ]
 
         return {
             "subject": {

@@ -245,3 +245,24 @@ class Performance(Indicator):
             results = []  # limpa lista
 
         return analysis_config
+    
+    def status_students_analysis(self, version, connector, subject_id=None):
+        rows = []
+        df = self.course_analysis(subject_id, version, connector)
+
+        s = df["situacao"].astype(str)
+        status = np.where(
+        s.eq("RI"), "RI",
+            np.where(s.str.startswith("Aprovado", na=False), "Aprovado",
+                np.where(s.str.startswith("Reprovado", na=False), "Reprovado", "Outro"))
+        )
+
+        counts = pd.Series(status).value_counts()
+        rows.append({
+            "subject_id": subject_id,
+            "Aprovado": int(counts.get("Aprovado", 0)),
+            "Reprovado": int(counts.get("Reprovado", 0)),
+            "RI": int(counts.get("RI", 0)),
+        })
+
+        return pd.DataFrame(rows, columns=["subject_id", "Aprovado", "Reprovado", "RI"])

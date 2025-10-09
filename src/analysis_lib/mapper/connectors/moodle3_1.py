@@ -11,7 +11,7 @@ class Moodle31(Moodle):
         conn = self.connector
         with conn.cursor() as cur:
             cur.execute('''
-                SELECT p.userid AS institution_id, f.id AS forum_id_required, p.id AS post_id_required, p.created AS post_date_required
+                SELECT p.userid AS user_id, f.id AS forum_id_required, p.id AS post_id_required, p.created AS post_date_required
                 FROM mdl_forum f
                 JOIN mdl_forum_discussions d ON d.forum = f.id 
                 JOIN mdl_forum_posts p ON p.discussion = d.id
@@ -36,7 +36,7 @@ class Moodle31(Moodle):
         conn = self.connector
         with conn.cursor() as cur:
             cur.execute('''
-                SELECT u.id AS institution_id
+                SELECT u.id AS user_id
                 FROM mdl_user u
                 JOIN mdl_user_enrolments ue ON ue.userid = u.id
                 JOIN mdl_enrol e ON e.id = ue.enrolid
@@ -68,7 +68,7 @@ class Moodle31(Moodle):
         conn = self.connector
         with conn.cursor() as cur:
             cur.execute('''
-                SELECT p.userid AS institution_id, f.id AS forum_id_required, p.id AS post_id_required
+                SELECT p.userid AS user_id, f.id AS forum_id_required, p.id AS post_id_required
                 FROM mdl_forum_posts p
                 JOIN mdl_user u ON u.id = p.userid                      
                 JOIN mdl_forum_discussions d ON d.id = p.discussion
@@ -96,7 +96,7 @@ class Moodle31(Moodle):
         conn = self.connector
         with conn.cursor() as cur:
             cur.execute('''
-                SELECT u.id AS institution_id, CONCAT(u.firstname, ' ', u.lastname) AS full_name
+                SELECT u.id AS user_id, CONCAT(u.firstname, ' ', u.lastname) AS full_name
                 FROM mdl_user u
                 JOIN mdl_user_enrolments ue ON ue.userid = u.id
                 JOIN mdl_enrol e ON e.id = ue.enrolid
@@ -118,7 +118,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT
-                    u.id AS institution_id,
+                    u.id AS user_id,
                     u.firstname,
                     gi.courseid,
                     cm.id AS activity_id,
@@ -173,7 +173,7 @@ class Moodle31(Moodle):
         conn = self.connector
         with conn.cursor() as cur:
             cur.execute('''
-                SELECT p.userid AS institution_id, f.id AS forum_id_unrequired, p.id AS post_id_unrequired
+                SELECT p.userid AS user_id, f.id AS forum_id_unrequired, p.id AS post_id_unrequired
                 FROM mdl_forum_posts p
                 JOIN mdl_user u ON u.id = p.userid                      
                 JOIN mdl_forum_discussions d ON d.id = p.discussion
@@ -290,7 +290,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
-                    u.id AS institution_id,
+                    u.id AS user_id,
                     u.firstname,
                     lh.objectid AS forum_id,
                     lh.timecreated AS timestamp
@@ -310,7 +310,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
-                    u.id AS institution_id,
+                    u.id AS user_id,
                     u.firstname,
                     lh.objectid AS post_id,
                     p.discussion AS forum_id,
@@ -334,7 +334,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT 
-                    p.userid AS institution_id,
+                    p.userid AS user_id,
                     d.id AS discussion_id,
                     p.id AS original_post_id,
                     reply.id AS reply_post_id,
@@ -363,7 +363,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
-                    u.id AS institution_id,
+                    u.id AS user_id,
                     u.firstname,
                     lh.contextinstanceid AS assignment_id,
                     lh.timecreated AS timestamp
@@ -384,7 +384,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
-                    u.id AS institution_id,
+                    u.id AS user_id,
                     u.firstname,
                     lh.contextinstanceid AS assignment_id,
                     lh.objectid AS submission_id,
@@ -406,7 +406,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
-                    u.id AS institution_id,
+                    u.id AS user_id,
                     u.firstname,
                     lh.contextinstanceid AS assignment_id,
                     lh.objectid AS submission_id,
@@ -429,7 +429,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
-                    u.id AS institution_id,
+                    u.id AS user_id,
                     u.firstname,
                     lh.contextinstanceid AS quiz_id,
                     lh.timecreated AS timestamp
@@ -450,7 +450,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
-                    u.id AS institution_id,
+                    u.id AS user_id,
                     u.firstname,
                     lh.contextinstanceid AS quiz_id,
                     lh.objectid AS attempt_id,
@@ -472,7 +472,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
-                    u.id AS institution_id,
+                    u.id AS user_id,
                     u.firstname,
                     lh.contextinstanceid AS quiz_id,
                     lh.objectid AS attempt_id,

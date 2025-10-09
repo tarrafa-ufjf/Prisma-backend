@@ -6,7 +6,7 @@ class Performance(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
         self.columns = [
-            "institution_id",
+            "user_id",
             "subject_id",
             "muito_baixo",
             "baixo",
@@ -37,13 +37,13 @@ class Performance(Indicator):
         df_merged['nota_real'] = df_merged['performance'] * (df_merged['grademax'] / 100)
 
         # Alunos válidos
-        alunos_com_nota = df_merged.groupby('institution_id', group_keys=False)['nota_real'].sum()
+        alunos_com_nota = df_merged.groupby('user_id', group_keys=False)['nota_real'].sum()
         total_alunos_validos = int((alunos_com_nota > 0).sum())
 
         # Participação
         participacao_atividade = (
             df_merged[df_merged['performance'] > 0]
-            .groupby('activity_id', group_keys=False)['institution_id']
+            .groupby('activity_id', group_keys=False)['user_id']
             .nunique()
         )
         atividades_validas_ids = participacao_atividade[participacao_atividade >= 0.3 * total_alunos_validos].index
@@ -52,7 +52,7 @@ class Performance(Indicator):
         df_pesos_filtrado = df_pesos[df_pesos['activity_id'].isin(atividades_validas_ids)]
 
         # Nota final e max
-        notas_finais = df_merged.groupby(['institution_id', 'firstname'], group_keys=False)['nota_real'].sum().reset_index()
+        notas_finais = df_merged.groupby(['user_id', 'firstname'], group_keys=False)['nota_real'].sum().reset_index()
         notas_finais.rename(columns={'nota_real': 'nota_final'}, inplace=True)
 
         df_pesos_filtrado = df_pesos_filtrado.copy()
@@ -94,7 +94,7 @@ class Performance(Indicator):
         df_norm['ri'] = df_norm['situacao'] == 'RI'
         df_norm['ressalva'] = df_norm['situacao'].str.contains('ressalva', case=False)
 
-        df_norm_aluno = df_norm.groupby(['institution_id', 'firstname']).agg(
+        df_norm_aluno = df_norm.groupby(['user_id', 'firstname']).agg(
             media_nota_normalizada=('nota_normalizada', 'mean'),
             media_percentual=('percentual', 'mean'),
             qtd_cursos=('subject_id', 'nunique'),
@@ -173,7 +173,7 @@ class Performance(Indicator):
         df_norm["performance"] = performance_labels
         df_norm["subject_id"] = subject_id
 
-        return df_norm[["institution_id", "subject_id", "performance"]]
+        return df_norm[["user_id", "subject_id", "performance"]]
     
     def general_analysis(self, version, connector, analysis_config):
         batch_size = analysis_config.get("batch_size")
@@ -230,7 +230,7 @@ class Performance(Indicator):
             df = pd.concat(results, ignore_index=True)
             df["institution_id"] = 1 
             df_counts = (
-                df.groupby(["institution_id", "subject_id", "label"])
+                df.groupby(["institution_id", "subject_id", "performance"])
                 .size()
                 .unstack(fill_value=0)
                 .reset_index()
@@ -242,7 +242,6 @@ class Performance(Indicator):
                     df_counts[lbl] = 0
 
             df_counts.to_sql("performance_global", engine, if_exists="append", index=False)
-            results = []  # limpa lista
 
         return analysis_config
     

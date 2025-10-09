@@ -14,10 +14,10 @@ class Motivation(Indicator):
 
         df_alunos["subject_id"] = subject_id
 
-        posts_por_usuario = df_posts.groupby('institution_id')['post_id_unrequired'].count().reset_index()
+        posts_por_usuario = df_posts.groupby('user_id')['post_id_unrequired'].count().reset_index()
         posts_por_usuario = posts_por_usuario.rename(columns={'post_id_unrequired': 'num_posts_unrequired'})
 
-        df_final = df_alunos.merge(posts_por_usuario, on='institution_id', how='left')
+        df_final = df_alunos.merge(posts_por_usuario, on='user_id', how='left')
         df_final['num_posts_unrequired'] = df_final['num_posts_unrequired'].fillna(0).astype(int) 
 
         return df_final
@@ -48,7 +48,7 @@ class Motivation(Indicator):
             lambda x: discretize(x, lim_inf, q1, q3, lim_sup)
         )
 
-        return df_sit[['institution_id', 'subject_id','label']]
+        return df_sit[['user_id', 'subject_id','label']]
     
     def general_analysis(self, version, connector, analysis_config):
         batch_size = analysis_config["batch_size"]
@@ -61,7 +61,7 @@ class Motivation(Indicator):
             analysis_config["total"] = len(df_courses)
 
         total = analysis_config["total"]
-        df = pd.DataFrame(columns=['institution_id', 'subject_id','label'])
+        df = pd.DataFrame(columns=['user_id', 'subject_id','label'])
 
         for i in range(processed + 1, total + 1):
             result = self.discrete_analysis(i, version, connector)

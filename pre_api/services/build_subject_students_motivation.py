@@ -13,8 +13,6 @@ def build_subject_students_motivation(subject_id: int):
     try:
         version = analyzer.get_moodle_version(connector)
         df = analyzer.motivation_analysis(subject_id, 'course', version, connector)
-        
-        df.to_csv("A.csv")
 
         if df is None or df.empty:
             return []
@@ -22,7 +20,6 @@ def build_subject_students_motivation(subject_id: int):
         missing = [c for c in ["full_name", "posts_unrequired_label", "num_posts_unrequired"] if c not in df.columns]
         if missing:
             raise KeyError(f"missing columns in motivation_analysis output: {missing}")
-
 
         out = df.loc[:, ["full_name", "posts_unrequired_label", "num_posts_unrequired"]].copy()
         out["full_name"] = out["full_name"].astype(str)

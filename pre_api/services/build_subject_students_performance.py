@@ -13,8 +13,6 @@ def build_subject_students_performance(subject_id: int):
     try:
         version = analyzer.get_moodle_version(connector)
         df = analyzer.performance_analysis(subject_id, 'course', version, connector)
-
-        df.to_csv("Teste.csv")
         
         if df is None or df.empty:
             return []

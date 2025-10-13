@@ -158,16 +158,16 @@ class Performance(Indicator):
 
         def label_from_mean(mean_value):
             if mean_value == 0:
-                return 'muito_baixo'
+                return 1
             elif mean_value == 1:
-                return 'baixo'
+                return 2
             elif mean_value == 2:
-                return 'medio'
+                return 3
             elif mean_value == 3:
-                return 'alto'
+                return 4
             elif mean_value >= 4:
-                return 'muito_alto'
-            return 'Sem dados'
+                return 5
+            return 0
 
         # Aplica discretizações numéricas e rotula com média
         performance_labels = []

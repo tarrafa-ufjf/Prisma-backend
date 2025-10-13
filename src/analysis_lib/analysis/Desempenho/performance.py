@@ -16,8 +16,12 @@ class Performance(Indicator):
         ]
     
     def course_analysis(self, subject_id, version, connector):
-        df = self.mapper.get_grades(connector, subject_id, version)
+        df_grades = self.mapper.get_grades(connector, subject_id, version)
         df_pesos = self.mapper.get_activity_weights(connector, subject_id, version)
+        df_alunos = self.mapper.get_all_students(connector, subject_id, version)
+        df_alunos["subject_id"] = subject_id
+
+        df = df_alunos.merge(df_grades, on='user_id', how='left')
 
         # Converte tipos
         df['performance']  = pd.to_numeric(df['performance'], errors='coerce').fillna(0)
@@ -36,40 +40,21 @@ class Performance(Indicator):
         # Nota real
         df_merged['nota_real'] = df_merged['performance'] * (df_merged['grademax'] / 100)
 
-        # Alunos válidos
-        alunos_com_nota = df_merged.groupby('user_id', group_keys=False)['nota_real'].sum()
-        total_alunos_validos = int((alunos_com_nota > 0).sum())
-
-        # Participação
-        participacao_atividade = (
-            df_merged[df_merged['performance'] > 0]
-            .groupby('activity_id', group_keys=False)['user_id']
-            .nunique()
-        )
-        atividades_validas_ids = participacao_atividade[participacao_atividade >= 0.3 * total_alunos_validos].index
-
-        df_merged = df_merged[df_merged['activity_id'].isin(atividades_validas_ids)]
-        df_pesos_filtrado = df_pesos[df_pesos['activity_id'].isin(atividades_validas_ids)]
-
         # Nota final e max
         notas_finais = df_merged.groupby(['user_id', 'firstname'], group_keys=False)['nota_real'].sum().reset_index()
         notas_finais.rename(columns={'nota_real': 'nota_final'}, inplace=True)
 
-        df_pesos_filtrado = df_pesos_filtrado.copy()
-        df_pesos_filtrado['grademax'] = pd.to_numeric(df_pesos_filtrado['grademax'], errors='coerce').fillna(0)
-        nota_maxima_semestre = float(df_pesos_filtrado['grademax'].sum())
+        df_pesos = df_pesos.copy()
+        df_pesos['grademax'] = pd.to_numeric(df_pesos['grademax'], errors='coerce').fillna(0)
+        nota_maxima_semestre = float(df_pesos['grademax'].sum())
 
         if nota_maxima_semestre > 0:
             notas_finais['percentual'] = (notas_finais['nota_final'] / nota_maxima_semestre) * 100
         else:
             notas_finais['percentual'] = 0.0
 
-        notas_finais['situacao'] = notas_finais['percentual'].apply(
-            lambda x: 'Aprovado' if x >= 69 else ('RI' if x == 0 else 'Reprovado')
-        )
-
+        notas_finais['situacao'] = notas_finais['percentual'].apply(lambda x: 'Aprovado' if x >= 69 else ('RI' if x == 0 else 'Reprovado'))
         notas_finais['situacao'] = notas_finais['situacao'].astype(str)
-
         if nota_maxima_semestre <= 60:
             mask = notas_finais['situacao'] != 'RI'
             notas_finais.loc[mask, 'situacao'] = notas_finais.loc[mask, 'situacao'] + ' com ressalva'
@@ -79,10 +64,40 @@ class Performance(Indicator):
         notas_finais['nota_final'] = notas_finais['nota_final'].round(1)
         notas_finais['percentual'] = notas_finais['percentual'].round(0)
 
-        return notas_finais
+        df_norm_aluno = self.normalized_grades(notas_finais)
+        df_discretized = (self.discretized_performance(subject_id, df_norm_aluno).rename(columns={'performance': 'performance_label'}))
+
+        df_final = df_norm_aluno.merge(
+            df_discretized[['user_id','subject_id','performance_label']],
+            on=['user_id','subject_id'],
+            how='left'
+        )
+
+        df_alunos_meta = df_alunos[["user_id","subject_id"]].copy()
+        if "full_name" in df_alunos.columns:
+            df_alunos_meta["full_name"] = df_alunos["full_name"]
+        else:
+            first = df_alunos["firstname"].astype(str) if "firstname" in df_alunos.columns else ""
+            last  = df_alunos["lastname"].astype(str)  if "lastname"  in df_alunos.columns else ""
+            df_alunos_meta["full_name"] = (first + " " + last).str.strip()
+
+        df_final = df_final.merge(df_alunos_meta, on=["user_id","subject_id"], how="left")
+
+        turma_mean = float(df_final['media_percentual'].mean(skipna=True))
+        turma_std  = float(df_final['media_percentual'].std(ddof=1, skipna=True))
     
-    def normalized_grades(self, subject_id, version, connector):
-        df_norm = self.course_analysis(subject_id, version, connector)
+        df_final['comparative'] = np.where(turma_std > 0,
+            (df_final['media_percentual'] - turma_mean) / turma_std,
+            0.0
+        ).round(2)
+
+        col_order = ["subject_id","user_id","full_name","media_percentual","performance_label", "comparative"]
+        col_order = [c for c in col_order if c in df_final.columns]
+        df_final = df_final[col_order].copy()
+
+        return df_final
+
+    def normalized_grades(self, df_norm):
         df_norm['nota_final'] = pd.to_numeric(df_norm['nota_final'], errors='coerce')
         df_norm['grademax'] = pd.to_numeric(df_norm['grademax'], errors='coerce')
 
@@ -106,9 +121,7 @@ class Performance(Indicator):
 
         return df_norm_aluno
     
-    def discretized_performance(self, subject_id, version, connector):
-        df_norm = self.normalized_grades(subject_id, version, connector)
-
+    def discretized_performance(self, subject_id, df_norm):
         # Calcula quartis e limites
         q1 = df_norm["media_nota_normalizada"].quantile(0.25)
         q3 = df_norm["media_nota_normalizada"].quantile(0.75)

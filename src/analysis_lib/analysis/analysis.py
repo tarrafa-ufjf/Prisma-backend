@@ -59,7 +59,7 @@ class Analyzer:
         if type_query == 'user':
             pass
         elif type_query == 'course': 
-            res = performance.discretized_performance(subject_id, version, connector)
+            res = performance.course_analysis(subject_id, version, connector)
 
         return res
     

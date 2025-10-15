@@ -27,7 +27,9 @@ class Indicators_Percentual(Indicator):
                 "good_percentage_engagement": perc_high_engagement,
                 "good_percentage_motivation": perc_high_motivation,
                 "good_percentage_performance": perc_high_performance,
-                "good_percentage_pedagogical": responded_pct
+                "good_percentage_pedagogical": responded_pct,
+                "good_percentage_cognitive": 0,
+                "percentage_give_up": 0
             }
         }
 

@@ -31,7 +31,7 @@ class Cognitive(Indicator):
 
         forum_course_viewed_grouped = (forum_course_viewed.groupby(['user_id', 'forum_id'])['timestamp'].count().reset_index(name='count'))
         forum_post_created_grouped = (forum_post_created.groupby(['user_id', 'forum_id'])['timestamp'].count().reset_index(name='count'))
-        forum_reply_viewed_grouped = (forum_reply_viewed.groupby(['user_id', 'original_post_id'])['timestamp'].count().reset_index(name='count'))
+        forum_reply_viewed_grouped = (forum_reply_viewed.groupby(['user_id', 'forum_id'])['timestamp'].count().reset_index(name='count'))
 
         quiz_viewed_grouped = (quiz_viewed.groupby(['user_id', 'quiz_id'])['timestamp'].count().reset_index(name='count'))
         quiz_attempt_submitted_grouped = (quiz_attempt_submitted.groupby(['user_id', 'quiz_id'])['timestamp'].count().reset_index(name='count'))
@@ -41,162 +41,168 @@ class Cognitive(Indicator):
             Confere o nível de profundidade do estudante em cada atividade
         '''
 
-        def df_exists(df_name: str) -> bool:
-            # verifica se a variável existe no escopo global
-            if df_name not in globals():
-                return False
-            df = globals()[df_name]
-            # verifica se é um DataFrame e se não está vazio
-            return hasattr(df, "empty") and df is not None and not df.empty
-        
-        # -----------------------------
+        def df_exists_var(df):
+            return isinstance(df, pd.DataFrame) and (not df.empty)
+
+        def to_unique_pairs(df, keys):
+            if not df_exists_var(df):
+                return set()
+            return set(map(tuple, df[keys].drop_duplicates().values))
+
+        def build_levels_for_module(view_pairs, submit_pairs=None, review_pairs=None, max_level=3):
+            all_pairs = set()
+            if view_pairs:   all_pairs |= view_pairs
+            if submit_pairs: all_pairs |= submit_pairs
+            if review_pairs: all_pairs |= review_pairs
+
+            levels = {}
+            for pair in all_pairs:
+                level = 0
+                if view_pairs and (pair in view_pairs):
+                    level = 1
+                if submit_pairs and (pair in submit_pairs):
+                    level = 2
+                if review_pairs and (pair in review_pairs):
+                    level = 3
+                levels[pair] = min(level, max_level)
+
+            return levels
+
+        def levels_dict_to_df(levels_dict, user_col, item_col, module_name, potential):
+            rows = []
+            for (u, item), lvl in levels_dict.items():
+                prop = 0.0 if lvl == 0 else (lvl / potential)
+                value = 2*prop - 1.0  # escala -1..1
+                rows.append({user_col: u, item_col: item, "module": module_name, "level": lvl, "potential": potential, "proportion": prop, "value": value})
+            return pd.DataFrame(rows)
+
+        def dynamic_potential(view_pairs, submit_pairs, review_pairs):
+            if review_pairs and len(review_pairs) > 0:
+                return 3
+            if submit_pairs and len(submit_pairs) > 0:
+                return 2
+            if view_pairs and len(view_pairs) > 0:
+                return 1
+            return 0
+
+        # --------------------------
         # 1) ASSIGN
-        # nível 1 = visualizou; nível 2 = submeteu; nível 3 = viu feedback
-        # -----------------------------
-        assign_lvl1_users = set()
-        assign_lvl2_users = set()
-        assign_lvl3_users = set()
+        # --------------------------
+        assign_view_pairs   = to_unique_pairs(assign_viewed_grouped, ["user_id", "assignment_id"])        if df_exists_var(assign_viewed_grouped)           else set()
+        assign_submit_pairs = to_unique_pairs(assign_submitted_grouped, ["user_id", "assignment_id"])     if df_exists_var(assign_submitted_grouped)         else set()
+        assign_review_pairs = to_unique_pairs(assign_feedback_viewed_grouped, ["user_id", "assignment_id"]) if ('assign_feedback_viewed_grouped' in locals() and df_exists_var(assign_feedback_viewed_grouped)) else set()
 
-        if df_exists("assign_viewed_grouped"):
-            # pega todos os user_id presentes no DF de "visualizações" de assign
-            assign_lvl1_users = set(assign_viewed_grouped["user_id"].unique())
+        assign_potential = dynamic_potential(assign_view_pairs, assign_submit_pairs, assign_review_pairs)
+        assign_levels    = build_levels_for_module(assign_view_pairs, assign_submit_pairs, assign_review_pairs, max_level=assign_potential or 0)
+        assign_df        = levels_dict_to_df(assign_levels, "user_id", "assignment_id", "assign", assign_potential)
 
-        if df_exists("assign_submitted_grouped"):
-            # pega todos os user_id presentes no DF de "submissões" de assign
-            assign_lvl2_users = set(assign_submitted_grouped["user_id"].unique())
+        # --------------------------
+        # 2) QUIZ
+        # --------------------------
+        quiz_view_pairs   = to_unique_pairs(quiz_viewed_grouped, ["user_id", "quiz_id"])                   if df_exists_var(quiz_viewed_grouped)              else set()
+        quiz_submit_pairs = to_unique_pairs(quiz_attempt_submitted_grouped, ["user_id", "quiz_id"])        if df_exists_var(quiz_attempt_submitted_grouped)    else set()
+        quiz_review_pairs = to_unique_pairs(quiz_attempt_reviewed_grouped, ["user_id", "quiz_id"])         if df_exists_var(quiz_attempt_reviewed_grouped)     else set()
 
-        if df_exists("assign_feedback_viewed_grouped"):
-            # pega todos os user_id presentes no DF de "feedback visto" de assign
-            assign_lvl3_users = set(assign_feedback_viewed_grouped["user_id"].unique())
+        quiz_potential = dynamic_potential(quiz_view_pairs, quiz_submit_pairs, quiz_review_pairs)
+        quiz_levels    = build_levels_for_module(quiz_view_pairs, quiz_submit_pairs, quiz_review_pairs, max_level=quiz_potential or 0)
+        quiz_df        = levels_dict_to_df(quiz_levels, "user_id", "quiz_id", "quiz", quiz_potential)
 
-        # Agora calculamos o nível máximo do usuário em ASSIGN
-        assign_levels = {}  # user_id -> nível
-        all_assign_users = assign_lvl1_users | assign_lvl2_users | assign_lvl3_users
+        # --------------------------
+        # 3) FORUM
+        # --------------------------
+        forum_view_pairs    = to_unique_pairs(forum_course_viewed_grouped, ["user_id", "forum_id"])        if df_exists_var(forum_course_viewed_grouped)       else set()
+        forum_post_pairs    = to_unique_pairs(forum_post_created_grouped, ["user_id", "forum_id"])         if df_exists_var(forum_post_created_grouped)         else set()
+        forum_review_pairs  = to_unique_pairs(forum_reply_viewed_grouped, ["user_id", "forum_id"])         if df_exists_var(forum_reply_viewed_grouped)         else set()
 
-        for user in all_assign_users:
-            # começa do nível 0
-            level = 0
+        forum_potential = dynamic_potential(forum_view_pairs, forum_post_pairs, forum_review_pairs)
+        forum_levels    = build_levels_for_module(forum_view_pairs, forum_post_pairs, forum_review_pairs, max_level=forum_potential or 0)
+        forum_df        = levels_dict_to_df(forum_levels, "user_id", "forum_id", "forum", forum_potential)
 
-            # se visualizou, pelo menos nível 1
-            if user in assign_lvl1_users:
-                level = 1
+        # --------------------------
+        # 4) Conciliar tudo
+        # --------------------------
+        frames = [df for df in [assign_df, quiz_df, forum_df] if df_exists_var(df)]
 
-            # se submeteu, sobe para nível 2
-            if user in assign_lvl2_users:
-                level = 2
+        if frames:
+            per_item = pd.concat(frames, ignore_index=True)
+            per_user = (
+                per_item.groupby("user_id", as_index=False)["value"]
+                .mean()
+                .rename(columns={"value": "cognitive_depth_mean"})
+            )
+        else:
+            per_user = pd.DataFrame(columns=["user_id", "cognitive_depth_mean"])
 
-            # se viu feedback, sobe para nível 3
-            if user in assign_lvl3_users:
-                level = 3
+        out = all_students.merge(per_user, on="user_id", how="left")
+        out["cognitive_depth_mean"] = out["cognitive_depth_mean"].astype(float).fillna(-1.0)
 
-            assign_levels[user] = level
-
-        # -----------------------------
-        # 2) FORUM
-        # nível 1 = viu fórum; nível 2 = criou post; nível 3 = viu reply ao próprio post
-        # -----------------------------
-        forum_lvl1_users = set()
-        forum_lvl2_users = set()
-        forum_lvl3_users = set()
-
-        if df_exists("forum_course_viewed_grouped"):
-            forum_lvl1_users = set(forum_course_viewed_grouped["user_id"].unique())
-
-        if df_exists("forum_post_created_grouped"):
-            forum_lvl2_users = set(forum_post_created_grouped["user_id"].unique())
-
-        if df_exists("forum_reply_viewed_grouped"):
-            forum_lvl3_users = set(forum_reply_viewed_grouped["user_id"].unique())
-
-        forum_levels = {}
-        all_forum_users = forum_lvl1_users | forum_lvl2_users | forum_lvl3_users
-
-        for user in all_forum_users:
-            level = 0
-            if user in forum_lvl1_users:
-                level = 1
-            if user in forum_lvl2_users:
-                level = 2
-            if user in forum_lvl3_users:
-                level = 3
-            forum_levels[user] = level
-
-        # -----------------------------
-        # 3) QUIZ
-        # nível 1 = viu quiz; nível 2 = enviou tentativa; nível 3 = revisou tentativa
-        # -----------------------------
-        quiz_lvl1_users = set()
-        quiz_lvl2_users = set()
-        quiz_lvl3_users = set()
-
-        if df_exists("quiz_viewed_grouped"):
-            quiz_lvl1_users = set(quiz_viewed_grouped["user_id"].unique())
-
-        if df_exists("quiz_attempt_submitted_grouped"):
-            quiz_lvl2_users = set(quiz_attempt_submitted_grouped["user_id"].unique())
-
-        if df_exists("quiz_attempt_reviewed_grouped"):
-            quiz_lvl3_users = set(quiz_attempt_reviewed_grouped["user_id"].unique())
-
-        quiz_levels = {}
-        all_quiz_users = quiz_lvl1_users | quiz_lvl2_users | quiz_lvl3_users
-
-        for user in all_quiz_users:
-            level = 0
-            if user in quiz_lvl1_users:
-                level = 1
-            if user in quiz_lvl2_users:
-                level = 2
-            if user in quiz_lvl3_users:
-                level = 3
-            quiz_levels[user] = level
-        
-        #-----------------------------
-        # 4) Compilar todos os alunos com seus níveis
-        # -----------------------------
-        all_user_ids = all_students['user_id']
-        assign_list = [assign_levels.get(uid, 0) for uid in all_user_ids]
-        forum_list  = [forum_levels.get(uid, 0)  for uid in all_user_ids]
-        quiz_list   = [quiz_levels.get(uid, 0)   for uid in all_user_ids]
-
-        all_students_with_activities = all_students.copy()
-        all_students_with_activities['assign_level'] = assign_list
-        all_students_with_activities['forum_level']  = forum_list
-        all_students_with_activities['quiz_level']   = quiz_list
-
-        return all_students_with_activities
-    
-    
+        return out
+            
     '''Implementar análise cognitiva global'''
 
+    # def discretize_student_levels_class(self, df: pd.DataFrame) -> pd.DataFrame:
+    #     mask_real = df["cognitive_depth_mean"].notna()
+    #     q1 = df["cognitive_depth_mean"].quantile(0.25)
+    #     q3 = df["cognitive_depth_mean"].quantile(0.75)
+
+    #     iqr = q3 - q1
+    #     lim_inf = q1 - 1.5 * iqr
+    #     lim_sup = q3 + 1.5 * iqr
+        
+    #     def discretize(x, lim_inf, q1, q3, lim_sup):
+    #         if x <= lim_inf:
+    #             return 0
+    #         elif x <= q1:
+    #             return 1
+    #         elif x <= q3:
+    #             return 2
+    #         elif x <= lim_sup:
+    #             return 3
+    #         else:
+    #             return 4
+
+    #     df["label"] = df["cognitive_depth_mean"].apply(
+    #         lambda x: discretize(x, lim_inf, q1, q3, lim_sup)
+    #     )
+
+    #     return df[["user_id", "label"]]
+
     def discretize_student_levels_class(self, df: pd.DataFrame) -> pd.DataFrame:
-        df = df.copy()
+        if df is None or df.empty or "cognitive_depth_mean" not in df.columns:
+            return pd.DataFrame(columns=["user_id", "label"])
 
-        df['avg_level'] = df[['assign_level', 'forum_level', 'quiz_level']].mean(axis=1)
+        serie_real = df.loc[df["cognitive_depth_mean"] > -1, "cognitive_depth_mean"]
+        if serie_real.empty:
+            out = df[["user_id"]].copy()
+            out["label"] = "muito_baixo"
+            return out
 
-        Q1 = df['avg_level'].quantile(0.25)
-        Q2 = df['avg_level'].quantile(0.50)
-        Q3 = df['avg_level'].quantile(0.75)
-        IQR = Q3 - Q1
+        q1  = float(serie_real.quantile(0.25))
+        q3  = float(serie_real.quantile(0.75))
+        iqr = q3 - q1
+        lim_inf = q1 - 1.5 * iqr
+        lim_sup = q3 + 1.5 * iqr
 
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
+        def bucket_quantis(x: float) -> str:
+            if x <= lim_inf:   return "muito_baixo"
+            elif x <= q1:      return "baixo"
+            elif x <= q3:      return "medio"
+            elif x <= lim_sup: return "alto"
+            else:              return "muito_alto"
 
-        def categorize(value):
-            if value < lower_bound:
-                return 'muito_baixo'
-            elif value < Q1:
-                return 'baixo'
-            elif value <= Q3:
-                return 'medio'
-            elif value <= upper_bound:
-                return 'alto'
-            else:
-                return 'muito_alto'
+        out = df[["user_id", "cognitive_depth_mean"]].copy()
 
-        df['label'] = df['avg_level'].apply(categorize)
+        if iqr == 0:
+            # fallback quando todos têm o mesmo valor (evita jogar todo mundo no topo)
+            # cortes simétricos em [-1, 1]
+            bins   = [-1.01, -0.6, -0.2, 0.2, 0.6, 1.01]
+            labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
+            out["label"] = pd.cut(out["cognitive_depth_mean"], bins=bins,
+                                labels=labels, include_lowest=True).astype(str)
+        else:
+            out["label"] = out["cognitive_depth_mean"].apply(bucket_quantis)
 
-        return df[['user_id', 'label']]
+        return out[["user_id", "label"]]
 
 
     def general_analysis(self, version, connector, analysis_config):
@@ -214,6 +220,17 @@ class Cognitive(Indicator):
 
         if processed == 0:
             processed = 1
+
+        # result = self.course_analysis(225, version, connector)
+        # result = self.discretize_student_levels_class(result)
+
+        # result["institution_id"] = 1
+        # result["subject_id"] = 225
+        # self.aggregate_user_results(result, engine)
+
+        # analysis_config["processed"] = analysis_config["total"]
+
+        # return analysis_config
 
         for i in range(processed + 1, total + 1):
             result = self.course_analysis(i, version, connector)

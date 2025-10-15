@@ -336,6 +336,7 @@ class Moodle31(Moodle):
                 SELECT DISTINCT 
                     p.userid AS user_id,
                     d.id AS discussion_id,
+                    d.forum AS forum_id,
                     p.id AS original_post_id,
                     reply.id AS reply_post_id,
                     lh.timecreated AS timestamp

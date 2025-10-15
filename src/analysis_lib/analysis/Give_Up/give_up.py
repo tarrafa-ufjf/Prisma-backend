@@ -24,7 +24,6 @@ class Give_Up(Indicator):
         performance = Performance(self.mapper)
         motivation = Motivation(self.mapper)
 
-        # Coleta
         df_cognitive   = cognitive.course_analysis(subject_id, version, connector)
         df_engagement  = engagement.course_analysis(subject_id, version, connector)
         df_performance = performance.course_analysis(subject_id, version, connector, returnOnlyStudentStatus=False)
@@ -39,7 +38,6 @@ class Give_Up(Indicator):
                 "give_up"
             ])
 
-        # Base: cognitivo (garante user_id/full_name + label)
         out = df_cognitive.loc[:, ["user_id", "full_name", "label"]].rename(columns={"label": "cognitive_label"})
 
         def safe_merge(df_base, df_new, label_col, new_name):
@@ -61,7 +59,6 @@ class Give_Up(Indicator):
             return s in {"muito_baixo", "baixo"}
 
         label_cols = ["engagement_label", "motivation_label", "performance_label", "cognitive_label"]
-        # Onde faltar label, marcamos como "desconhecido" para o retorno
         for c in label_cols:
             if c not in out.columns:
                 out[c] = pd.NA
@@ -69,7 +66,6 @@ class Give_Up(Indicator):
 
         out["give_up"] = out[label_cols].apply(lambda row: all(is_low(v) for v in row), axis=1)
 
-        # Colunas finais
         return out[[
             "user_id", "full_name",
             "engagement_label", "motivation_label", "performance_label", "cognitive_label",

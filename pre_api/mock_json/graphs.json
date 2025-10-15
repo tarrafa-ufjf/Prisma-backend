@@ -1,0 +1,290 @@
+[
+  {
+    "id": 222,
+    "situations": [
+      {
+        "situacao": "Reprovado",
+        "qtd": 101
+      },
+      {
+        "situacao": "RI",
+        "qtd": 12
+      }
+    ],
+    "usage_by_module": [
+      {
+        "course_id": 222,
+        "modulo": "assign",
+        "qtd": 9,
+        "pct_modulo_no_curso": 23.08
+      },
+      {
+        "course_id": 222,
+        "modulo": "url",
+        "qtd": 9,
+        "pct_modulo_no_curso": 23.08
+      },
+      {
+        "course_id": 222,
+        "modulo": "forum",
+        "qtd": 7,
+        "pct_modulo_no_curso": 17.95
+      },
+      {
+        "course_id": 222,
+        "modulo": "folder",
+        "qtd": 6,
+        "pct_modulo_no_curso": 15.38
+      },
+      {
+        "course_id": 222,
+        "modulo": "resource",
+        "qtd": 4,
+        "pct_modulo_no_curso": 10.26
+      },
+      {
+        "course_id": 222,
+        "modulo": "chat",
+        "qtd": 1,
+        "pct_modulo_no_curso": 2.56
+      },
+      {
+        "course_id": 222,
+        "modulo": "lti",
+        "qtd": 1,
+        "pct_modulo_no_curso": 2.56
+      },
+      {
+        "course_id": 222,
+        "modulo": "page",
+        "qtd": 1,
+        "pct_modulo_no_curso": 2.56
+      },
+      {
+        "course_id": 222,
+        "modulo": "quiz",
+        "qtd": 1,
+        "pct_modulo_no_curso": 2.56
+      }
+    ]
+  },
+  {
+    "id": 223,
+    "situations": [
+      {
+        "situacao": "Reprovado",
+        "qtd": 203
+      },
+      {
+        "situacao": "RI",
+        "qtd": 9
+      }
+    ],
+    "usage_by_module": [
+      {
+        "course_id": 223,
+        "modulo": "assign",
+        "qtd": 7,
+        "pct_modulo_no_curso": 24.14
+      },
+      {
+        "course_id": 223,
+        "modulo": "forum",
+        "qtd": 5,
+        "pct_modulo_no_curso": 17.24
+      },
+      {
+        "course_id": 223,
+        "modulo": "url",
+        "qtd": 5,
+        "pct_modulo_no_curso": 17.24
+      },
+      {
+        "course_id": 223,
+        "modulo": "folder",
+        "qtd": 4,
+        "pct_modulo_no_curso": 13.79
+      },
+      {
+        "course_id": 223,
+        "modulo": "resource",
+        "qtd": 4,
+        "pct_modulo_no_curso": 13.79
+      },
+      {
+        "course_id": 223,
+        "modulo": "chat",
+        "qtd": 1,
+        "pct_modulo_no_curso": 3.45
+      },
+      {
+        "course_id": 223,
+        "modulo": "label",
+        "qtd": 1,
+        "pct_modulo_no_curso": 3.45
+      },
+      {
+        "course_id": 223,
+        "modulo": "lti",
+        "qtd": 1,
+        "pct_modulo_no_curso": 3.45
+      },
+      {
+        "course_id": 223,
+        "modulo": "page",
+        "qtd": 1,
+        "pct_modulo_no_curso": 3.45
+      }
+    ]
+  },
+  {
+    "id": 224,
+    "situations": [
+      {
+        "situacao": "Reprovado",
+        "qtd": 95
+      },
+      {
+        "situacao": "RI",
+        "qtd": 17
+      }
+    ],
+    "usage_by_module": [
+      {
+        "course_id": 224,
+        "modulo": "assign",
+        "qtd": 9,
+        "pct_modulo_no_curso": 20.93
+      },
+      {
+        "course_id": 224,
+        "modulo": "forum",
+        "qtd": 9,
+        "pct_modulo_no_curso": 20.93
+      },
+      {
+        "course_id": 224,
+        "modulo": "url",
+        "qtd": 8,
+        "pct_modulo_no_curso": 18.6
+      },
+      {
+        "course_id": 224,
+        "modulo": "folder",
+        "qtd": 6,
+        "pct_modulo_no_curso": 13.95
+      },
+      {
+        "course_id": 224,
+        "modulo": "resource",
+        "qtd": 6,
+        "pct_modulo_no_curso": 13.95
+      },
+      {
+        "course_id": 224,
+        "modulo": "chat",
+        "qtd": 1,
+        "pct_modulo_no_curso": 2.33
+      },
+      {
+        "course_id": 224,
+        "modulo": "label",
+        "qtd": 1,
+        "pct_modulo_no_curso": 2.33
+      },
+      {
+        "course_id": 224,
+        "modulo": "lti",
+        "qtd": 1,
+        "pct_modulo_no_curso": 2.33
+      },
+      {
+        "course_id": 224,
+        "modulo": "page",
+        "qtd": 1,
+        "pct_modulo_no_curso": 2.33
+      },
+      {
+        "course_id": 224,
+        "modulo": "quiz",
+        "qtd": 1,
+        "pct_modulo_no_curso": 2.33
+      }
+    ]
+  },
+  {
+    "id": 225,
+    "situations": [
+      {
+        "situacao": "Reprovado",
+        "qtd": 203
+      },
+      {
+        "situacao": "RI",
+        "qtd": 6
+      }
+    ],
+    "usage_by_module": [
+      {
+        "course_id": 225,
+        "modulo": "assign",
+        "qtd": 8,
+        "pct_modulo_no_curso": 25.0
+      },
+      {
+        "course_id": 225,
+        "modulo": "forum",
+        "qtd": 6,
+        "pct_modulo_no_curso": 18.75
+      },
+      {
+        "course_id": 225,
+        "modulo": "url",
+        "qtd": 5,
+        "pct_modulo_no_curso": 15.63
+      },
+      {
+        "course_id": 225,
+        "modulo": "folder",
+        "qtd": 4,
+        "pct_modulo_no_curso": 12.5
+      },
+      {
+        "course_id": 225,
+        "modulo": "resource",
+        "qtd": 4,
+        "pct_modulo_no_curso": 12.5
+      },
+      {
+        "course_id": 225,
+        "modulo": "chat",
+        "qtd": 1,
+        "pct_modulo_no_curso": 3.13
+      },
+      {
+        "course_id": 225,
+        "modulo": "glossary",
+        "qtd": 1,
+        "pct_modulo_no_curso": 3.13
+      },
+      {
+        "course_id": 225,
+        "modulo": "label",
+        "qtd": 1,
+        "pct_modulo_no_curso": 3.13
+      },
+      {
+        "course_id": 225,
+        "modulo": "lti",
+        "qtd": 1,
+        "pct_modulo_no_curso": 3.13
+      },
+      {
+        "course_id": 225,
+        "modulo": "page",
+        "qtd": 1,
+        "pct_modulo_no_curso": 3.13
+      }
+    ]
+  }
+]

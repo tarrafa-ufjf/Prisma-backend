@@ -1,29 +1,6 @@
-from flask import request, jsonify, Flask
-from dotenv import load_dotenv
-import pymysql
-from database import db
-import os
-import pandas as pd
-
-load_dotenv()
-
-app = Flask(__name__)
-
-
-def get_connection():
-    return pymysql.connect(
-        host=os.getenv('MYSQL_HOST'),
-        port=int(os.getenv('MYSQL_GRAD_PORT')),
-        user=os.getenv('MYSQL_USER'),
-        password=os.getenv('MYSQL_PASSWORD'),
-        db=os.getenv('MYSQL_DATABASE'),
-        charset='utf8mb4',
-        cursorclass=pymysql.cursors.DictCursor
-    )
-
 @app.route('/courses')
 def get_courses():
-    connector = get_connection()
+    connector = conn.get_connection()
     with connector.cursor() as cursor:
         cursor.execute('''
             SELECT *
@@ -33,13 +10,13 @@ def get_courses():
     connector.close()
     return jsonify(coursers), 200
 
-@app.route('/course/<int:course_id>')
-def get_course(course_id):
-    connector = get_connection()
+@app.route('/course/<int:subject_id>')
+def get_course(subject_id):
+    connector = conn.get_connection()
     with connector.cursor() as cursor:
         cursor.execute('''
             SELECT DISTINCT 
-                u.id AS user_id,
+                u.id AS institution_id,
                 u.firstname,
                 lh.objectid AS forum_id,
                 FROM_UNIXTIME(lh.timecreated) AS timestamp
@@ -52,7 +29,7 @@ def get_course(course_id):
             AND lh.eventname LIKE '%%course_module_viewed%%'
             AND lh.component = 'mod_forum'
             AND r.archetype = 'student';
-        ''', course_id)
+        ''', subject_id)
         
         courses = cursor.fetchall()
         df = pd.DataFrame(courses)
@@ -69,10 +46,28 @@ def get_course(course_id):
     return jsonify(df.to_dict(orient='records')), 200
 
 
+# Tasks Example - Send message to queue "tasks_to_process"
 
-@app.route("/")
-def hello():
-    return "Hello, Flask + Poetry!"
+{
+    "name" : "",
+    "version": "",
+    "body" : {
+        "db_inst_config": {},
+        "type" : "",
+        "analysis_config": {}
+    },
+}
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# Send message to "Done"
+
+{
+    "name" : "",
+    "body" : {} # => Content of the message
+}
+
+# Content of the message
+
+{
+    "version": "",
+    "results" : {}
+}

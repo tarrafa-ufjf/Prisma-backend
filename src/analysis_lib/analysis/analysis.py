@@ -4,6 +4,7 @@ from .Desempenho.performance import Performance
 from .Motivacao.motivation import Motivation
 from .Pedagogico.pedagogic import Pedagogic
 from .Cognitivo.cognitive import Cognitive
+from .Give_Up.give_up import Give_Up
 
 class Analyzer:
     def __init__(self):
@@ -86,7 +87,6 @@ class Analyzer:
         return res
     
     def cognitive_analysis(self, subject_id, type_query, version, connector):
-        from .Cognitivo.cognitive import Cognitive
         cognitive = Cognitive(self.mapper)
         res = None
 
@@ -94,6 +94,17 @@ class Analyzer:
             pass
         elif type_query == 'course': 
             res = cognitive.course_analysis(subject_id, version, connector)
+
+        return res
+    
+    def give_up_analysis(self, subject_id, type_query, version, connector):
+        give_up = Give_Up(self.mapper)
+        res = None
+
+        if type_query == 'user':
+            pass
+        elif type_query == 'course': 
+            res = give_up.course_analysis(subject_id, version, connector)
 
         return res
     

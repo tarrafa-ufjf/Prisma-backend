@@ -1,4 +1,8 @@
 .env
 /dist
 poetry.lock
-/__pycache__
+__pycache__/
+*.csv
+/*.json
+*.db
+/data

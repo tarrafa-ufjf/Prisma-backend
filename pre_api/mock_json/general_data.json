@@ -1,0 +1,26 @@
+[
+    {
+        "course_id": 222,
+        "total_enrolled": 146,
+        "avg_grade_all": 65.83,
+        "taxa_aprovacao": 63.39
+    },
+    {
+        "course_id": 223,
+        "total_enrolled": 254,
+        "avg_grade_all": 75.62,
+        "taxa_aprovacao": 82.38
+    },
+    {
+        "course_id": 224,
+        "total_enrolled": 146,
+        "avg_grade_all": 65.53,
+        "taxa_aprovacao": 62.5
+    },
+    {
+        "course_id": 225,
+        "total_enrolled": 253,
+        "avg_grade_all": 76.33,
+        "taxa_aprovacao": 82.86
+    }
+]

@@ -1,0 +1,310 @@
+[
+  {
+    "id": 222,
+    "ranking_best": [
+      {
+        "pos": 1,
+        "user_id": 1069,
+        "name": "GIRLENO CANDIDO",
+        "final_grade": 99.0,
+        "percentual": 50.0
+      },
+      {
+        "pos": 2,
+        "user_id": 1060,
+        "name": "GILMÁRIO",
+        "final_grade": 97.5,
+        "percentual": 49.0
+      },
+      {
+        "pos": 3,
+        "user_id": 1680,
+        "name": "MARINA",
+        "final_grade": 97.5,
+        "percentual": 49.0
+      },
+      {
+        "pos": 4,
+        "user_id": 856,
+        "name": "JOELMA",
+        "final_grade": 97.0,
+        "percentual": 48.0
+      },
+      {
+        "pos": 5,
+        "user_id": 1033,
+        "name": "ELIENE",
+        "final_grade": 97.0,
+        "percentual": 48.0
+      }
+    ],
+    "ranking_difficulties": [
+      {
+        "pos": 1,
+        "user_id": 847,
+        "name": "JÉSSIKA MIKAELLE",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 2,
+        "user_id": 861,
+        "name": "CAMILA MIRANDA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 3,
+        "user_id": 1043,
+        "name": "EVANEIDE",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 4,
+        "user_id": 1047,
+        "name": "YANA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 5,
+        "user_id": 1082,
+        "name": "LUANA CRISTINA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      }
+    ]
+  },
+  {
+    "id": 223,
+    "ranking_best": [
+      {
+        "pos": 1,
+        "user_id": 1701,
+        "name": "QUEILIANE",
+        "final_grade": 96.0,
+        "percentual": 48.0
+      },
+      {
+        "pos": 2,
+        "user_id": 933,
+        "name": "SIRLEIA ADRIANA",
+        "final_grade": 95.0,
+        "percentual": 48.0
+      },
+      {
+        "pos": 3,
+        "user_id": 943,
+        "name": "CRISTIANE",
+        "final_grade": 95.0,
+        "percentual": 48.0
+      },
+      {
+        "pos": 4,
+        "user_id": 774,
+        "name": "MERIELE",
+        "final_grade": 94.0,
+        "percentual": 47.0
+      },
+      {
+        "pos": 5,
+        "user_id": 937,
+        "name": "TAMIRIS",
+        "final_grade": 94.0,
+        "percentual": 47.0
+      }
+    ],
+    "ranking_difficulties": [
+      {
+        "pos": 1,
+        "user_id": 457,
+        "name": "FRANCELY APARECIDA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 2,
+        "user_id": 731,
+        "name": "JOUSE",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 3,
+        "user_id": 778,
+        "name": "ALESSANDRA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 4,
+        "user_id": 795,
+        "name": "FERNANDA EVA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 5,
+        "user_id": 870,
+        "name": "DENISE",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      }
+    ]
+  },
+  {
+    "id": 224,
+    "ranking_best": [
+      {
+        "pos": 1,
+        "user_id": 866,
+        "name": "JOYCE",
+        "final_grade": 100.0,
+        "percentual": 50.0
+      },
+      {
+        "pos": 2,
+        "user_id": 1060,
+        "name": "GILMÁRIO",
+        "final_grade": 100.0,
+        "percentual": 50.0
+      },
+      {
+        "pos": 3,
+        "user_id": 1055,
+        "name": "SILVINO",
+        "final_grade": 99.0,
+        "percentual": 50.0
+      },
+      {
+        "pos": 4,
+        "user_id": 1139,
+        "name": "RAQUEL TEREZINHA",
+        "final_grade": 99.0,
+        "percentual": 50.0
+      },
+      {
+        "pos": 5,
+        "user_id": 1069,
+        "name": "GIRLENO CANDIDO",
+        "final_grade": 98.0,
+        "percentual": 49.0
+      }
+    ],
+    "ranking_difficulties": [
+      {
+        "pos": 1,
+        "user_id": 847,
+        "name": "JÉSSIKA MIKAELLE",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 2,
+        "user_id": 861,
+        "name": "CAMILA MIRANDA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 3,
+        "user_id": 1043,
+        "name": "EVANEIDE",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 4,
+        "user_id": 1047,
+        "name": "YANA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 5,
+        "user_id": 1082,
+        "name": "LUANA CRISTINA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      }
+    ]
+  },
+  {
+    "id": 225,
+    "ranking_best": [
+      {
+        "pos": 1,
+        "user_id": 1692,
+        "name": "Edvânia Maria",
+        "final_grade": 97.0,
+        "percentual": 32.0
+      },
+      {
+        "pos": 2,
+        "user_id": 1783,
+        "name": "Jusmara",
+        "final_grade": 97.0,
+        "percentual": 32.0
+      },
+      {
+        "pos": 3,
+        "user_id": 633,
+        "name": "ADEILZA",
+        "final_grade": 96.0,
+        "percentual": 32.0
+      },
+      {
+        "pos": 4,
+        "user_id": 638,
+        "name": "LUCAS",
+        "final_grade": 96.0,
+        "percentual": 32.0
+      },
+      {
+        "pos": 5,
+        "user_id": 937,
+        "name": "TAMIRIS",
+        "final_grade": 96.0,
+        "percentual": 32.0
+      }
+    ],
+    "ranking_difficulties": [
+      {
+        "pos": 1,
+        "user_id": 731,
+        "name": "JOUSE",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 2,
+        "user_id": 778,
+        "name": "ALESSANDRA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 3,
+        "user_id": 795,
+        "name": "FERNANDA EVA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 4,
+        "user_id": 907,
+        "name": "LARISSA GABRIELLE",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      },
+      {
+        "pos": 5,
+        "user_id": 946,
+        "name": "EDNA",
+        "final_grade": 0.0,
+        "percentual": 0.0
+      }
+    ]
+  }
+]

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulários de Indicadores</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h2 {
+            margin-top: 40px;
+            color: #333;
+        }
+        form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        label, select, input, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        select, input {
+            padding: 8px;
+        }
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007BFF;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Consultas de Indicadores</h1>
+
+    <h2>Engajamento</h2>
+    <form id="form-engajamento" action="/engagement" method="get">
+        <label for="engagement-query">Selecione o tipo de consulta:</label>
+        <select name="engagement-query" id="engagement-query" onchange="toggleInput(this)">
+            <option value="general">Geral</option>
+            <option value="user">Por Usuário</option>
+            <option value="course">Por Curso</option>
+        </select>
+        <label for="engagement-id">Informe o ID:</label>
+        <input type="text" id="engagement-id" name="engagement-id" disabled>
+        <button type="submit">Consultar Engajamento</button>
+    </form>
+
+    <h2>Desempenho</h2>
+    <form id="form-desempenho" action="/performance" method="get">
+        <label for="performance-query">Selecione o tipo de consulta:</label>
+        <select name="performance-query" id="performance-query" onchange="toggleInput(this)">
+            <option value="general">Geral</option>
+            <option value="user">Por Usuário</option>
+            <option value="course">Por Curso</option>
+        </select>
+        <label for="performance-id">Informe o ID:</label>
+        <input type="text" id="performance-id" name="performance-id" disabled>
+        <button type="submit">Consultar Desempenho</button>
+    </form>
+
+    <h2>Motivação</h2>
+    <form id="form-motivacao" action="/motivation" method="get">
+        <label for="motivation-query">Selecione o tipo de consulta:</label>
+        <select name="motivation-query" id="motivation-query" onchange="toggleInput(this)">
+            <option value="general">Geral</option>
+            <option value="user">Por Usuário</option>
+            <option value="course">Por Curso</option>
+        </select>
+        <label for="motivation-id">Informe o ID:</label>
+        <input type="text" id="motivation-id" name="motivation-id" disabled>
+        <button type="submit">Consultar Motivação</button>
+    </form>
+
+    <h2>Pedagógico</h2>
+    <form id="form-pedagogico" action="/pedagogic" method="get">
+        <label for="pedagogic-query">Selecione o tipo de consulta:</label>
+        <select name="pedagogic-query" id="pedagogic-query" onchange="toggleInput(this)">
+            <option value="general">Geral</option>
+            <option value="user">Por Usuário</option>
+            <option value="course">Por Curso</option>
+        </select>
+        <label for="pedagogic-id">Informe o ID:</label>
+        <input type="text" id="pedagogic-id" name="pedagogic-id" disabled>
+        <button type="submit">Consultar indicador Pedagógico</button>
+    </form>
+
+    <script>
+        function toggleInput(selectElement) {
+            const idField = document.getElementById(selectElement.id.replace('query', 'id'));
+            if (selectElement.value === 'geral') {
+                idField.disabled = true;
+                idField.value = '';
+            } else {
+                idField.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

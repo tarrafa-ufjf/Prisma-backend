@@ -1,0 +1,43 @@
+version: '3.7'
+
+services:
+  postgres:
+    image: bitnami/postgresql:17.6.0
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRESQL_USERNAME=tarrafa
+      - POSTGRESQL_PASSWORD=tarrafa123
+      - POSTGRESQL_DATABASE=tarrafa_db
+      - POSTGRESQL_HOST=postgres
+    volumes:
+      - postgres_data:/bitnami/postgresql
+
+  rabbitmq:
+    image: rabbitmq:3.13.7-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  pgadmin:
+    image: dpage/pgadmin4:8.13
+    container_name: pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  pgadmin_data:

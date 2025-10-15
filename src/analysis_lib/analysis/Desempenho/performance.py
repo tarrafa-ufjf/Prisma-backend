@@ -15,7 +15,7 @@ class Performance(Indicator):
             "muito_alto",
         ]
     
-    def course_analysis(self, subject_id, version, connector):
+    def course_analysis(self, subject_id, version, connector, returnOnlyStudentStatus: False):
         df_grades = self.mapper.get_grades(connector, subject_id, version)
         df_pesos = self.mapper.get_activity_weights(connector, subject_id, version)
         df_alunos = self.mapper.get_all_students(connector, subject_id, version)
@@ -63,6 +63,9 @@ class Performance(Indicator):
         notas_finais['grademax']   = round(nota_maxima_semestre, 1)
         notas_finais['nota_final'] = notas_finais['nota_final'].round(1)
         notas_finais['percentual'] = notas_finais['percentual'].round(0)
+
+        if(returnOnlyStudentStatus): 
+            return notas_finais
 
         df_norm_aluno = self.normalized_grades(notas_finais)
         df_discretized = (self.discretized_performance(subject_id, df_norm_aluno).rename(columns={'performance': 'performance_label'}))
@@ -206,7 +209,7 @@ class Performance(Indicator):
 
         # Processar cursos a partir do ponto onde parou
         for i in range(processed + 1, total + 1):
-            result = self.course_analysis(i, version, connector)
+            result = self.course_analysis(i, version, connector, returnOnlyStudentStatus=False)
 
             if not result.empty:
                 result["subject_id"] = i
@@ -260,7 +263,7 @@ class Performance(Indicator):
     
     def status_students_analysis(self, version, connector, subject_id=None):
         rows = []
-        df = self.course_analysis(subject_id, version, connector)
+        df = self.course_analysis(subject_id, version, connector,  returnOnlyStudentStatus = True)
 
         s = df["situacao"].astype(str)
         status = np.where(
@@ -280,4 +283,4 @@ class Performance(Indicator):
         return pd.DataFrame(rows, columns=["subject_id", "Aprovado", "Reprovado", "RI"])
     
     def grades_students_analysis(self, version, connector, subject_id=None):
-        return self.course_analysis(subject_id, version, connector)
+        return self.course_analysis(subject_id, version, connector, returnOnlyStudentStatus=True)

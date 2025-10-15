@@ -27,7 +27,7 @@ class Give_Up(Indicator):
         # Coleta
         df_cognitive   = cognitive.course_analysis(subject_id, version, connector)
         df_engagement  = engagement.course_analysis(subject_id, version, connector)
-        df_performance = performance.course_analysis(subject_id, version, connector)
+        df_performance = performance.course_analysis(subject_id, version, connector, returnOnlyStudentStatus=False)
         df_motivation  = motivation.course_analysis(subject_id, version, connector)
 
         dfs = [df_cognitive, df_engagement, df_performance, df_motivation]

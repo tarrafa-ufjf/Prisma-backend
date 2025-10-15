@@ -73,7 +73,15 @@ class Cognitive(Indicator):
             for (u, item), lvl in levels_dict.items():
                 prop = 0.0 if lvl == 0 else (lvl / potential)
                 value = 2*prop - 1.0  # escala -1..1
-                rows.append({user_col: u, item_col: item, "module": module_name, "level": lvl, "potential": potential, "proportion": prop, "value": value})
+                rows.append({
+                    "user_id": u,
+                    "item_id": item,           
+                    "module": module_name,
+                    "level": lvl,
+                    "potential": potential,
+                    "proportion": prop,
+                    "value": value
+                })
             return pd.DataFrame(rows)
 
         def dynamic_potential(view_pairs, submit_pairs, review_pairs):
@@ -125,18 +133,40 @@ class Cognitive(Indicator):
 
         if frames:
             per_item = pd.concat(frames, ignore_index=True)
-            per_user = (
-                per_item.groupby("user_id", as_index=False)["value"]
+
+            per_user = (per_item.groupby("user_id", as_index=False)["value"].mean().rename(columns={"value": "cognitive_depth_mean"}))
+
+            # Média por tipo de módulo (forum, quiz, assign)
+            per_user_module = (
+                per_item.groupby(["user_id", "module"], as_index=False)["level"]
                 .mean()
-                .rename(columns={"value": "cognitive_depth_mean"})
+                .pivot(index="user_id", columns="module", values="level")
+                .reset_index()
+                .rename(columns={
+                    "forum": "forum_mean_level",
+                    "quiz": "quiz_mean_level",
+                    "assign": "assign_mean_level"
+                })
+                .fillna(0).round(2)
             )
         else:
             per_user = pd.DataFrame(columns=["user_id", "cognitive_depth_mean"])
+            per_user_module = pd.DataFrame(columns=[
+                "user_id", "forum_mean_level", "quiz_mean_level", "assign_mean_level"
+            ]).round(2)
 
         out = all_students.merge(per_user, on="user_id", how="left")
         out["cognitive_depth_mean"] = out["cognitive_depth_mean"].astype(float).fillna(-1.0)
 
-        return out
+        out = out.merge(per_user_module, on="user_id", how="left").fillna(0)
+
+        cognitive_label = self.discretize_student_levels_class(out)
+        out = out.merge(cognitive_label, on="user_id", how="left")
+
+        out[["user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]].to_csv('saida.csv')
+
+        return out[["user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]]
+
             
     '''Implementar análise cognitiva global'''
 
@@ -167,7 +197,7 @@ class Cognitive(Indicator):
 
     #     return df[["user_id", "label"]]
 
-    def discretize_student_levels_class(self, df: pd.DataFrame) -> pd.DataFrame:
+    def discretize_student_levels_class(self, df):
         if df is None or df.empty or "cognitive_depth_mean" not in df.columns:
             return pd.DataFrame(columns=["user_id", "label"])
 

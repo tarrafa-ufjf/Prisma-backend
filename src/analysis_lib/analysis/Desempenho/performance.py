@@ -158,16 +158,16 @@ class Performance(Indicator):
 
         def label_from_mean(mean_value):
             if mean_value == 0:
-                return 1
+                return 'muito_baixo'
             elif mean_value == 1:
-                return 2
+                return 'baixo'
             elif mean_value == 2:
-                return 3
+                return 'medio'
             elif mean_value == 3:
-                return 4
+                return 'alto'
             elif mean_value >= 4:
-                return 5
-            return 0
+                return 'muito_alto'
+            return 'Sem dados'
 
         # Aplica discretizações numéricas e rotula com média
         performance_labels = []
@@ -206,7 +206,7 @@ class Performance(Indicator):
 
         # Processar cursos a partir do ponto onde parou
         for i in range(processed + 1, total + 1):
-            result = self.discretized_performance(i, version, connector)
+            result = self.course_analysis(i, version, connector)
 
             if not result.empty:
                 result["subject_id"] = i
@@ -222,7 +222,7 @@ class Performance(Indicator):
                 df["institution_id"] = 1 
 
                 df_counts = (
-                    df.groupby(["institution_id", "subject_id", "performance"])
+                    df.groupby(["institution_id", "subject_id", "performance_label"])
                     .size()
                     .unstack(fill_value=0)
                     .reset_index()

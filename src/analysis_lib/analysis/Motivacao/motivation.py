@@ -30,15 +30,15 @@ class Motivation(Indicator):
 
         def discretize(x, lim_inf, q1, q3, lim_sup):
             if x <= lim_inf:
-                return 1
+                return "Muito baixo"
             elif x <= q1:
-                return 2
+                return "Baixo"
             elif x <= q3:
-                return 3
+                return "Medio"
             elif x <= lim_sup:
-                return 4
+                return "Alto"
             else:
-                return 5
+                return "Muito alto"
 
         df_final["posts_unrequired_label"] = df_final["num_posts_unrequired"].apply(
             lambda x: discretize(x, lim_inf, q1, q3, lim_sup)

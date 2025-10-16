@@ -141,13 +141,22 @@ class Cognitive(Indicator):
                 per_item.groupby(["user_id", "module"], as_index=False)["level"]
                 .mean()
                 .pivot(index="user_id", columns="module", values="level")
+            )
+
+            for col in ["forum", "quiz", "assign"]:
+                if col not in per_user_module.columns:
+                    per_user_module[col] = 0
+
+            per_user_module = (
+                per_user_module
                 .reset_index()
                 .rename(columns={
                     "forum": "forum_mean_level",
                     "quiz": "quiz_mean_level",
                     "assign": "assign_mean_level"
                 })
-                .fillna(0).round(2)
+                .fillna(0)
+                .round(2)
             )
         else:
             per_user = pd.DataFrame(columns=["user_id", "cognitive_depth_mean"])
@@ -275,7 +284,10 @@ class Cognitive(Indicator):
                 df["institution_id"] = 1
 
                 # df.to_sql("cognitive_global", engine, if_exists="append", index=False)
-                self.create_user_course_label_df(df)
+                # self.create_user_course_label_df(df)
+
+                print(df)
+                exit()
 
                 self.aggregate_user_results(df, engine)
 
@@ -284,7 +296,7 @@ class Cognitive(Indicator):
         if not df.empty:
             # df.to_sql("cognitive_global", engine, if_exists="append", index=False)
 
-            self.create_user_course_label_df(df)
+            # self.create_user_course_label_df(df)
             self.aggregate_user_results(df, engine)
 
         return analysis_config

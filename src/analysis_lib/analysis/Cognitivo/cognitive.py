@@ -141,13 +141,22 @@ class Cognitive(Indicator):
                 per_item.groupby(["user_id", "module"], as_index=False)["level"]
                 .mean()
                 .pivot(index="user_id", columns="module", values="level")
+            )
+
+            for col in ["forum", "quiz", "assign"]:
+                if col not in per_user_module.columns:
+                    per_user_module[col] = 0
+
+            per_user_module = (
+                per_user_module
                 .reset_index()
                 .rename(columns={
                     "forum": "forum_mean_level",
                     "quiz": "quiz_mean_level",
                     "assign": "assign_mean_level"
                 })
-                .fillna(0).round(2)
+                .fillna(0)
+                .round(2)
             )
         else:
             per_user = pd.DataFrame(columns=["user_id", "cognitive_depth_mean"])

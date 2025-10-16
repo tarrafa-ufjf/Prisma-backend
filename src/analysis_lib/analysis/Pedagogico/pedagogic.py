@@ -96,10 +96,10 @@ class Pedagogic(Indicator):
         forum_count = df_tutores.merge(forum_count, on=["tutor_id", "tutor_completo"], how="left")
 
         forum_count["total_respostas_forum"] = forum_count["total_respostas_forum"].fillna(0).astype(int)
-        forum_count["media_horas_resposta"] = forum_count["media_horas_resposta"].fillna(np.nan)
-        forum_count["mediana_horas_resposta"] = forum_count["mediana_horas_resposta"].fillna(np.nan)
+        forum_count["media_horas_resposta"] = forum_count["media_horas_resposta"].fillna(0).astype(int)
+        forum_count["mediana_horas_resposta"] = forum_count["mediana_horas_resposta"].fillna(0).astype(int)
 
-        for col in ["Rápida (≤24h)", "Normal", "Atrasada (>5 dias)", "Sem resposta"]:
+        for col in ["rapida", "normal", "atrasada", "sem resposta"]:
             if col not in forum_count.columns:
                 forum_count[col] = 0
             forum_count[col] = forum_count[col].fillna(0).astype(int)

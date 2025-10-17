@@ -53,7 +53,7 @@ class Performance(Indicator):
         else:
             notas_finais['percentual'] = 0.0
 
-        notas_finais['situacao'] = notas_finais['percentual'].apply(lambda x: 'Aprovado' if x >= 69 else ('RI' if x == 0 else 'Reprovado'))
+        notas_finais['situacao'] = notas_finais['nota_final'].apply(lambda x: 'Aprovado' if x >= 69 else ('RI' if x == 0 else 'Reprovado'))
         notas_finais['situacao'] = notas_finais['situacao'].astype(str)
         if nota_maxima_semestre <= 60:
             mask = notas_finais['situacao'] != 'RI'

@@ -26,8 +26,7 @@ class Cognitive(Indicator):
 
         assign_viewed_grouped = (assign_viewed.groupby(['user_id', 'assignment_id'])['timestamp'].count().reset_index(name='count_recorrences'))
         assign_submitted_grouped = (assign_assessable_submitted.groupby(['user_id', 'assignment_id'])['timestamp'].count().reset_index(name='count'))
-        if(not assign_feedback_viewed.empty):
-            assign_feedback_viewed_grouped = (assign_feedback_viewed.groupby(['user_id', 'assignment_id'])['timestamp'].count().reset_index(name='count'))
+        assign_feedback_viewed_grouped = (assign_feedback_viewed.groupby(['user_id', 'assignment_id'])['timestamp'].count().reset_index(name='count'))
 
         forum_course_viewed_grouped = (forum_course_viewed.groupby(['user_id', 'forum_id'])['timestamp'].count().reset_index(name='count'))
         forum_post_created_grouped = (forum_post_created.groupby(['user_id', 'forum_id'])['timestamp'].count().reset_index(name='count'))
@@ -98,7 +97,7 @@ class Cognitive(Indicator):
         # --------------------------
         assign_view_pairs   = to_unique_pairs(assign_viewed_grouped, ["user_id", "assignment_id"])        if df_exists_var(assign_viewed_grouped)           else set()
         assign_submit_pairs = to_unique_pairs(assign_submitted_grouped, ["user_id", "assignment_id"])     if df_exists_var(assign_submitted_grouped)         else set()
-        assign_review_pairs = to_unique_pairs(assign_feedback_viewed_grouped, ["user_id", "assignment_id"]) if ('assign_feedback_viewed_grouped' in locals() and df_exists_var(assign_feedback_viewed_grouped)) else set()
+        assign_review_pairs = to_unique_pairs(assign_feedback_viewed_grouped, ["user_id", "assignment_id"]) if df_exists_var(assign_feedback_viewed_grouped)   else set()
 
         assign_potential = dynamic_potential(assign_view_pairs, assign_submit_pairs, assign_review_pairs)
         assign_levels    = build_levels_for_module(assign_view_pairs, assign_submit_pairs, assign_review_pairs, max_level=assign_potential or 0)
@@ -167,10 +166,14 @@ class Cognitive(Indicator):
         out = all_students.merge(per_user, on="user_id", how="left")
         out["cognitive_depth_mean"] = out["cognitive_depth_mean"].astype(float).fillna(-1.0)
 
-        out = out.merge(per_user_module, on="user_id", how="left").fillna(0)
+        out = out.merge(per_user_module, on="user_id", how="left")
+        num_cols = ["forum_mean_level", "quiz_mean_level", "assign_mean_level"]
+        out[num_cols] = out[num_cols].apply(pd.to_numeric, errors="coerce").fillna(0.0)
 
         cognitive_label = self.discretize_student_levels_class(out)
         out = out.merge(cognitive_label, on="user_id", how="left")
+
+        out[["user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]].to_csv(f'Teste_{subject_id}.csv')
 
         return out[["user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]]
 
@@ -247,9 +250,12 @@ class Cognitive(Indicator):
         processed = analysis_config["processed"]
         engine = self.get_connector()
 
+        df_courses = pd.DataFrame(
+            self.mapper.get_courses(connector, version),
+            columns=['subject_id']
+        )
+
         if analysis_config["total"] == 0:
-            df_courses = self.mapper.get_courses(connector, version)
-            df_courses = pd.DataFrame(df_courses, columns=['subject_id'])
             analysis_config["total"] = len(df_courses)
 
         total = analysis_config["total"]
@@ -258,43 +264,49 @@ class Cognitive(Indicator):
         if processed == 0:
             processed = 1
 
+        # print("PRIMEIROOOOOOOOOOO")
         # result = self.course_analysis(225, version, connector)
-        # result = self.discretize_student_levels_class(result)
+        # print("DEBUG result type:", type(result))
+        # print("DEBUG result columns:", getattr(result, "columns", None))
 
-        # result["institution_id"] = 1
-        # result["subject_id"] = 225
-        # self.aggregate_user_results(result, engine)
+        # print("SEGUNDOOOOOOOOOOO")
+        # result_dis = result.loc[:, ["user_id", "full_name", "label"]].copy()
+        # print(result_dis)
+
+        # result_dis.loc[:, "institution_id"] = 1
+        # result_dis.loc[:, "subject_id"] = 225
+        # self.aggregate_user_results(result_dis, engine)
 
         # analysis_config["processed"] = analysis_config["total"]
 
         # return analysis_config
 
         for i in range(processed + 1, total + 1):
-            result = self.course_analysis(i, version, connector)
-            result = self.discretize_student_levels_class(result)
+            try:
+                subject_id = int(df_courses.iloc[i - 1]['subject_id'])
+            except IndexError: # Se 'total' > len(df_courses), evita quebrar
+                break
 
-            if not result.empty:
-                result["subject_id"] = i
-                df = pd.concat([df, result], ignore_index=True)
+            result = self.course_analysis(subject_id, version, connector)
+
+            if result is not None and not result.empty:
+                result_dis = (
+                    result.loc[:, ["user_id", "label"]]
+                        .copy()
+                        .assign(subject_id=subject_id, institution_id=1)
+                )
+
+                df = pd.concat([df, result_dis.loc[:, ["subject_id", "user_id", "label"]]], ignore_index=True)
+
             analysis_config["processed"] += 1
-
             self.print_load("Cognitivo", analysis_config["processed"], total, 8)
 
-            if analysis_config["processed"] % batch_size == 0:
-                df["institution_id"] = 1
-
-                # df.to_sql("cognitive_global", engine, if_exists="append", index=False)
-                self.create_user_course_label_df(df)
-
-                self.aggregate_user_results(df, engine)
-
+            if analysis_config["processed"] % batch_size == 0 and not df.empty:
+                self.aggregate_user_results(df.assign(institution_id=1), engine)
                 return analysis_config
 
         if not df.empty:
-            # df.to_sql("cognitive_global", engine, if_exists="append", index=False)
-
-            self.create_user_course_label_df(df)
-            self.aggregate_user_results(df, engine)
+            self.aggregate_user_results(df.assign(institution_id=1), engine)
 
         return analysis_config
 

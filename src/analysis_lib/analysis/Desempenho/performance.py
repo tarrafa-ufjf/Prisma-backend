@@ -77,8 +77,6 @@ class Performance(Indicator):
             0.0
         ).round(2)
 
-        df_final.to_csv('PERFORMANCE.csv')
-
         col_order = ["subject_id","user_id","full_name","media_percentual","performance_label", "comparative"]
         col_order = [c for c in col_order if c in df_final.columns]
         df_final = df_final[col_order].copy()

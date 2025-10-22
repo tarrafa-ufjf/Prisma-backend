@@ -42,14 +42,8 @@ class Info_Graphs(Indicator):
         df_pct_usage_resource = pd.DataFrame(self.mapper.get_pct_usage_resource(connector, subject_id, version))
         usage_by_module = [] if df_pct_usage_resource.empty else df_pct_usage_resource.to_dict(orient="records")
 
-        print("AAAAAAAAAAAAAAA")
-
         performance = Performance(self.mapper)
-        print("BBBBBBBBBBBBBBB")
         df_perf = performance.status_students_analysis(version, connector, subject_id)
-
-        
-        print(df_perf)
 
         if df_perf.empty:
             situations = [

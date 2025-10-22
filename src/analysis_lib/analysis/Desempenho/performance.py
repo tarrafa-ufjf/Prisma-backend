@@ -18,8 +18,16 @@ class Performance(Indicator):
     def course_analysis(self, subject_id, version, connector, returnOnlyStudentStatus: False):
         df_grades = self.mapper.get_grades_by_course(connector, subject_id, version)
         df_pesos = self.mapper.get_activity_weights(connector, subject_id, version)
+        
         df_alunos = self.mapper.get_all_students(connector, subject_id, version)
         df_alunos["subject_id"] = subject_id
+        df_alunos_full_name = df_alunos[["user_id","subject_id"]].copy()
+        if "full_name" in df_alunos.columns:
+            df_alunos_full_name["full_name"] = df_alunos["full_name"]
+        else:
+            first = df_alunos["firstname"].astype(str) if "firstname" in df_alunos.columns else ""
+            last  = df_alunos["lastname"].astype(str)  if "lastname"  in df_alunos.columns else ""
+            df_alunos_full_name["full_name"] = (first + " " + last).str.strip()
 
         df = df_alunos.merge(df_grades, on='user_id', how='left')
 
@@ -48,6 +56,7 @@ class Performance(Indicator):
         notas_finais['grade_final'] = notas_finais['grade_final'].round(1)
 
         if(returnOnlyStudentStatus): 
+            notas_finais = notas_finais.merge(df_alunos_full_name, on=["user_id","subject_id"], how="left").copy()
             return notas_finais
 
         df_aluno = self.analise_situation(notas_finais)
@@ -59,15 +68,7 @@ class Performance(Indicator):
             how='left'
         )
 
-        df_alunos_meta = df_alunos[["user_id","subject_id"]].copy()
-        if "full_name" in df_alunos.columns:
-            df_alunos_meta["full_name"] = df_alunos["full_name"]
-        else:
-            first = df_alunos["firstname"].astype(str) if "firstname" in df_alunos.columns else ""
-            last  = df_alunos["lastname"].astype(str)  if "lastname"  in df_alunos.columns else ""
-            df_alunos_meta["full_name"] = (first + " " + last).str.strip()
-
-        df_final = df_final.merge(df_alunos_meta, on=["user_id","subject_id"], how="left")
+        df_final = df_final.merge(df_alunos_full_name, on=["user_id","subject_id"], how="left")
 
         turma_mean = float(df_final['media_percentual'].mean(skipna=True))
         turma_std  = float(df_final['media_percentual'].std(ddof=1, skipna=True))

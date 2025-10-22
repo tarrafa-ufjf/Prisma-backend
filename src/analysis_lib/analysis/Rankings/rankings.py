@@ -7,7 +7,7 @@ class Rankings(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
  
-    def _ensure_numeric(self, df: pd.DataFrame, cols: List[str]): # Garante que colunas usadas na ordenação/filtragem sejam numéricas
+    def _ensure_numeric(self, df: pd.DataFrame, cols: List[str]): 
         df = df.copy()
         for c in cols:
             if c in df.columns:
@@ -19,18 +19,18 @@ class Rankings(Indicator):
     def _to_ranking_rows(self, df: pd.DataFrame, limit: int):
         rows: List[Dict[str, Any]] = []
         for i, row in df.head(limit).reset_index(drop=True).iterrows():
-            name = str(row.get("firstname") or row.get("name") or row.get("fullname") or "")
+            name = str(row.get("full_name") or row.get("name") or row.get("fullname") or "")
             user_id = int(row.get("user_id", 0))
             mnn = float(row.get("media_nota_normalizada", 0.0))
             # Se vier normalizada (0..1), multiplica por 100; se já vier 0..100, mantém
             final_grade = round(mnn * 100 if mnn <= 1.0 else mnn, 2)
-            percentual = round(float(row.get("media_percentual", 0.0)), 2)
+            grade_final = round(float(row.get("media_grade_final", 0.0)), 2)
             rows.append({
                 "pos": i + 1,
                 "user_id": user_id,
                 "name": name,
                 "final_grade": final_grade,
-                "percentual": percentual
+                "grade_final": grade_final
             })
         return rows
 
@@ -46,31 +46,30 @@ class Rankings(Indicator):
             return {"id": subject_id, "type": kind, "ranking": []}
 
         df = df.copy()
-        df["percentual"] = pd.to_numeric(df.get("percentual", 0), errors="coerce").fillna(0.0)
-        df["nota_final"] = pd.to_numeric(df.get("nota_final", 0), errors="coerce").fillna(0.0)
+        df["grade_final"] = pd.to_numeric(df.get("grade_final", 0), errors="coerce").fillna(0.0)
         df["grademax"]   = pd.to_numeric(df.get("grademax", 0), errors="coerce").fillna(0.0)
         df["situacao"]   = df.get("situacao", "").astype(str)
-        df["firstname"]  = df.get("firstname", "").astype(str)
+        df["full_name"]  = df.get("full_name", "").astype(str)
         df["user_id"]    = pd.to_numeric(df.get("user_id", 0), errors="coerce").fillna(0).astype(int)
 
         if kind == "best-performance":
             status_score = {"Aprovado": 0, "Reprovado": 1, "RI": 2}
             df["_score"] = df["situacao"].map(status_score).fillna(3).astype(int)
             df_sorted = df.sort_values(
-                by=["_score", "percentual", "nota_final", "firstname"],
-                ascending=[True, False, False, True],
+                by=["_score", "grade_final", "full_name"],
+                ascending=[True, False, True],
                 kind="mergesort",
             )
         elif kind == "at-risk":
             risk_order = {"RI": 0, "Reprovado": 1, "Aprovado": 2}
-            mask = (df["situacao"].isin(["RI", "Reprovado"])) | (df["percentual"] < 69.0)
+            mask = (df["situacao"].isin(["RI", "Reprovado"])) | (df["grade_final"] < 69.0)
             df_risk = df[mask].copy()
             if df_risk.empty:
                 return {"id": subject_id, "type": kind, "ranking": []}
             df_risk["_score"] = df_risk["situacao"].map(risk_order).fillna(3).astype(int)
             df_sorted = df_risk.sort_values(
-                by=["_score", "percentual", "nota_final", "firstname"],
-                ascending=[True, True, True, True],
+                by=["_score", "grade_final", "full_name"],
+                ascending=[True, True, True],
                 kind="mergesort",
             )
         else:
@@ -80,9 +79,8 @@ class Rankings(Indicator):
         ranking = [
             {
                 "user_id": int(r.user_id),
-                "student": str(r.firstname),
-                "percentual": float(r.percentual),
-                "nota_final": float(r.nota_final),
+                "student": str(r.full_name),
+                "grade_final": float(r.grade_final),
                 "grademax": float(r.grademax),
                 "situacao": str(r.situacao),
             }

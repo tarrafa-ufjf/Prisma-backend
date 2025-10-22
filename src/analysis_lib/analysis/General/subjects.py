@@ -11,11 +11,10 @@ class Subjects(Indicator):
         if ts is None or pd.isna(ts):
             return None
         try:
-            t = time.gmtime(int(ts)) 
+            t = time.gmtime(int(ts))
         except Exception:
             return None
-        half = 1 if t.tm_mon <= 6 else 2
-        return f"{t.tm_year}.{half}"
+        return f"{t.tm_year}.{t.tm_mon}"
 
 
     def get_subjects(self, version, connector):

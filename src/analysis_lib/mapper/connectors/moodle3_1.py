@@ -121,10 +121,10 @@ class Moodle31(Moodle):
                     u.id AS user_id,
                     u.firstname,
                     gi.courseid,
+                    gg.finalgrade AS grade_final,
                     cm.id AS activity_id,
                     gi.itemname AS activity_name,
-                    WEEK(FROM_UNIXTIME(cm.added)) AS week,
-                    ((COALESCE(gg.finalgrade, 0) / gi.grademax)*100) AS performance
+                    WEEK(FROM_UNIXTIME(cm.added)) AS week
                 FROM mdl_user u
                 JOIN mdl_grade_grades gg ON gg.userid = u.id
                 JOIN mdl_grade_items gi ON gi.id = gg.itemid
@@ -515,15 +515,14 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             # 1) Total de alunos
             cur.execute('''
-                SELECT COUNT(DISTINCT ue.userid) AS total_enrolled
-                FROM mdl_enrol e
-                JOIN mdl_user_enrolments ue ON ue.enrolid = e.id
-                JOIN mdl_role_assignments ra ON ra.userid = ue.userid
-                JOIN mdl_role r ON r.id = ra.roleid
+                SELECT COUNT(DISTINCT ra.userid) AS total_enrolled
+                FROM mdl_role_assignments ra
                 JOIN mdl_context ctx ON ctx.id = ra.contextid
-                WHERE e.courseid = %s
-                AND ctx.contextlevel = 50
-                AND r.archetype = 'student';
+                JOIN mdl_user u ON u.id = ra.userid
+                JOIN mdl_role r ON r.id = ra.roleid AND r.id = 5
+                WHERE ctx.contextlevel = 50 
+                    AND ctx.instanceid = %s;
+
             ''', (subject_id,))
             total_rows = cur.fetchall()
             total_enrolled = total_rows[0]["total_enrolled"] if total_rows else 0

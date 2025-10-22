@@ -298,33 +298,9 @@ class Indicators_Percentual(Indicator):
         """
         total = (counts.get("rapida", 0) + counts.get("normal", 0) + counts.get("atrasada", 0) + counts.get("sem_resposta", 0))
         if total == 0:
-            return {
-                "rapida_pct": 0.0,
-                "normal_pct": 0.0,
-                "atrasada_pct": 0.0,
-                "sem_resposta_pct": 0.0,
-                "respondida_pct": 0.0,
-                "em_tempo_pct": 0.0,
-                "total": 0,
-            }
-
-        def pct(v): 
-            return round(100.0 * v / total, 2)
-
-        rapida = counts.get("rapida", 0)
-        normal = counts.get("normal", 0)
-        atrasada = counts.get("atrasada", 0)
-        sem_resp = counts.get("sem_resposta", 0)
-
-        return {
-            "rapida_pct": pct(rapida),
-            "normal_pct": pct(normal),
-            "atrasada_pct": pct(atrasada),
-            "sem_resposta_pct": pct(sem_resp),
-            "respondida_pct": pct(rapida + normal + atrasada),
-            "em_tempo_pct": pct(rapida + normal),
-            "total": int(total),
-        }
+            return 0.0
+        
+        
     
     @staticmethod
     def _calc_pedagogic_responded_percentage(counts: dict) -> float:
@@ -337,7 +313,7 @@ class Indicators_Percentual(Indicator):
         total = rapida + normal + atrasada + sem_resposta
         if total == 0:
             return 0.0
-        value = (rapida + normal + atrasada) / total * 100.0
+        value = ((rapida + normal) / total) * 100.0
         return round(value, 2)
     
     @staticmethod

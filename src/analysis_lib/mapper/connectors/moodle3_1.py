@@ -121,10 +121,10 @@ class Moodle31(Moodle):
                     u.id AS user_id,
                     u.firstname,
                     gi.courseid,
+                    gg.finalgrade AS grade_final,
                     cm.id AS activity_id,
                     gi.itemname AS activity_name,
-                    WEEK(FROM_UNIXTIME(cm.added)) AS week,
-                    ((COALESCE(gg.finalgrade, 0) / gi.grademax)*100) AS performance
+                    WEEK(FROM_UNIXTIME(cm.added)) AS week
                 FROM mdl_user u
                 JOIN mdl_grade_grades gg ON gg.userid = u.id
                 JOIN mdl_grade_items gi ON gi.id = gg.itemid

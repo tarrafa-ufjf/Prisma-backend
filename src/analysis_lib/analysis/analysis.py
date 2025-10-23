@@ -160,3 +160,9 @@ class Analyzer:
         subjects = Subjects(self.mapper)
 
         return subjects.get_subjects(version, connector)
+    
+    def get_subject_student_summary(self, subject_id, student_id, version, connector):
+        from .Student.Student_Summary.summary import Student_Summary
+        student_summary = Student_Summary(self.mapper)
+
+        return student_summary.subject_analysis(subject_id, student_id, version, connector)

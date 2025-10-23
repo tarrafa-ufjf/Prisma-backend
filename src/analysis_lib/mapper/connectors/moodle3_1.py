@@ -652,3 +652,26 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
+    
+    def fetch_student_grades(self, subject_id, student_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT
+                    u.id AS id,
+                    CONCAT(u.firstname, ' ', u.lastname) AS name,
+                    gi.itemname AS activity_name,
+                    gi.itemtype AS item_type,
+                    gi.grademax AS grade_max,
+                    g.finalgrade AS grade_real
+                FROM mdl_user u
+                JOIN mdl_grade_grades g ON g.userid = u.id
+                JOIN mdl_grade_items gi ON gi.id = g.itemid
+                JOIN mdl_course c ON c.id = gi.courseid
+                JOIN mdl_course_categories cc ON cc.id = c.category
+                WHERE gi.courseid = %s AND g.userid = %s;
+            ''', (subject_id, student_id))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df

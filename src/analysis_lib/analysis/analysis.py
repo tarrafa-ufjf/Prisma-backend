@@ -166,3 +166,9 @@ class Analyzer:
         student_summary = Student_Summary(self.mapper)
 
         return student_summary.subject_analysis(subject_id, student_id, version, connector)
+    
+    def get_subject_student_grades(self, subject_id, student_id, version, connector):
+        from .Student.Student_Grades.grades import Student_Grades
+        student_grades = Student_Grades(self.mapper)
+
+        return student_grades.subject_analysis(subject_id, student_id, version, connector)

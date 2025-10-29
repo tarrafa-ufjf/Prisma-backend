@@ -4,6 +4,20 @@ from ..indicator import Indicator
 class Cognitive(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
+
+    def student_analysis(self, subject_id, student_id, version, connector):
+        df_course = self.course_analysis(subject_id, version, connector)
+
+        df_course["user_id"] = pd.to_numeric(df_course["user_id"], errors="coerce")
+        sid = pd.to_numeric(student_id, errors="coerce")
+
+        student_df = df_course.loc[df_course["user_id"] == sid]
+        if student_df.empty:
+            return None 
+
+        row = student_df.iloc[0]
+        row = row.where(pd.notna(row), None).to_dict()
+        return row
     
     def course_analysis(self, subject_id, version, connector):
         all_students = self.mapper.get_all_students(connector, subject_id, version)

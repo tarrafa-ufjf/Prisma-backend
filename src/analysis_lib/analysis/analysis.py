@@ -97,12 +97,12 @@ class Analyzer:
 
         return res
     
-    def give_up_analysis(self, subject_id, type_query, version, connector):
+    def give_up_analysis(self, subject_id, type_query, version, connector, student_id = None):
         give_up = Give_Up(self.mapper)
         res = None
 
         if type_query == 'user':
-            pass
+            res = give_up.student_analysis(subject_id, student_id, version, connector)
         elif type_query == 'course': 
             res = give_up.course_analysis(subject_id, version, connector)
 

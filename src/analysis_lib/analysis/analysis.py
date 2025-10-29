@@ -86,12 +86,12 @@ class Analyzer:
 
         return res
     
-    def cognitive_analysis(self, subject_id, type_query, version, connector):
+    def cognitive_analysis(self, subject_id, type_query, version, connector, student_id = None):
         cognitive = Cognitive(self.mapper)
         res = None
 
         if type_query == 'user':
-            pass
+            res = cognitive.student_analysis(subject_id, student_id, version, connector)
         elif type_query == 'course': 
             res = cognitive.course_analysis(subject_id, version, connector)
 

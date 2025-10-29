@@ -10,6 +10,7 @@ from pre_api.services.build_subject_students_cognitive import build_subject_stud
 from pre_api.services.build_subject_students_give_up import build_subject_students_give_up
 from pre_api.services.student.build_subject_student_summary import build_subject_student_summary
 from pre_api.services.student.build_subject_student_grades import build_subject_student_grades
+from pre_api.services.student.build_subject_student_engagement import build_subject_student_engagement
 from pre_api.services.build_all_subjects import build_all_subjects
 from pre_api.services.build_subject_indicators import build_subject_indicators
 from database import DatabaseAdmin
@@ -167,6 +168,16 @@ def subject_student_summary(subject_id, student_id):
 def subject_student_grades(subject_id, student_id):
     try:
         data = build_subject_student_grades(subject_id, student_id)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/engagement", methods=["GET"])
+def subject_student_engagement(subject_id, student_id):
+    try:
+        data = build_subject_student_engagement(subject_id, student_id)
         if not data:
             return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
         return jsonify({"data": data}), 200

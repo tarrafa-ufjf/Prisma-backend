@@ -43,12 +43,12 @@ class Analyzer:
 
         return analysis_config
 
-    def engagement_analysis(self, subject_id, type_query, version, connector):
+    def engagement_analysis(self, subject_id, type_query, version, connector, student_id = None):
         engagement = Engagement(self.mapper)
         res = None
 
         if type_query == 'user':
-            pass
+            res = engagement.student_analysis(subject_id, student_id, version, connector)
         elif type_query == 'course': 
             res = engagement.course_analysis(subject_id, version, connector)
         return res
@@ -172,3 +172,10 @@ class Analyzer:
         student_grades = Student_Grades(self.mapper)
 
         return student_grades.subject_analysis(subject_id, student_id, version, connector)
+    
+    # def get_subject_student_engagement(self, subject_id, student_id, version, connector):
+    #     from .Student.Engagement.engagement import Engagement
+    #     student_engagement = Engagement(self.mapper)
+
+    #     return student_engagement.subject_analysis(subject_id, student_id, version, connector)
+

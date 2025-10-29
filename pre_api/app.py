@@ -159,6 +159,7 @@ def subject_students_give_up(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
+## Página de Aluno da Disciplina
 @app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/summary", methods=["GET"])
 def subject_student_summary(subject_id, student_id):
     try:

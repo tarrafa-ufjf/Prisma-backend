@@ -119,18 +119,34 @@ class Analyzer:
             res = summary.subject_analysis(subject_id, version, connector)
 
         return res
-    
-    def indicators_analysis(self, subject_id, type_query, version, connector):
-        from .Indicators_Percentual.indicators_percentual import Indicators_Percentual
-        indicators = Indicators_Percentual(self.mapper)
-        res = None
 
+    def indicators_analysis(self, subject_id, type_query, version, connector, student_id=None):
         if type_query == 'user':
-            pass
-        elif type_query == 'subject': 
-            res = indicators.subject_analysis(subject_id)
+            eng = self.engagement_analysis(subject_id, 'user', version, connector, student_id) or {}
+            mot = self.motivation_analysis(subject_id, 'user', version, connector, student_id) or {}
+            per = self.performance_analysis(subject_id, 'user', version, connector, student_id) or {}
+            cog = self.cognitive_analysis(subject_id, 'user', version, connector, student_id) or {}
+            gu  = self.give_up_analysis(subject_id, 'user', version, connector, student_id) or {}
 
-        return res
+            return {
+                "subject_id": subject_id,
+                "student_id": student_id,
+                "indicators": {
+                    "engagement": eng.get("posts_required_label"),
+                    "motivation": mot.get("posts_unrequired_label"),
+                    "performance": per.get("performance_label"),
+                    "cognitive": cog.get("label"),
+                    "give_up": gu.get("give_up")
+                },
+            }
+
+        elif type_query == 'subject':
+            from .Indicators_Percentual.indicators_percentual import Indicators_Percentual
+            return Indicators_Percentual(self.mapper).subject_analysis(subject_id)
+
+        else:
+            raise ValueError("type_query inválido. Use 'user' ou 'subject'.")
+    
     
     def info_graphs_analysis(self, subject_id, type_query, version, connector):
         from .Info_Graphs.info_graphs import Info_Graphs

@@ -14,8 +14,22 @@ class Performance(Indicator):
             "alto",
             "muito_alto",
         ]
+
+    def student_analysis(self, subject_id, student_id, version, connector):
+        df_course = self.course_analysis(subject_id, version, connector)
+
+        df_course["user_id"] = pd.to_numeric(df_course["user_id"], errors="coerce")
+        sid = pd.to_numeric(student_id, errors="coerce")
+
+        student_df = df_course.loc[df_course["user_id"] == sid]
+        if student_df.empty:
+            return None 
+
+        row = student_df.iloc[0]
+        row = row.where(pd.notna(row), None).to_dict()
+        return row
     
-    def course_analysis(self, subject_id, version, connector, returnOnlyStudentStatus: False):
+    def course_analysis(self, subject_id, version, connector, returnOnlyStudentStatus = False):
         df_grades = self.mapper.get_grades_by_course(connector, subject_id, version)
         df_pesos = self.mapper.get_activity_weights(connector, subject_id, version)
         

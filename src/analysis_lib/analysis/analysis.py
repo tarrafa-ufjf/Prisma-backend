@@ -53,14 +53,14 @@ class Analyzer:
             res = engagement.course_analysis(subject_id, version, connector)
         return res
     
-    def performance_analysis(self, subject_id, type_query, version, connector):
+    def performance_analysis(self, subject_id, type_query, version, connector, student_id = None):
         performance = Performance(self.mapper)
         res = None
 
         if type_query == 'user':
-            pass
+            res = performance.student_analysis(subject_id, student_id, version, connector)
         elif type_query == 'course': 
-            res = performance.course_analysis(subject_id, version, connector, returnOnlyStudentStatus=False)
+            res = performance.course_analysis(subject_id, version, connector)
 
         return res
     

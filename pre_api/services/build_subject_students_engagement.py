@@ -17,12 +17,12 @@ def build_subject_students_engagement(subject_id: int):
         if df is None or df.empty:
             return []
 
-        missing = [c for c in ["full_name", "posts_required_label", "num_posts_required"] if c not in df.columns]
+        missing = [c for c in ["user_id", "full_name", "posts_required_label", "num_posts_required"] if c not in df.columns]
         if missing:
             raise KeyError(f"missing columns in engagement_analysis output: {missing}")
 
 
-        out = df.loc[:, ["full_name", "posts_required_label", "num_posts_required"]].copy()
+        out = df.loc[:, ["user_id", "full_name", "posts_required_label", "num_posts_required"]].copy()
         out["full_name"] = out["full_name"].astype(str)
         out["posts_required_label"] = out["posts_required_label"].fillna("").astype(str)
 

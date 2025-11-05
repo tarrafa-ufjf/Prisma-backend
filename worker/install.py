@@ -108,11 +108,9 @@ if __name__ == "__main__":
     columns_configs = {
         "institution_id": Integer,
         "subject_id": Integer,
-        "muito_baixo": Integer,
-        "baixo": Integer,
-        "medio": Integer,
-        "alto": Integer,
-        "muito_alto": Integer,
+        "user_id": Integer,
+        "num_posts_unrequired": Integer,
+        "label": String(20),
     }
 
     primary_keys = ["institution_id", "subject_id"]

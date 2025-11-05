@@ -87,7 +87,7 @@ class Motivation(Indicator):
             lambda x: discretize(x, lim_inf, q1, q3, lim_sup)
         )
 
-        return df_sit[['user_id', 'subject_id','label']]
+        return df_sit[['user_id', 'subject_id','label', 'num_posts_unrequired']]
     
     def general_analysis(self, version, connector, analysis_config):
         batch_size = analysis_config["batch_size"]
@@ -137,30 +137,14 @@ class Motivation(Indicator):
         df = df.infer_objects(copy=False)
         df["institution_id"] = 1
 
-        df_counts = (
-            df.groupby(["institution_id", "subject_id", "label"])
-            .size()
-            .unstack(fill_value=0)
-            .reset_index()
-        )
-
-        labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
-        for lbl in labels:
-            if lbl not in df_counts.columns:
-                df_counts[lbl] = 0
-
-        df_counts = df_counts[["institution_id", "subject_id"] + labels]
-
-        metadata = MetaData()
-        metadata.reflect(bind=engine, only=[table_name])
-        table = metadata.tables[table_name]
+        df.fillna(0, inplace=True)
 
         metadata = MetaData()
         metadata.reflect(bind=engine, only=[table_name])
         table = metadata.tables[table_name]
 
         with engine.begin() as conn:
-            for _, row in df_counts.iterrows():
+            for _, row in df.iterrows():
                 stmt = insert(table).values(row.to_dict())
                 stmt = stmt.on_conflict_do_nothing()  # IGNORA duplicatas
                 conn.execute(stmt)

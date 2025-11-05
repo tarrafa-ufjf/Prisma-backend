@@ -10,7 +10,6 @@ from pre_api.services.build_subject_students_cognitive import build_subject_stud
 from pre_api.services.build_subject_students_give_up import build_subject_students_give_up
 from pre_api.services.build_all_subjects import build_all_subjects
 from pre_api.services.build_subject_indicators import build_subject_indicators
-from database import DatabaseAdmin
 from processor import Processor
 from flasgger import Swagger
 import json
@@ -30,10 +29,10 @@ load_dotenv()
 analyzer = Analyzer()
 
 indicators = ["engagement", 
-              "performance", 
-               "motivation", 
-               "cognitive", 
-              "pedagogic"
+            #   "performance", 
+            #    "motivation", 
+            #    "cognitive", 
+            #   "pedagogic"
 ]
 
 ## General

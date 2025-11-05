@@ -76,7 +76,7 @@ class Engagement(Indicator):
         # Processar cursos a partir do ponto onde parou
         for i in range(processed + 1, total + 1):
             result = self.course_analysis(i, version, connector)
-            result = result.drop_duplicates(subset=['user_id', 'num_posts_required'], keep='first')
+            result = result.drop_duplicates(subset=['user_id'], keep='first')
             batch_results.append(result)
 
             analysis_config["processed"] += 1
@@ -90,7 +90,7 @@ class Engagement(Indicator):
                 df["institution_id"] = 1 
                 df = df[['institution_id', 'subject_id', 'user_id', 'num_posts_required', 'posts_required_label']]
                 df = df.rename(columns={'posts_required_label': 'label'})
-                df.to_sql("engajamento_global", engine, if_exists="append", index=False)
+                df.to_sql("engagement_global", engine, if_exists="append", index=False)
                 df = pd.DataFrame(columns=['subject_id', 'user_id', 'num_posts_required', 'label', 'user_id'])
 
                 batch_results = []
@@ -99,6 +99,6 @@ class Engagement(Indicator):
         # Se terminar todos os cursos (salva o que restou)
         if not df.empty:
             df["institution_id"] = 1
-            df.to_sql("engajamento_global", engine, if_exists="append", index=False)
+            df.to_sql("engagement_global", engine, if_exists="append", index=False)
 
         return analysis_config

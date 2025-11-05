@@ -299,6 +299,8 @@ class Cognitive(Indicator):
                 df = pd.concat([df, result], ignore_index=True)
                 df['institution_id'] = 1
                 df.to_sql("cognitive_global", engine, if_exists="append", index=False)
+
+                results = []
                 return analysis_config
 
         if not df.empty:

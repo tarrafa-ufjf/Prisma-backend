@@ -271,7 +271,9 @@ class Cognitive(Indicator):
             analysis_config["total"] = len(df_courses)
 
         total = analysis_config["total"]
-        df = pd.DataFrame(columns=['subject_id', 'user_id', 'label'])
+        df = pd.DataFrame(columns=['subject_id', 'user_id', 'forum_level_avg', 'quiz_level_avg', 'assign_level_avg'])
+
+        results = []
 
         for i in range(processed + 2, total + 1):
             try:
@@ -281,29 +283,26 @@ class Cognitive(Indicator):
 
             result = self.course_analysis(subject_id, version, connector)
 
-            result = result.drop(columns=['full_name'])
+            result = result.drop(columns=['full_name', 'label'])
             result = result.rename(columns={'forum_mean_level': 'forum_level_avg'})
             result = result.rename(columns={'quiz_mean_level': 'quiz_level_avg'})
             result = result.rename(columns={'assign_mean_level': 'assign_level_avg'})
 
             if result is not None and not result.empty:
-                result_dis = (
-                    result.loc[:, ["user_id", "label"]]
-                        .copy()
-                        .assign(subject_id=subject_id, institution_id=1)
-                )
-
-                df = pd.concat([df, result_dis.loc[:, ["subject_id", "user_id", "label"]]], ignore_index=True)
+                result['subject_id'] = subject_id
+                results.append(result)
 
             analysis_config["processed"] += 1
             self.print_load("Cognitivo", analysis_config["processed"], total, 8)
 
             if analysis_config["processed"] % batch_size == 0 and not df.empty:
-                self.aggregate_user_results(df.assign(institution_id=1), engine)
+                df = pd.concat([df, result], ignore_index=True)
+                df['institution_id'] = 1
+                df.to_sql("cognitive_global", engine, if_exists="append", index=False)
                 return analysis_config
 
         if not df.empty:
-            self.aggregate_user_results(df.assign(institution_id=1), engine)
+            df.to_sql("cognitive_global", engine, if_exists="append", index=False)
 
         return analysis_config
 
@@ -315,50 +314,6 @@ class Cognitive(Indicator):
 
 
     def aggregate_user_results(self, df: pd.DataFrame, engine) -> pd.DataFrame:
-        label_map = {
-            'muito_baixo': 0,
-            'baixo': 1,
-            'medio': 2,
-            'alto': 3,
-            'muito_alto': 4
-        }
-        df['label_num'] = df['label'].map(label_map)
+        df.to_sql("cognitive_global", engine, if_exists="append", index=False)
 
-        df_user_mean = (
-            df.groupby('user_id')['label_num']
-            .mean()
-            .reset_index()
-            .rename(columns={'label_num': 'avg_label_num'})
-        )
-
-        def discretize_label(value):
-            if value < 0.5:
-                return 'muito_baixo'
-            elif value < 1.5:
-                return 'baixo'
-            elif value < 2.5:
-                return 'medio'
-            elif value < 3.5:
-                return 'alto'
-            else:
-                return 'muito_alto'
-
-        df_user_mean['label_final'] = df_user_mean['avg_label_num'].apply(discretize_label)
-
-        df_merged = df.merge(df_user_mean[['user_id', 'label_final']], on='user_id', how='left')
-
-        df_summary = (
-            df_merged.groupby(['subject_id', 'label_final'])
-            .size()
-            .unstack(fill_value=0)
-            .reset_index()
-        )
-
-        for col in ['muito_baixo', 'baixo', 'medio', 'alto', 'muito_alto']:
-            if col not in df_summary.columns:
-                df_summary[col] = 0
-
-        df_summary['institution_id'] = 1
-        df_summary.to_sql("cognitive_global", engine, if_exists="append", index=False)
-
-        return df_summary
+        return df

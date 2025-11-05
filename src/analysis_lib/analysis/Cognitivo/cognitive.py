@@ -273,33 +273,18 @@ class Cognitive(Indicator):
         total = analysis_config["total"]
         df = pd.DataFrame(columns=['subject_id', 'user_id', 'label'])
 
-        if processed == 0:
-            processed = 1
-
-        # print("PRIMEIROOOOOOOOOOO")
-        # result = self.course_analysis(225, version, connector)
-        # print("DEBUG result type:", type(result))
-        # print("DEBUG result columns:", getattr(result, "columns", None))
-
-        # print("SEGUNDOOOOOOOOOOO")
-        # result_dis = result.loc[:, ["user_id", "full_name", "label"]].copy()
-        # print(result_dis)
-
-        # result_dis.loc[:, "institution_id"] = 1
-        # result_dis.loc[:, "subject_id"] = 225
-        # self.aggregate_user_results(result_dis, engine)
-
-        # analysis_config["processed"] = analysis_config["total"]
-
-        # return analysis_config
-
-        for i in range(processed + 1, total + 1):
+        for i in range(processed + 2, total + 1):
             try:
                 subject_id = int(df_courses.iloc[i - 1]['subject_id'])
             except IndexError: # Se 'total' > len(df_courses), evita quebrar
                 break
 
             result = self.course_analysis(subject_id, version, connector)
+
+            result = result.drop(columns=['full_name'])
+            result = result.rename(columns={'forum_mean_level': 'forum_level_avg'})
+            result = result.rename(columns={'quiz_mean_level': 'quiz_level_avg'})
+            result = result.rename(columns={'assign_mean_level': 'assign_level_avg'})
 
             if result is not None and not result.empty:
                 result_dis = (

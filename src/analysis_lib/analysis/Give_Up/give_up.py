@@ -7,6 +7,19 @@ class Give_Up(Indicator):
     def __init__(self, mapper):
         self.mapper = mapper
 
+    def student_analysis(self, subject_id, student_id, version, connector):
+        df_course = self.course_analysis(subject_id, version, connector)
+
+        df_course["user_id"] = pd.to_numeric(df_course["user_id"], errors="coerce")
+        sid = pd.to_numeric(student_id, errors="coerce")
+
+        student_df = df_course.loc[df_course["user_id"] == sid]
+        if student_df.empty:
+            return None 
+
+        row = student_df.iloc[0]
+        row = row.where(pd.notna(row), None).to_dict()
+        return row
     
     def course_analysis(self, subject_id, version, connector):
         """
@@ -26,7 +39,7 @@ class Give_Up(Indicator):
 
         df_cognitive   = cognitive.course_analysis(subject_id, version, connector)
         df_engagement  = engagement.course_analysis(subject_id, version, connector)
-        df_performance = performance.course_analysis(subject_id, version, connector, returnOnlyStudentStatus=False)
+        df_performance = performance.course_analysis(subject_id, version, connector)
         df_motivation  = motivation.course_analysis(subject_id, version, connector)
 
         dfs = [df_cognitive, df_engagement, df_performance, df_motivation]

@@ -76,7 +76,9 @@ class Engagement(Indicator):
         # Processar cursos a partir do ponto onde parou
         for i in range(processed + 1, total + 1):
             result = self.course_analysis(i, version, connector)
+            result = result.drop_duplicates(subset=['user_id', 'num_posts_required'], keep='first')
             batch_results.append(result)
+
             analysis_config["processed"] += 1
 
             self.print_load("Engajamento", analysis_config["processed"], total, 5)

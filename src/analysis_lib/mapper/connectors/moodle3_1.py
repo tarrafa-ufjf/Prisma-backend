@@ -618,3 +618,60 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
+    
+    '''
+        Página de aluno na disciplina
+    '''
+
+    def fetch_student_summary(self, subject_id, student_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT DISTINCT
+                    u.id AS id,
+                    CONCAT(u.firstname, ' ', u.lastname) AS name,
+                    u.email AS email,
+                    u.city, 
+                    FROM_UNIXTIME(u.firstaccess) AS first_access_moodle,
+                    FROM_UNIXTIME(ula.timeaccess) AS last_access_subject,
+                    GROUP_CONCAT(DISTINCT g.name ORDER BY g.name SEPARATOR ', ') AS student_groups,
+                    cc2.name AS degree_program
+                FROM mdl_user u
+                JOIN mdl_user_enrolments ue ON ue.userid = u.id
+                JOIN mdl_enrol e ON e.id = ue.enrolid
+                JOIN mdl_role r ON r.id = e.roleid
+                LEFT JOIN mdl_user_lastaccess ula ON ula.userid = u.id AND ula.courseid = e.courseid 
+                JOIN mdl_groups_members gm ON gm.userid = u.id
+                JOIN mdl_groups g ON g.id = gm.groupid AND g.courseid = e.courseid
+                JOIN mdl_course c            ON c.id = e.courseid
+                JOIN mdl_course_categories cc3 ON cc3.id = c.category
+                JOIN mdl_course_categories cc2 ON cc2.id = cc3.parent
+                WHERE e.courseid = %s AND u.id = %s AND r.archetype = 'student';
+            ''', (subject_id, student_id))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    def fetch_student_grades(self, subject_id, student_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT
+                    u.id AS id,
+                    CONCAT(u.firstname, ' ', u.lastname) AS name,
+                    gi.itemname AS activity_name,
+                    gi.itemtype AS item_type,
+                    gi.grademax AS grade_max,
+                    g.finalgrade AS grade_real
+                FROM mdl_user u
+                JOIN mdl_grade_grades g ON g.userid = u.id
+                JOIN mdl_grade_items gi ON gi.id = g.itemid
+                JOIN mdl_course c ON c.id = gi.courseid
+                JOIN mdl_course_categories cc ON cc.id = c.category
+                WHERE gi.courseid = %s AND g.userid = %s;
+            ''', (subject_id, student_id))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df

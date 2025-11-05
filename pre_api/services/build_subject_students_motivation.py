@@ -17,11 +17,11 @@ def build_subject_students_motivation(subject_id: int):
         if df is None or df.empty:
             return []
 
-        missing = [c for c in ["full_name", "posts_unrequired_label", "num_posts_unrequired"] if c not in df.columns]
+        missing = [c for c in ["user_id", "full_name", "posts_unrequired_label", "num_posts_unrequired"] if c not in df.columns]
         if missing:
             raise KeyError(f"missing columns in motivation_analysis output: {missing}")
 
-        out = df.loc[:, ["full_name", "posts_unrequired_label", "num_posts_unrequired"]].copy()
+        out = df.loc[:, ["user_id", "full_name", "posts_unrequired_label", "num_posts_unrequired"]].copy()
         out["full_name"] = out["full_name"].astype(str)
         out["posts_unrequired_label"] = out["posts_unrequired_label"].fillna("").astype(str)
 

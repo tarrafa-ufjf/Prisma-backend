@@ -57,7 +57,7 @@ class Engagement(Indicator):
             analysis_config["total"] = len(df_courses)
 
         total = analysis_config["total"]
-        df = pd.DataFrame(columns=['subject_id', 'full_name', 'num_posts_required', 'posts_required_label', 'institution_id'])
+        df = pd.DataFrame(columns=['subject_id', 'user_id', 'num_posts_required', 'posts_required_label', 'institution_id'])
 
         batch_results = []
 
@@ -73,55 +73,18 @@ class Engagement(Indicator):
             if analysis_config["processed"] % batch_size == 0:
                 df = pd.concat(batch_results, ignore_index=True)
 
-                df_counts = (
-                    df.groupby(['subject_id', 'posts_required_label'])
-                    .size()
-                    .unstack(fill_value=0)
-                    .reset_index()
-                )
+                df["institution_id"] = 1 
+                df = df[['institution_id', 'subject_id', 'user_id', 'num_posts_required', 'posts_required_label']]
+                df = df.rename(columns={'posts_required_label': 'label'})
+                df.to_sql("engajamento_global", engine, if_exists="append", index=False)
+                df = pd.DataFrame(columns=['subject_id', 'user_id', 'num_posts_required', 'label', 'user_id'])
 
-                df_counts.columns = (
-                    df_counts.columns.str.strip()  
-                    .str.lower()                   
-                    .str.replace(" ", "_")        
-                )
-
-                df_counts["institution_id"] = 1 
-                for col in ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]:
-                    if col not in df_counts.columns:
-                        df_counts[col] = 0
-                
-                df_counts = df_counts.groupby("subject_id", as_index=False).sum()
-
-                df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
-
-                df = pd.DataFrame(columns=['subject_id', 'full_name', 'num_posts_required', 'posts_required_label', 'user_id'])
-
+                batch_results = []
                 return analysis_config
 
         # Se terminar todos os cursos (salva o que restou)
         if not df.empty:
-            df_counts = (
-                df.groupby(['subject_id', 'posts_required_label'])
-                .size()
-                .unstack(fill_value=0)
-                .reset_index()
-            )
-
-            df_counts.columns = (
-                df_counts.columns.str.strip() 
-                .str.lower()   
-                .str.replace(" ", "_") 
-            )
-
-            df_counts["institution_id"] = 1
-
-            for col in ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]:
-                if col not in df_counts.columns:
-                    df_counts[col] = 0
-            
-            df_counts = df_counts.groupby("subject_id", as_index=False).sum()
-            
-            df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
+            df["institution_id"] = 1
+            df.to_sql("engajamento_global", engine, if_exists="append", index=False)
 
         return analysis_config

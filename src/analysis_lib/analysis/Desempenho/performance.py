@@ -83,6 +83,10 @@ class Performance(Indicator):
         )
 
         df_final = df_final.merge(df_alunos_full_name, on=["user_id","subject_id"], how="left")
+        df_final = df_final.merge(notas_finais[['user_id','situacao']], on=['user_id'], how='left')
+        df_final.rename(columns={'situacao': 'situation'}, inplace=True)
+
+        df_final = df_final[["subject_id","user_id","situation","media_percentual","performance_label"]]
 
         turma_mean = float(df_final['media_percentual'].mean(skipna=True))
         turma_std  = float(df_final['media_percentual'].std(ddof=1, skipna=True))
@@ -92,7 +96,7 @@ class Performance(Indicator):
             0.0
         ).round(2)
 
-        col_order = ["subject_id","user_id","full_name","media_percentual","performance_label", "comparative"]
+        col_order = ["subject_id","user_id","situation","media_percentual","performance_label", "comparative"]
         col_order = [c for c in col_order if c in df_final.columns]
         df_final = df_final[col_order].copy()
 
@@ -203,7 +207,11 @@ class Performance(Indicator):
         # Processar cursos a partir do ponto onde parou
         for i in range(processed + 1, total + 1):
             result = self.course_analysis(i, version, connector, returnOnlyStudentStatus=False)
+            result = result.drop_duplicates(subset=['user_id'], keep='first')
+            result.rename(columns={'performance_label': 'label'}, inplace=True)
+            result.rename(columns={'media_percentual': 'grade'}, inplace=True)
 
+            result = result[["subject_id", "user_id", "grade", "label", "situation", "comparative"]]
             if not result.empty:
                 result["subject_id"] = i
                 results.append(result)
@@ -216,20 +224,7 @@ class Performance(Indicator):
             if analysis_config["processed"] % batch_size == 0 and results:
                 df = pd.concat(results, ignore_index=True)
                 df["institution_id"] = 1 
-
-                df_counts = (
-                    df.groupby(["institution_id", "subject_id", "performance_label"])
-                    .size()
-                    .unstack(fill_value=0)
-                    .reset_index()
-                )
-
-                labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
-                for lbl in labels:
-                    if lbl not in df_counts.columns:
-                        df_counts[lbl] = 0
-
-                df_counts.to_sql("performance_global", engine, if_exists="append", index=False)
+                df.to_sql("performance_global", engine, if_exists="append", index=False)
                 results = []  # limpa lista
 
                 return analysis_config
@@ -238,19 +233,8 @@ class Performance(Indicator):
         if results:
             df = pd.concat(results, ignore_index=True)
             df["institution_id"] = 1 
-            df_counts = (
-                df.groupby(["institution_id", "subject_id", "performance"])
-                .size()
-                .unstack(fill_value=0)
-                .reset_index()
-            )
 
-            labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
-            for lbl in labels:
-                if lbl not in df_counts.columns:
-                    df_counts[lbl] = 0
-
-            df_counts.to_sql("performance_global", engine, if_exists="append", index=False)
+            df.to_sql("performance_global", engine, if_exists="append", index=False)
 
         return analysis_config
     

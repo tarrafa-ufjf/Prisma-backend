@@ -42,6 +42,12 @@ class Analyzer:
         analysis_config = pedagogic.general_analysis(version, connector, analysis_config)
 
         return analysis_config
+    
+    def general_give_up_analysis(self, connector, version, analysis_config):
+        give_up = Give_Up(self.mapper)
+        analysis_config = give_up.general_analysis(version, connector, analysis_config)
+
+        return analysis_config
 
     def engagement_analysis(self, subject_id, type_query, version, connector, student_id = None):
         engagement = Engagement(self.mapper)

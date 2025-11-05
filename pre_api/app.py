@@ -32,15 +32,17 @@ indicator_index_translate = {"engagement": 1,
                              "performance": 2,
                               "motivation": 3,
                               "pedagogic": 4,
-                              "cognitive": 5}
+                              "cognitive": 5,
+                              "give_up": 6}
 load_dotenv()
 analyzer = Analyzer()
 
 indicators = [#"engagement", 
             #   "performance", 
             #    "motivation", 
-               "cognitive", 
-            #   "pedagogic"
+            #    "cognitive", 
+            #   "pedagogic",
+                "give_up"
 ]
 
 ## General

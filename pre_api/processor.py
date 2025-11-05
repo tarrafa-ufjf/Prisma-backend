@@ -19,6 +19,7 @@ class Processor:
         "motivation": ("general_motivation_analysis", "motivation_analysis"),
         "pedagogic": ("general_pedagogic_analysis", "pedagogic_analysis"),
         "cognitive": ("general_cognitive_analysis", "cognitive_analysis"),
+        "give_up": ("general_give_up_analysis", "give_up_analysis"),
     }
 
     def get_done_message(self, name):
@@ -98,6 +99,8 @@ class Processor:
                 rows = self.get_all_motivation_global(institution_id=1)
             elif global_fn == 'get_all_pedagogic_global':
                 rows = self.get_all_pedagogic_global(institution_id=1)
+            elif global_fn == 'get_all_give_up_global':
+                rows = self.get_all_give_up_global(institution_id=1)
 
             data = [dict(row) for row in rows]
             return data, 200
@@ -141,6 +144,9 @@ class Processor:
 
     def get_all_pedagogic_global(self, institution_id=1):
         return self.db_admin.get_all_from_table("pedagogic_global", institution_id)
+    
+    def get_all_give_up_global(self, institution_id=1):
+        return self.db_admin.get_all_from_table("give_up_global", institution_id)
     
     def set_global_analysis(self, indicators, db_config=None):
         counter = 1

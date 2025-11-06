@@ -187,8 +187,6 @@ class Cognitive(Indicator):
         cognitive_label = self.discretize_student_levels_class(out)
         out = out.merge(cognitive_label, on="user_id", how="left")
 
-        print(f"df: {out}")
-
         return out[["user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]]
 
             
@@ -295,7 +293,7 @@ class Cognitive(Indicator):
                 results.append(result)
 
             analysis_config["processed"] += 1
-            # self.print_load("Cognitivo", analysis_config["processed"], total, 8)
+            self.print_load("Cognitivo", analysis_config["processed"], total, 8)
 
             if analysis_config["processed"] % batch_size == 0: #and not df.empty:
                 if not df.empty:

@@ -103,13 +103,15 @@ class Give_Up(Indicator):
 
         for i in range(processed + 2, total + 1):
             result = self.course_analysis(i, version, connector)
+            result = result.drop_duplicates(subset=['user_id'], keep='first')
+
             result = result[["user_id", "give_up"]]
             result["subject_id"] = i
             result["institution_id"] = 1
             results.append(result)
 
             analysis_config["processed"] += 1
-            self.print_load("Desistência", analysis_config["processed"], total, 6)
+            self.print_load("Desistência", analysis_config["processed"], total, 8)
 
             if i % batch_size == 0 or i == total:
                 df_batch = pd.concat(results, ignore_index=True)

@@ -40,9 +40,9 @@ analyzer = Analyzer()
 indicators = [#"engagement", 
             #   "performance", 
             #    "motivation", 
-            #    "cognitive", 
+               "cognitive", 
             #   "pedagogic",
-                "give_up"
+                # "give_up"
 ]
 
 ## General

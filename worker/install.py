@@ -113,7 +113,7 @@ if __name__ == "__main__":
         "label": String(20),
     }
 
-    primary_keys = ["institution_id", "subject_id"]
+    primary_keys = ["institution_id", "subject_id", "user_id"]
     create_table("motivation_global", columns_configs, primary_key=primary_keys)
 
     columns_configs = {

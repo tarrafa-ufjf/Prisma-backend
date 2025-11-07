@@ -224,8 +224,19 @@ class Performance(Indicator):
             if analysis_config["processed"] % batch_size == 0 and results:
                 df = pd.concat(results, ignore_index=True)
                 df["institution_id"] = 1 
-                df.to_sql("performance_global", engine, if_exists="append", index=False)
-                results = []  # limpa lista
+                df_counts = (
+                    df.groupby(["institution_id", "subject_id", "label"])
+                    .size()
+                    .unstack(fill_value=0)
+                    .reset_index()
+                )
+
+                labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
+                for lbl in labels:
+                    if lbl not in df_counts.columns:
+                        df_counts[lbl] = 0
+
+                df_counts.to_sql("performance_global", engine, if_exists="append", index=False)
 
                 return analysis_config
 
@@ -234,7 +245,19 @@ class Performance(Indicator):
             df = pd.concat(results, ignore_index=True)
             df["institution_id"] = 1 
 
-            df.to_sql("performance_global", engine, if_exists="append", index=False)
+            df_counts = (
+                df.groupby(["institution_id", "subject_id", "performance"])
+                .size()
+                .unstack(fill_value=0)
+                .reset_index()
+            )
+
+            labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
+            for lbl in labels:
+                if lbl not in df_counts.columns:
+                    df_counts[lbl] = 0
+
+            df_counts.to_sql("performance_global", engine, if_exists="append", index=False)
 
         return analysis_config
     

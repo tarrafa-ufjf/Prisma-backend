@@ -82,14 +82,14 @@ if __name__ == "__main__":
     columns_configs = {
         "institution_id": Integer,
         "subject_id": Integer,
-        "user_id": Integer,
-        "grade": Integer,
-        "comparative": Float,
-        "situation": String(20),
-        "label": String(20),
+        "muito_baixo": Integer,
+        "baixo": Integer,
+        "medio": Integer,
+        "alto": Integer,
+        "muito_alto": Integer,
     }
 
-    primary_keys = ["institution_id", "subject_id", "user_id"]
+    primary_keys = ["institution_id", "subject_id"]
 
     create_table("performance_global", columns_configs, primary_key=primary_keys)
 

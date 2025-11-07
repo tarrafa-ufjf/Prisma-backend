@@ -60,12 +60,14 @@ if __name__ == "__main__":
     columns_engajamento_global = {
         "institution_id": Integer,
         "subject_id": Integer,
-        "user_id": Integer,
-        "num_posts_required": Integer,
-        "label": String(20),
+        "muito_baixo": Integer,
+        "baixo": Integer,
+        "medio": Integer,
+        "alto": Integer,
+        "muito_alto": Integer,
     }
 
-    primary_keys = ["institution_id", "subject_id", "user_id"]
+    primary_keys = ["institution_id", "subject_id"]
     create_table("engagement_global", columns_engajamento_global, primary_key=primary_keys)
 
     columns_indicators_status = {

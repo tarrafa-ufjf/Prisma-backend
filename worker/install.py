@@ -68,7 +68,7 @@ if __name__ == "__main__":
     }
 
     primary_keys = ["institution_id", "subject_id"]
-    create_table("engajamento_global", columns_engajamento_global, primary_key=primary_keys)
+    create_table("engagement_global", columns_engajamento_global, primary_key=primary_keys)
 
     columns_indicators_status = {
         "institution_id": Integer,
@@ -144,6 +144,16 @@ if __name__ == "__main__":
 
     primary_keys = ["institution_id", "subject_id"]
     create_table("pedagogico_global", columns_configs, primary_key=primary_keys)
+
+    columns_configs = {
+        "institution_id": Integer,
+        "subject_id": Integer,
+        "user_id": Integer,
+        "give_up": String(20),
+    }
+
+    primary_keys = ["institution_id", "subject_id", "user_id"]
+    create_table("give_up_global", columns_configs, primary_key=primary_keys)
 
     channel.queue_declare(
         queue="tasks_to_process",

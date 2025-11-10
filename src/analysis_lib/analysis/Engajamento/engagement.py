@@ -70,13 +70,14 @@ class Engagement(Indicator):
 
         total = analysis_config["total"]
         df = pd.DataFrame(columns=['subject_id', 'full_name', 'num_posts_required', 'posts_required_label', 'institution_id'])
-
         batch_results = []
 
         # Processar cursos a partir do ponto onde parou
         for i in range(processed + 1, total + 1):
             result = self.course_analysis(i, version, connector)
+            result = result.drop_duplicates(subset=['user_id'], keep='first')
             batch_results.append(result)
+
             analysis_config["processed"] += 1
 
             self.print_load("Engajamento", analysis_config["processed"], total, 5)
@@ -108,32 +109,11 @@ class Engagement(Indicator):
                 df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
 
                 df = pd.DataFrame(columns=['subject_id', 'full_name', 'num_posts_required', 'posts_required_label', 'user_id'])
-
                 return analysis_config
 
         # Se terminar todos os cursos (salva o que restou)
         if not df.empty:
-            df_counts = (
-                df.groupby(['subject_id', 'posts_required_label'])
-                .size()
-                .unstack(fill_value=0)
-                .reset_index()
-            )
-
-            df_counts.columns = (
-                df_counts.columns.str.strip() 
-                .str.lower()   
-                .str.replace(" ", "_") 
-            )
-
-            df_counts["institution_id"] = 1
-
-            for col in ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]:
-                if col not in df_counts.columns:
-                    df_counts[col] = 0
-            
-            df_counts = df_counts.groupby("subject_id", as_index=False).sum()
-            
-            df_counts.to_sql("engajamento_global", engine, if_exists="append", index=False)
+            df["institution_id"] = 1
+            df.to_sql("engagement_global", engine, if_exists="append", index=False)
 
         return analysis_config

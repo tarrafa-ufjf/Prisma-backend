@@ -18,7 +18,6 @@ from pre_api.services.student.build_subject_student_give_up import build_subject
 from pre_api.services.student.build_subject_student_indicators import build_subject_student_indicators
 from pre_api.services.build_all_subjects import build_all_subjects
 from pre_api.services.build_subject_indicators import build_subject_indicators
-from database import DatabaseAdmin
 from processor import Processor
 from flasgger import Swagger
 import json
@@ -33,15 +32,17 @@ indicator_index_translate = {"engagement": 1,
                              "performance": 2,
                               "motivation": 3,
                               "pedagogic": 4,
-                              "cognitive": 5}
+                              "cognitive": 5,
+                              "give_up": 6}
 load_dotenv()
 analyzer = Analyzer()
 
 indicators = ["engagement", 
               "performance", 
-               "motivation", 
-               "cognitive", 
-              "pedagogic"
+              "motivation", 
+              "cognitive", 
+              "pedagogic",
+              "give_up"
 ]
 
 ## General

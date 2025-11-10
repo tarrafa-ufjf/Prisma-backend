@@ -34,6 +34,8 @@ class Motivation(Indicator):
         df_final = df_alunos.merge(posts_por_usuario, on='user_id', how='left')
         df_final['num_posts_unrequired'] = df_final['num_posts_unrequired'].fillna(0).astype(int) 
 
+        # print(f"df: {df_final}")
+
         q1 = df_final["num_posts_unrequired"].quantile(0.25)
         q3 = df_final["num_posts_unrequired"].quantile(0.75)
         q2 = df_final["num_posts_unrequired"].quantile(0.5)
@@ -102,20 +104,49 @@ class Motivation(Indicator):
         total = analysis_config["total"]
         df = pd.DataFrame(columns=['user_id', 'subject_id','label'])
 
+        results = []
+
         for i in range(processed + 1, total + 1):
             result = self.discrete_analysis(i, version, connector)
+            result = result.drop_duplicates(subset=['user_id'], keep='first')
             result = self._fillna_mixed(result)
-            df = pd.concat([df, result], ignore_index=True)
+            results.append(result)
             analysis_config["processed"] += 1
 
             self.print_load("Motivação", analysis_config["processed"], total, 7)
-
             if analysis_config["processed"] % batch_size == 0:
-                self._insert_ignore_conflicts(df, engine, "motivation_global")
+                df = pd.concat(results, ignore_index=True)
+                df['institution_id'] = 1
+
+                df = (
+                    df.groupby(["institution_id", "subject_id", "label"]).size().unstack(fill_value=0)
+                    .reset_index()
+                )
+
+                labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
+                for lbl in labels:
+                    if lbl not in df.columns:
+                        df[lbl] = 0
+                df = df[["institution_id", "subject_id"] + labels]
+
+                df.to_sql("motivation_global", engine, if_exists="append", index=False)
                 return analysis_config
         
         if not df.empty:
-            self._insert_ignore_conflicts(df, engine, "motivation_global")
+            df = pd.concat(results, ignore_index=True)
+            df['institution_id'] = 1
+
+            df = (
+                df.groupby(["institution_id", "subject_id", "label"]).size().unstack(fill_value=0)
+                .reset_index()
+            )
+
+            labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
+            for lbl in labels:
+                if lbl not in df.columns:
+                    df[lbl] = 0
+            df = df[["institution_id", "subject_id"] + labels]
+            df.to_sql("motivation_global", engine, if_exists="append", index=False)
 
         return analysis_config
 
@@ -131,36 +162,3 @@ class Motivation(Indicator):
             else:
                 dataframe[col] = dataframe[col].fillna('')
         return dataframe
-
-    def _insert_ignore_conflicts(self, df, engine, table_name):
-        """Insere no banco ignorando duplicatas (PostgreSQL)."""
-        df = df.infer_objects(copy=False)
-        df["institution_id"] = 1
-
-        df_counts = (
-            df.groupby(["institution_id", "subject_id", "label"])
-            .size()
-            .unstack(fill_value=0)
-            .reset_index()
-        )
-
-        labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
-        for lbl in labels:
-            if lbl not in df_counts.columns:
-                df_counts[lbl] = 0
-
-        df_counts = df_counts[["institution_id", "subject_id"] + labels]
-
-        metadata = MetaData()
-        metadata.reflect(bind=engine, only=[table_name])
-        table = metadata.tables[table_name]
-
-        metadata = MetaData()
-        metadata.reflect(bind=engine, only=[table_name])
-        table = metadata.tables[table_name]
-
-        with engine.begin() as conn:
-            for _, row in df_counts.iterrows():
-                stmt = insert(table).values(row.to_dict())
-                stmt = stmt.on_conflict_do_nothing()  # IGNORA duplicatas
-                conn.execute(stmt)

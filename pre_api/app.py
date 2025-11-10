@@ -661,7 +661,7 @@ def indicatorAnalysis(indicator):
 
 @app.route("/analysis", methods=["PUT"])
 def analysis():
-    global indicators
+    # global indicators
     db_inst_config = request.get_json()
     processor = Processor(user=1)
     version = processor.get_version(institution_id=1, db_config=db_inst_config)
@@ -671,7 +671,8 @@ def analysis():
     except Exception as e:
         print(f"Erro ao inserir versão na base de dados: {e}")
 
-    processor.set_global_analysis(indicators, db_config=db_inst_config)
+    # processor.set_global_analysis(indicators, db_config=db_inst_config)
+    processor.set_subjects_analysis(db_config=db_inst_config)
 
     result = {"message": "Análises iniciadas com sucesso",
               "version": version}

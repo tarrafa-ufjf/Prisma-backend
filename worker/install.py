@@ -123,13 +123,14 @@ if __name__ == "__main__":
     columns_configs = {
         "institution_id": Integer,
         "subject_id": Integer,
-        "user_id": Integer,
-        "assign_level_avg": Float,
-        "forum_level_avg": Float,
-        "quiz_level_avg": Float,
+        "muito_baixo": Integer,
+        "baixo": Integer,
+        "medio": Integer,
+        "alto": Integer,
+        "muito_alto": Integer,
     }
 
-    primary_keys = ["institution_id", "subject_id", "user_id"]
+    primary_keys = ["institution_id", "subject_id"]
     create_table("cognitive_global", columns_configs, primary_key=primary_keys)
 
     columns_configs = {

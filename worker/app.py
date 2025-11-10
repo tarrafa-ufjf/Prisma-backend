@@ -84,23 +84,49 @@ class Worker:
         else:
             self.db_admin.update_global_analysis_status(1, entry["status_index"], 'D')
 
+    def subject_analysis(self, message):
+            body = message["body"]
+            cfg = body.get("analysis_config", {})
+            subject_id = int(cfg["subject_id"])
+            version = self.db_admin.get_version_in_database(1)
+            connector = conn.get_connection_with_config(body.get("db_inst_config"))
+
+            # Executa todos os indicadores no escopo "course" (turma)
+            self.analyzer.engagement_analysis(subject_id, 'course', version, connector)
+            self.analyzer.performance_analysis(subject_id, 'course', version, connector)
+            self.analyzer.motivation_analysis(subject_id, 'course', version, connector)
+            self.analyzer.cognitive_analysis(subject_id, 'course', version, connector)
+            self.analyzer.pedagogic_analysis(subject_id, 'course', version, connector)
+            self.analyzer.give_up_analysis(subject_id, 'course', version, connector)
+
+            # Opcional: agregações percentuais/indicadores consolidados por turma
+            # self.analyzer.indicators_analysis(subject_id, 'subject', version, connector)
+
+            # Marca como concluído
+            self.db_admin.update_subject_analysis_status(1, subject_id, 'D')
+
 def continuously_listen():
     rabbit_admin = RabbitMQAdmin()
 
     def callback(ch, method, properties, body):
         message = json.loads(body.decode())
-        analysis_type = message.get("body").get("type")
+        analysis_type = message.get("body", {}).get("type")
         worker = Worker(rabbit_admin)
 
-        if (analysis_type == "global_analysis_engagement" or
-            analysis_type == "global_analysis_pedagogic" or
-            analysis_type == "global_analysis_performance" or
-            analysis_type == "global_analysis_motivation" or
-            analysis_type == "global_analysis_cognitive" or
-            analysis_type == "global_analysis_give_up"): 
+        if analysis_type == "subject_analysis":
+            worker.subject_analysis(message)
+        elif analysis_type in (
+            "global_analysis_engagement",
+            "global_analysis_pedagogic",
+            "global_analysis_performance",
+            "global_analysis_motivation",
+            "global_analysis_cognitive",
+            "global_analysis_give_up",
+        ):
             worker.global_analysis(message)
         else:
             print(f"[!] Tipo de análise desconhecido: {analysis_type}")
+
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     rabbit_admin.channel.basic_qos(prefetch_count=1)

@@ -63,7 +63,7 @@ class DatabaseAdmin:
     def get_global_analysis_table(self):
         metadata = MetaData()
         global_analysis = Table(
-            'gl_indicators_status', metadata,
+            'indicators_status', metadata,
             Column('institution_id', Integer, primary_key=True),
             Column('indicator', Integer, primary_key=True),
             Column('status', String(1), nullable=False)
@@ -79,7 +79,7 @@ class DatabaseAdmin:
             indicator=indicator,
             status=status
         ).on_conflict_do_update(
-            constraint="gl_indicators_status_pkey",
+            constraint="indicators_status_pkey",
             set_={"status": status}
         )
 
@@ -144,7 +144,7 @@ class DatabaseAdmin:
             f"postgresql+psycopg://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['db']}"
         )
         metadata = MetaData()
-        global_analysis = Table('gl_indicators_status', metadata, autoload_with=engine)
+        global_analysis = Table('indicators_status', metadata, autoload_with=engine)
         with engine.connect() as conn:
             query = global_analysis.select().where(and_(global_analysis.c.institution_id == institution_id,
                                                         global_analysis.c.indicator == indicator))
@@ -160,7 +160,7 @@ class DatabaseAdmin:
             indicator=indicator,
             status=status
         ).on_conflict_do_update(
-            constraint="gl_indicators_status_pkey",
+            constraint="indicators_status_pkey",
             set_={"status": status}
         )
 

@@ -30,7 +30,7 @@ def get_connector():
 def get_global_analysis_table():
     metadata = MetaData()
     global_analysis = Table(
-        'gl_indicators_status', metadata,
+        'indicators_status', metadata,
         Column('institution_id', Integer, primary_key=True),
         Column('indicator', Integer, primary_key=True),
         Column('status', String(1), nullable=False)

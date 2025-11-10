@@ -27,6 +27,10 @@ ANALYSIS_MAP = {
         "func": "general_cognitive_analysis",
         "status_index": 5,
     },
+    "global_analysis_give_up": {
+        "func": "general_give_up_analysis",
+        "status_index": 6,
+    }
 }
 
 
@@ -47,6 +51,8 @@ class Worker:
             return self.analyzer.general_pedagogic_analysis(connector, version, analysis_config)
         elif analysis_type == "global_analysis_cognitive":
             return self.analyzer.general_cognitive_analysis(connector, version, analysis_config)
+        elif analysis_type == "global_analysis_give_up":
+            return self.analyzer.general_give_up_analysis(connector, version, analysis_config)
         else:
             raise ValueError(f"Tipo de análise desconhecido: {analysis_type}")
 
@@ -90,7 +96,8 @@ def continuously_listen():
             analysis_type == "global_analysis_pedagogic" or
             analysis_type == "global_analysis_performance" or
             analysis_type == "global_analysis_motivation" or
-            analysis_type == "global_analysis_cognitive"): 
+            analysis_type == "global_analysis_cognitive" or
+            analysis_type == "global_analysis_give_up"): 
             worker.global_analysis(message)
         else:
             print(f"[!] Tipo de análise desconhecido: {analysis_type}")

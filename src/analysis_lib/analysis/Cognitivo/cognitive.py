@@ -273,27 +273,7 @@ class Cognitive(Indicator):
         total = analysis_config["total"]
         df = pd.DataFrame(columns=['subject_id', 'user_id', 'label'])
 
-        if processed == 0:
-            processed = 1
-
-        # print("PRIMEIROOOOOOOOOOO")
-        # result = self.course_analysis(225, version, connector)
-        # print("DEBUG result type:", type(result))
-        # print("DEBUG result columns:", getattr(result, "columns", None))
-
-        # print("SEGUNDOOOOOOOOOOO")
-        # result_dis = result.loc[:, ["user_id", "full_name", "label"]].copy()
-        # print(result_dis)
-
-        # result_dis.loc[:, "institution_id"] = 1
-        # result_dis.loc[:, "subject_id"] = 225
-        # self.aggregate_user_results(result_dis, engine)
-
-        # analysis_config["processed"] = analysis_config["total"]
-
-        # return analysis_config
-
-        for i in range(processed + 1, total + 1):
+        for i in range(processed + 2, total + 1):
             try:
                 subject_id = int(df_courses.iloc[i - 1]['subject_id'])
             except IndexError: # Se 'total' > len(df_courses), evita quebrar
@@ -303,10 +283,7 @@ class Cognitive(Indicator):
 
             if result is not None and not result.empty:
                 result_dis = (
-                    result.loc[:, ["user_id", "label"]]
-                        .copy()
-                        .assign(subject_id=subject_id, institution_id=1)
-                )
+                    result.loc[:, ["user_id", "label"]].copy().assign(subject_id=subject_id, institution_id=1))
 
                 df = pd.concat([df, result_dis.loc[:, ["subject_id", "user_id", "label"]]], ignore_index=True)
 
@@ -337,6 +314,7 @@ class Cognitive(Indicator):
             'alto': 3,
             'muito_alto': 4
         }
+
         df['label_num'] = df['label'].map(label_map)
 
         df_user_mean = (

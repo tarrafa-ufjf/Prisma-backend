@@ -89,7 +89,7 @@ class Motivation(Indicator):
             lambda x: discretize(x, lim_inf, q1, q3, lim_sup)
         )
 
-        return df_sit[['user_id', 'subject_id','label', 'num_posts_unrequired']]
+        return df_sit[['user_id', 'subject_id','label']]
     
     def general_analysis(self, version, connector, analysis_config):
         batch_size = analysis_config["batch_size"]
@@ -106,7 +106,7 @@ class Motivation(Indicator):
 
         results = []
 
-        for i in range(processed + 2, total + 1):
+        for i in range(processed + 1, total + 1):
             result = self.discrete_analysis(i, version, connector)
             result = result.drop_duplicates(subset=['user_id'], keep='first')
             result = self._fillna_mixed(result)
@@ -117,13 +117,35 @@ class Motivation(Indicator):
             if analysis_config["processed"] % batch_size == 0:
                 df = pd.concat(results, ignore_index=True)
                 df['institution_id'] = 1
+
+                df = (
+                    df.groupby(["institution_id", "subject_id", "label"]).size().unstack(fill_value=0)
+                    .reset_index()
+                )
+
+                labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
+                for lbl in labels:
+                    if lbl not in df.columns:
+                        df[lbl] = 0
+                df = df[["institution_id", "subject_id"] + labels]
+
                 df.to_sql("motivation_global", engine, if_exists="append", index=False)
-                df = pd.DataFrame(columns=['user_id', 'subject_id','label'])
                 return analysis_config
         
         if not df.empty:
             df = pd.concat(results, ignore_index=True)
             df['institution_id'] = 1
+
+            df = (
+                df.groupby(["institution_id", "subject_id", "label"]).size().unstack(fill_value=0)
+                .reset_index()
+            )
+
+            labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
+            for lbl in labels:
+                if lbl not in df.columns:
+                    df[lbl] = 0
+            df = df[["institution_id", "subject_id"] + labels]
             df.to_sql("motivation_global", engine, if_exists="append", index=False)
 
         return analysis_config

@@ -111,7 +111,7 @@ class Give_Up(Indicator):
             results.append(result)
 
             analysis_config["processed"] += 1
-            self.print_load("Desistência", analysis_config["processed"], total, 8)
+            self.print_load("Desistência", analysis_config["processed"], total, 10)
 
             if i % batch_size == 0 or i == total:
                 df_batch = pd.concat(results, ignore_index=True)

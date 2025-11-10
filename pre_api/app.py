@@ -38,8 +38,8 @@ load_dotenv()
 analyzer = Analyzer()
 
 indicators = [#"engagement", 
-              "performance", 
-            #    "motivation", 
+            #   "performance", 
+               "motivation", 
             #    "cognitive", 
             #   "pedagogic",
                 # "give_up"

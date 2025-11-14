@@ -2,6 +2,7 @@ from database import Database, DatabaseAdmin
 from rabbit import RabbitMQAdmin
 from src.analysis_lib.analysis.analysis import Analyzer
 import json
+import pandas as pd
 
 conn = Database()
 connector = None
@@ -90,15 +91,111 @@ class Worker:
             subject_id = int(cfg["subject_id"])
             version = self.db_admin.get_version_in_database(1)
             connector = conn.get_connection_with_config(body.get("db_inst_config"))
+            engine = self.db_admin.get_connector()
+
+            eng = self.analyzer.engagement_analysis(subject_id, 'course', version, connector)
+            per = self.analyzer.performance_analysis(subject_id, 'course', version, connector)
+            mot = self.analyzer.motivation_analysis(subject_id, 'course', version, connector)
+            cog = self.analyzer.cognitive_analysis(subject_id, 'course', version, connector)
+            # ped = self.analyzer.pedagogic_analysis(subject_id, 'course', version, connector)
+            giv = self.analyzer.give_up_analysis(subject_id, 'course', version, connector)
 
             # Executa todos os indicadores no escopo "course" (turma)
-            self.analyzer.engagement_analysis(subject_id, 'course', version, connector)
-            self.analyzer.performance_analysis(subject_id, 'course', version, connector)
-            self.analyzer.motivation_analysis(subject_id, 'course', version, connector)
-            self.analyzer.cognitive_analysis(subject_id, 'course', version, connector)
-            self.analyzer.pedagogic_analysis(subject_id, 'course', version, connector)
-            self.analyzer.give_up_analysis(subject_id, 'course', version, connector)
+            # Merge all indicator DataFrames on subject_id and student_id (outer join to keep all students)
+            dfs = [eng, per, mot, cog, giv]
+            merged = None
+            for df in dfs:
+                if df is None or df.empty:
+                    continue
+                # Verificar se o dataframe tem as colunas necessárias para merge
+                if 'subject_id' not in df.columns or 'user_id' not in df.columns:
+                    print(f"[!] Aviso: DataFrame sem 'subject_id' ou 'user_id'. Colunas: {df.columns.tolist()}")
+                    continue
+                if merged is None:
+                    merged = df.copy()
+                else:
+                    # Detectar colunas comuns (exceto as chaves de merge)
+                    merge_keys = ['subject_id', 'user_id']
+                    common_cols = [col for col in merged.columns if col in df.columns and col not in merge_keys]
+                    if common_cols:
+                        # Se há colunas em comum além das chaves, usar sufixos
+                        merged = merged.merge(df, on=merge_keys, how='outer', suffixes=('', '_new'))
+                    else:
+                        # Se não há colunas em comum, fazer merge simples
+                        merged = merged.merge(df, on=merge_keys, how='outer')
 
+            # If nothing to merge, create empty frame with keys
+            if merged is None:
+                merged = pd.DataFrame(columns=['subject_id', 'user_id'])
+
+            # Ensure version column
+            merged['version'] = version
+
+            # Desired final columns
+            desired_cols = [
+                'version',
+                'subject_id',
+                'student_id',
+                'n_posts_engagement',
+                'label_engagement',
+                'n_posts_motivation',
+                'label_motivation',
+                'grade_performance',
+                'grade_comparative_performance',
+                'label_performance',
+                'mean_forum_interactions_cognitive',
+                'mean_quiz_interactions_cognitive',
+                'mean_assign_interactions_cognitive',
+                'label_cognitive',
+                'n_responses_relation_teacher_student',
+                'mean_responses_relation_teacher_student',
+                'label_relation_teacher_student',
+                'label_give_up'
+            ]
+
+            # Add missing columns as NA and select only desired columns
+            for c in desired_cols:
+                if c not in merged.columns:
+                    merged[c] = pd.NA
+            subject_df = merged[desired_cols]
+            
+            # Fill empty values with zero
+            subject_df = subject_df.fillna(0)
+
+            subject_df['institution_id'] = 1
+            subject_df['subject_id'] = subject_id
+
+            # Agrupar por subject_id e student_id para evitar duplicatas
+            # Manter apenas a primeira ocorrência de cada combinação
+
+            subject_df = subject_df.rename(columns={'user_id': 'student_id'})
+
+            subject_df = subject_df.groupby(['subject_id', 'student_id'], as_index=False).agg({
+                'version': 'first',
+                'institution_id': 'first',
+                'n_posts_engagement': 'first',
+                'label_engagement': 'first',
+                'n_posts_motivation': 'first',
+                'label_motivation': 'first',
+                'grade_performance': 'first',
+                'grade_comparative_performance': 'first',
+                'label_performance': 'first',
+                'mean_forum_interactions_cognitive': 'first',
+                'mean_quiz_interactions_cognitive': 'first',
+                'mean_assign_interactions_cognitive': 'first',
+                'label_cognitive': 'first',
+                'n_responses_relation_teacher_student': 'first',
+                'mean_responses_relation_teacher_student': 'first',
+                'label_relation_teacher_student': 'first',
+                'label_give_up': 'first'
+            })
+
+            subject_df.to_sql(
+                'local_indicators',
+                engine,
+                if_exists='append',
+                index=False
+            )
             # Opcional: agregações percentuais/indicadores consolidados por turma
             # self.analyzer.indicators_analysis(subject_id, 'subject', version, connector)
 

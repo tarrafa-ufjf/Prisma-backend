@@ -187,7 +187,9 @@ class Cognitive(Indicator):
         cognitive_label = self.discretize_student_levels_class(out)
         out = out.merge(cognitive_label, on="user_id", how="left")
 
-        return out[["user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]]
+        out["subject_id"] = subject_id
+
+        return out[["subject_id", "user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]]
 
             
     '''Implementar análise cognitiva global'''

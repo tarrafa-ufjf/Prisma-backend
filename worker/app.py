@@ -4,6 +4,8 @@ from src.analysis_lib.analysis.analysis import Analyzer
 import json
 import pandas as pd
 
+pd.set_option('future.no_silent_downcasting', True)
+
 conn = Database()
 connector = None
 
@@ -86,121 +88,132 @@ class Worker:
             self.db_admin.update_global_analysis_status(1, entry["status_index"], 'D')
 
     def subject_analysis(self, message):
-            body = message["body"]
-            cfg = body.get("analysis_config", {})
-            subject_id = int(cfg["subject_id"])
-            version = self.db_admin.get_version_in_database(1)
-            connector = conn.get_connection_with_config(body.get("db_inst_config"))
-            engine = self.db_admin.get_connector()
+        body = message["body"]
+        cfg = body.get("analysis_config", {})
+        subject_id = int(cfg["subject_id"])
+        version = self.db_admin.get_version_in_database(1)
+        connector = conn.get_connection_with_config(body.get("db_inst_config"))
+        engine = self.db_admin.get_connector()
 
-            eng = self.analyzer.engagement_analysis(subject_id, 'course', version, connector)
-            per = self.analyzer.performance_analysis(subject_id, 'course', version, connector)
-            mot = self.analyzer.motivation_analysis(subject_id, 'course', version, connector)
-            cog = self.analyzer.cognitive_analysis(subject_id, 'course', version, connector)
-            # ped = self.analyzer.pedagogic_analysis(subject_id, 'course', version, connector)
-            giv = self.analyzer.give_up_analysis(subject_id, 'course', version, connector)
+        eng = self.analyzer.engagement_analysis(subject_id, 'course', version, connector)
+        per = self.analyzer.performance_analysis(subject_id, 'course', version, connector)
+        mot = self.analyzer.motivation_analysis(subject_id, 'course', version, connector)
+        cog = self.analyzer.cognitive_analysis(subject_id, 'course', version, connector)
+        giv = self.analyzer.give_up_analysis(subject_id, 'course', version, connector)
 
-            # Executa todos os indicadores no escopo "course" (turma)
-            # Merge all indicator DataFrames on subject_id and student_id (outer join to keep all students)
-            dfs = [eng, per, mot, cog, giv]
-            merged = None
-            for df in dfs:
-                if df is None or df.empty:
-                    continue
-                # Verificar se o dataframe tem as colunas necessárias para merge
-                if 'subject_id' not in df.columns or 'user_id' not in df.columns:
-                    print(f"[!] Aviso: DataFrame sem 'subject_id' ou 'user_id'. Colunas: {df.columns.tolist()}")
-                    continue
-                if merged is None:
-                    merged = df.copy()
-                else:
-                    # Detectar colunas comuns (exceto as chaves de merge)
-                    merge_keys = ['subject_id', 'user_id']
-                    common_cols = [col for col in merged.columns if col in df.columns and col not in merge_keys]
-                    if common_cols:
-                        # Se há colunas em comum além das chaves, usar sufixos
-                        merged = merged.merge(df, on=merge_keys, how='outer', suffixes=('', '_new'))
-                    else:
-                        # Se não há colunas em comum, fazer merge simples
-                        merged = merged.merge(df, on=merge_keys, how='outer')
+        indicator_dfs = {"eng": eng, "per": per, "mot": mot, "cog": cog, "giv": giv}
+        normalized = []
 
-            # If nothing to merge, create empty frame with keys
+        for name, df in indicator_dfs.items():
+            if df is None or df.empty:
+                continue
+
+            df = df.copy()
+            normalized.append(df)
+
+        if not normalized:
+            return
+
+        merged = None
+
+        for df in normalized:
+            df = df.copy()
+
             if merged is None:
-                merged = pd.DataFrame(columns=['subject_id', 'user_id'])
+                merged = df
+                continue
 
-            # Ensure version column
-            merged['version'] = version
+            common_cols = [c for c in merged.columns if c in df.columns and c != "user_id"]
 
-            # Desired final columns
-            desired_cols = [
-                'version',
-                'subject_id',
-                'student_id',
-                'n_posts_engagement',
-                'label_engagement',
-                'n_posts_motivation',
-                'label_motivation',
-                'grade_performance',
-                'grade_comparative_performance',
-                'label_performance',
-                'mean_forum_interactions_cognitive',
-                'mean_quiz_interactions_cognitive',
-                'mean_assign_interactions_cognitive',
-                'label_cognitive',
-                'n_responses_relation_teacher_student',
-                'mean_responses_relation_teacher_student',
-                'label_relation_teacher_student',
-                'label_give_up'
-            ]
+            if common_cols:
+                merged = merged.merge(df, on="user_id", how="outer", suffixes=("", "_dup"))
+                merged = merged.loc[:, ~merged.columns.str.endswith("_dup")]
+            else:
+                merged = merged.merge(df, on="user_id", how="outer")
 
-            # Add missing columns as NA and select only desired columns
-            for c in desired_cols:
-                if c not in merged.columns:
-                    merged[c] = pd.NA
-            subject_df = merged[desired_cols]
-            
-            # Fill empty values with zero
-            subject_df = subject_df.fillna(0)
+        merged["subject_id"] = subject_id
+        merged["version"] = version
 
-            subject_df['institution_id'] = 1
-            subject_df['subject_id'] = subject_id
+        rename_map = {
+            "num_posts_required": "n_posts_engagement",
+            "posts_required_label": "label_engagement",
+            "num_posts_unrequired": "n_posts_motivation",
+            "motivation_label": "label_motivation",
+            "media_percentual": "grade_performance",
+            "comparative": "grade_comparative_performance",
+            "performance_label": "label_performance",
+            "forum_mean_level": "mean_forum_interactions_cognitive",
+            "quiz_mean_level": "mean_quiz_interactions_cognitive",
+            "assign_mean_level": "mean_assign_interactions_cognitive",
+            "cognitive_label": "label_cognitive",
+            "label": "label_give_up",
+        }
+        merged = merged.rename(
+            columns={k: v for k, v in rename_map.items() if k in merged.columns}
+        )
 
-            # Agrupar por subject_id e student_id para evitar duplicatas
-            # Manter apenas a primeira ocorrência de cada combinação
+        if "user_id" in merged.columns:
+            merged = merged.rename(columns={"user_id": "student_id"})
 
-            subject_df = subject_df.rename(columns={'user_id': 'student_id'})
+        desired_cols = [
+            "version",
+            "subject_id",
+            "student_id", 
+            "n_posts_engagement",
+            "label_engagement",
+            "n_posts_motivation",
+            "label_motivation",
+            "grade_performance",
+            "grade_comparative_performance",
+            "label_performance",
+            "mean_forum_interactions_cognitive",
+            "mean_quiz_interactions_cognitive",
+            "mean_assign_interactions_cognitive",
+            "label_cognitive",
+            "n_responses_relation_teacher_student",
+            "mean_responses_relation_teacher_student",
+            "label_relation_teacher_student",
+            "label_give_up",
+        ]
 
-            subject_df = subject_df.groupby(['subject_id', 'student_id'], as_index=False).agg({
-                'version': 'first',
-                'institution_id': 'first',
-                'n_posts_engagement': 'first',
-                'label_engagement': 'first',
-                'n_posts_motivation': 'first',
-                'label_motivation': 'first',
-                'grade_performance': 'first',
-                'grade_comparative_performance': 'first',
-                'label_performance': 'first',
-                'mean_forum_interactions_cognitive': 'first',
-                'mean_quiz_interactions_cognitive': 'first',
-                'mean_assign_interactions_cognitive': 'first',
-                'label_cognitive': 'first',
-                'n_responses_relation_teacher_student': 'first',
-                'mean_responses_relation_teacher_student': 'first',
-                'label_relation_teacher_student': 'first',
-                'label_give_up': 'first'
-            })
+        for c in desired_cols:
+            if c not in merged.columns:
+                merged[c] = pd.NA
 
-            subject_df.to_sql(
-                'local_indicators',
-                engine,
-                if_exists='append',
-                index=False
-            )
-            # Opcional: agregações percentuais/indicadores consolidados por turma
-            # self.analyzer.indicators_analysis(subject_id, 'subject', version, connector)
+        subject_df = merged[desired_cols]
+        subject_df = subject_df.fillna(0)
 
-            # Marca como concluído
-            self.db_admin.update_subject_analysis_status(1, subject_id, 'D')
+        subject_df["institution_id"] = 1
+        subject_df["subject_id"] = subject_id
+
+        subject_df = subject_df.groupby(
+            ["subject_id", "student_id"],
+            as_index=False,
+        ).agg(
+            {
+                "version": "first",
+                "institution_id": "first",
+                "n_posts_engagement": "first",
+                "label_engagement": "first",
+                "n_posts_motivation": "first",
+                "label_motivation": "first",
+                "grade_performance": "first",
+                "grade_comparative_performance": "first",
+                "label_performance": "first",
+                "mean_forum_interactions_cognitive": "first",
+                "mean_quiz_interactions_cognitive": "first",
+                "mean_assign_interactions_cognitive": "first",
+                "label_cognitive": "first",
+                "n_responses_relation_teacher_student": "first",
+                "mean_responses_relation_teacher_student": "first",
+                "label_relation_teacher_student": "first",
+                "label_give_up": "first",
+            }
+        )
+
+        subject_df.to_sql("local_indicators", engine, if_exists="append", index=False)
+
+        self.db_admin.update_subject_analysis_status(1, subject_id, "D")
 
 def continuously_listen():
     rabbit_admin = RabbitMQAdmin()

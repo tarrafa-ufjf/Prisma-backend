@@ -510,10 +510,9 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def fetch_subject_metrics(self, subject_id):
+    def fetch_total_enrollment(self, subject_id):
         conn = self.connector
         with conn.cursor() as cur:
-            # 1) Total de alunos
             cur.execute('''
                 SELECT COUNT(DISTINCT ra.userid) AS total_enrolled
                 FROM mdl_role_assignments ra
@@ -524,51 +523,10 @@ class Moodle31(Moodle):
                     AND ctx.instanceid = %s;
 
             ''', (subject_id,))
-            total_rows = cur.fetchall()
-            total_enrolled = total_rows[0]["total_enrolled"] if total_rows else 0
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
 
-            # 2) Média de notas
-            cur.execute('''
-                SELECT ROUND(AVG(gg.finalgrade), 2) AS avg_grade_all
-                FROM mdl_grade_grades gg
-                JOIN mdl_grade_items gi ON gi.id = gg.itemid
-                WHERE gi.itemtype = 'course'
-                AND gi.courseid = %s;
-            ''', (subject_id,))
-            avg_rows = cur.fetchall()
-            avg_grade_all = avg_rows[0]["avg_grade_all"] if avg_rows else None
-
-            # 3) Taxa de aprovação
-            cur.execute('''
-                SELECT
-                    ROUND(
-                        100.0 * SUM(CASE WHEN gg.finalgrade IS NOT NULL AND gg.finalgrade >= 70 THEN 1 ELSE 0 END)
-                        / NULLIF(COUNT(students.userid), 0),
-                        2
-                    ) AS taxa_aprovacao
-                FROM (
-                    SELECT DISTINCT ue.userid
-                    FROM mdl_enrol e
-                    JOIN mdl_user_enrolments ue ON ue.enrolid = e.id
-                    JOIN mdl_role_assignments ra ON ra.userid = ue.userid
-                    JOIN mdl_role r ON r.id = ra.roleid
-                    JOIN mdl_context ctx ON ctx.id = ra.contextid
-                    WHERE e.courseid = %s
-                    AND ctx.contextlevel = 50
-                    AND r.archetype = 'student'
-                ) students
-                JOIN mdl_grade_items gi ON gi.courseid = %s AND gi.itemtype = 'course'
-                LEFT JOIN mdl_grade_grades gg ON gg.itemid = gi.id AND gg.userid = students.userid;
-            ''', (subject_id, subject_id))
-            rate_rows = cur.fetchall()
-            taxa_aprovacao = rate_rows[0]["taxa_aprovacao"] if rate_rows else None
-
-        data = [{
-            "total_enrolled": int(total_enrolled or 0),
-            "avg_grade_all": float(avg_grade_all) if avg_grade_all is not None else None,
-            "taxa_aprovacao": float(taxa_aprovacao) if taxa_aprovacao is not None else None,
-        }]
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(rows, columns=cols)
         return df
     
     def get_pct_usage_resource(self, subject_id):

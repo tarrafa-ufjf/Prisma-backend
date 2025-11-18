@@ -2,16 +2,15 @@ version: '3.7'
 
 services:
   postgres:
-    image: bitnami/postgresql:17.6.0
+    image: postgres:17.6-alpine
     ports:
-      - "5432:5432"
+      - "5435:5432"
     environment:
-      - POSTGRESQL_USERNAME=tarrafa
-      - POSTGRESQL_PASSWORD=tarrafa123
-      - POSTGRESQL_DATABASE=tarrafa_db
-      - POSTGRESQL_HOST=postgres
+      - POSTGRES_USER=tarrafa
+      - POSTGRES_PASSWORD=tarrafa123
+      - POSTGRES_DB=tarrafa_db
     volumes:
-      - postgres_data:/bitnami/postgresql
+      - postgres_data:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:3.13.7-management

@@ -8,8 +8,6 @@ class Info_Graphs(Indicator):
         super().__init__(mapper)
 
     def _build_situations(self, df):
-        print(df)
-
         if df is None or df.empty:
             return [
                 {"situacao": "Reprovado", "qtd": 0},

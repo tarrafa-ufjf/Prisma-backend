@@ -112,9 +112,9 @@ class Mapper:
         moodle = self.get_moodle(connector, version)
         return moodle.fetch_subject_info(subject_id)
     
-    def fetch_subject_metrics(self, connector, subject_id, version):
+    def fetch_total_enrollment(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_subject_metrics(subject_id)
+        return moodle.fetch_total_enrollment(subject_id)
     
     def get_pct_usage_resource(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)

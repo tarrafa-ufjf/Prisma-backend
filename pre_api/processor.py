@@ -212,7 +212,8 @@ class Processor:
             print("Nenhuma turma encontrada para enfileirar.")
             return
     
-        for sid in subjects:
+        # for sid in subjects:
+        for sid in [37, 41, 78, 83, 84, 222, 223, 224]:
             try:
                 self.db_admin.insert_subject_analysis_status(1, sid, 'P')
             except Exception as e:

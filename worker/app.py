@@ -3,6 +3,7 @@ from rabbit import RabbitMQAdmin
 from src.analysis_lib.analysis.analysis import Analyzer
 import json
 import pandas as pd
+from sqlalchemy import text
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -213,7 +214,184 @@ class Worker:
 
         subject_df.to_sql("local_indicators", engine, if_exists="append", index=False)
 
+        self.save_subject_global_indicators(subject_df, engine)
+
         self.db_admin.update_subject_analysis_status(1, subject_id, "D")
+    
+    # ------------------------------------------------------------------
+    # Calcula as médias da disciplina e salva em global_indicators
+    # ------------------------------------------------------------------
+    def save_subject_global_indicators(self, subject_df, engine):
+        if subject_df.empty:
+            return
+
+        df = subject_df.copy()
+
+        # ------------------------------------------------------------------
+        # Cálculo da média cognitiva geral do aluno (média das três interações: fórum, quiz e assign)
+        # ------------------------------------------------------------------
+        df["mean_interactions_cognitive"] = df[
+            [
+                "mean_forum_interactions_cognitive",
+                "mean_quiz_interactions_cognitive",
+                "mean_assign_interactions_cognitive",
+            ]
+        ].mean(axis=1)
+
+        # ------------------------------------------------------------------
+        # Agregação por disciplina na instituição
+        #
+        # mean_posts_engagement      -> média de n_posts_engagement
+        # mean_posts_motivation      -> média de n_posts_motivation
+        # mean_grade_performance     -> média de grade_performance
+        # mean_interactions_cognitive-> média da média cognitiva
+        # mean_responses_relation_teacher_student -> média de n_responses_relation_teacher_student
+        # ------------------------------------------------------------------
+        global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(
+                mean_posts_engagement=("n_posts_engagement", "mean"),
+                mean_posts_motivation=("n_posts_motivation", "mean"),
+                mean_grade_performance=("grade_performance", "mean"),
+                mean_interactions_cognitive=("mean_interactions_cognitive", "mean"),
+                mean_responses_relation_teacher_student=(
+                    "n_responses_relation_teacher_student",
+                    "mean",
+                ),
+            )
+
+        # ------------------------------------------------------------------
+        # Labels globais ainda não calculados -> NA
+        # ------------------------------------------------------------------
+        for col in [
+            "label_engagement",
+            "label_motivation",
+            "label_performance",
+            "label_cognitive",
+            "label_relation_teacher_student",
+            "label_give_up",
+        ]:
+            global_subject_df[col] = pd.NA
+
+        global_subject_df = global_subject_df[
+            [
+                "institution_id",
+                "version",
+                "subject_id",
+                "mean_posts_engagement",
+                "label_engagement",
+                "mean_posts_motivation",
+                "label_motivation",
+                "mean_grade_performance",
+                "label_performance",
+                "mean_interactions_cognitive",
+                "label_cognitive",
+                "mean_responses_relation_teacher_student",
+                "label_relation_teacher_student",
+                "label_give_up",
+            ]
+        ]
+
+        global_subject_df.to_sql(
+            "global_indicators",
+            engine,
+            if_exists="append",  
+            index=False,
+        )
+    
+    def discretize_global_indicators(self, institution_id: int = 1):
+        engine = self.db_admin.get_connector()
+        version = self.db_admin.get_version_in_database(institution_id)
+
+        df = pd.read_sql_table("global_indicators", engine)
+
+        if df.empty:
+            return
+
+        mask = (df["institution_id"] == institution_id) & (df["version"] == str(version))
+        df_sub = df.loc[mask].copy()
+
+        if df_sub.empty:
+            return
+
+        def discretize_metric(series: pd.Series) -> pd.Series:
+            if series.isna().all():
+                return pd.Series([pd.NA] * len(series), index=series.index)
+
+            values = series.astype(float)
+
+            q1 = values.quantile(0.25)
+            q3 = values.quantile(0.75)
+            iqr = q3 - q1
+
+            # if iqr == 0:
+            #     labels = pd.Series("medium", index=values.index, dtype="object")
+            #     labels[values.isna()] = pd.NA
+            #     return labels
+
+            lower = q1 - 1.5 * iqr
+            upper = q3 + 1.5 * iqr
+
+            labels = pd.Series(index=values.index, dtype="object")
+
+            labels[values < lower] = "muito_baixo"
+            labels[(values >= lower) & (values < q1)] = "baixo"
+            labels[(values >= q1) & (values <= q3)] = "medio"
+            labels[(values > q3) & (values <= upper)] = "alto"
+            labels[values > upper] = "muito_alto"
+
+            labels[values.isna()] = pd.NA
+
+            return labels
+
+        metric_to_label_col = {
+            "mean_posts_engagement": "label_engagement",
+            "mean_posts_motivation": "label_motivation",
+            "mean_grade_performance": "label_performance",
+            "mean_interactions_cognitive": "label_cognitive",
+            "mean_responses_relation_teacher_student": "label_relation_teacher_student",
+            # "label_give_up" 
+        }
+
+        for metric_col, label_col in metric_to_label_col.items():
+            if metric_col in df_sub.columns:
+                df_sub[label_col] = discretize_metric(df_sub[metric_col])
+            else:
+                df_sub[label_col] = pd.NA
+
+        # ------------------------------------------------------------------
+        # Atualiza a tabela global_indicators no banco
+        # PK: (institution_id, version, subject_id)
+        # ------------------------------------------------------------------
+        with engine.begin() as conn:
+            for _, row in df_sub.iterrows():
+                params = {
+                    "institution_id": int(row["institution_id"]),
+                    "version": str(row["version"]),
+                    "subject_id": int(row["subject_id"]),
+                    "label_engagement": row.get("label_engagement"),
+                    "label_motivation": row.get("label_motivation"),
+                    "label_performance": row.get("label_performance"),
+                    "label_cognitive": row.get("label_cognitive"),
+                    "label_relation_teacher_student": row.get("label_relation_teacher_student"),
+                }
+
+                conn.execute(
+                    text(
+                        """
+                        UPDATE global_indicators
+                        SET
+                            label_engagement = :label_engagement,
+                            label_motivation = :label_motivation,
+                            label_performance = :label_performance,
+                            label_cognitive = :label_cognitive,
+                            label_relation_teacher_student = :label_relation_teacher_student
+                        WHERE
+                            institution_id = :institution_id
+                            AND version = :version
+                            AND subject_id = :subject_id
+                        """
+                    ),
+                    params,
+                )
 
 def continuously_listen():
     rabbit_admin = RabbitMQAdmin()
@@ -238,6 +416,14 @@ def continuously_listen():
             print(f"[!] Tipo de análise desconhecido: {analysis_type}")
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        # ------------------------------------------------------------------
+        # Depois de processar a mensagem, verifica se ainda há itens na fila.
+        # Se não houver mais mensagens pendentes, roda a discretização dos indicadores globais.
+        # ------------------------------------------------------------------
+        state = ch.queue_declare(queue='tasks_to_process', passive=True)
+        if state.method.message_count == 0:
+            worker.discretize_global_indicators(1)
 
     rabbit_admin.channel.basic_qos(prefetch_count=1)
     rabbit_admin.channel.basic_consume(queue='tasks_to_process', on_message_callback=callback)

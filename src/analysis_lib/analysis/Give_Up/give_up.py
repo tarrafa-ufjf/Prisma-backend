@@ -66,7 +66,6 @@ class Give_Up(Indicator):
         out = safe_merge(out, df_motivation,  "posts_unrequired_label","motivation_label")
         out = safe_merge(out, df_performance, "performance_label",     "performance_label")
 
-        # Normalização só para a regra do give_up (sem perder o valor original nas colunas *_label)
         def is_low(x: object) -> bool:
             s = (str(x).strip().lower() if pd.notna(x) else "")
             return s in {"muito_baixo", "baixo"}

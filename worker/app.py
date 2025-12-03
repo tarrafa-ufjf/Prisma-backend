@@ -147,7 +147,7 @@ class Worker:
             "quiz_mean_level": "mean_quiz_interactions_cognitive",
             "assign_mean_level": "mean_assign_interactions_cognitive",
             "cognitive_label": "label_cognitive",
-            "label": "label_give_up",
+            "give_up": "label_give_up",
         }
         merged = merged.rename(
             columns={k: v for k, v in rename_map.items() if k in merged.columns}

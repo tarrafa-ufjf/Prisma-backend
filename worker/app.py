@@ -4,6 +4,7 @@ from src.analysis_lib.analysis.analysis import Analyzer
 import json
 import pandas as pd
 from sqlalchemy import text
+import numpy as np
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -113,6 +114,7 @@ class Worker:
             normalized.append(df)
 
         if not normalized:
+            self.db_admin.update_subject_analysis_status(1, subject_id, "D")
             return
 
         merged = None
@@ -239,6 +241,31 @@ class Worker:
         ].mean(axis=1)
 
         # ------------------------------------------------------------------
+        # Converte label_give_up em 0/1 para calcular a média de "true"
+        #
+        # mean_give_up = proporção de alunos em situação de desistência na disciplina
+        # ------------------------------------------------------------------
+        def give_up_to_numeric(value):
+            if pd.isna(value):
+                return np.nan
+
+            if isinstance(value, bool):
+                return 1.0 if value else 0.0
+
+            if isinstance(value, (int, float)) and value in (0, 1):
+                return float(value)
+
+            s = str(value).strip().lower()
+            if s in ("true"):
+                return 1.0
+            if s in ("false"):
+                return 0.0
+
+            return np.nan
+
+        df["give_up_numeric"] = df["label_give_up"].apply(give_up_to_numeric)
+
+        # ------------------------------------------------------------------
         # Agregação por disciplina na instituição
         #
         # mean_posts_engagement      -> média de n_posts_engagement
@@ -246,6 +273,7 @@ class Worker:
         # mean_grade_performance     -> média de grade_performance
         # mean_interactions_cognitive-> média da média cognitiva
         # mean_responses_relation_teacher_student -> média de n_responses_relation_teacher_student
+        # mean_give_up               -> média de give_up_numeric (proporção de "true")
         # ------------------------------------------------------------------
         global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(
                 mean_posts_engagement=("n_posts_engagement", "mean"),
@@ -256,6 +284,7 @@ class Worker:
                     "n_responses_relation_teacher_student",
                     "mean",
                 ),
+                mean_give_up=("give_up_numeric", "mean"),
             )
 
         # ------------------------------------------------------------------
@@ -286,6 +315,7 @@ class Worker:
                 "label_cognitive",
                 "mean_responses_relation_teacher_student",
                 "label_relation_teacher_student",
+                "mean_give_up",
                 "label_give_up",
             ]
         ]
@@ -296,7 +326,6 @@ class Worker:
             if_exists="append",  
             index=False,
         )
-    
     def discretize_global_indicators(self, institution_id: int = 1):
         engine = self.db_admin.get_connector()
         version = self.db_admin.get_version_in_database(institution_id)
@@ -322,11 +351,6 @@ class Worker:
             q3 = values.quantile(0.75)
             iqr = q3 - q1
 
-            # if iqr == 0:
-            #     labels = pd.Series("medium", index=values.index, dtype="object")
-            #     labels[values.isna()] = pd.NA
-            #     return labels
-
             lower = q1 - 1.5 * iqr
             upper = q3 + 1.5 * iqr
 
@@ -348,7 +372,7 @@ class Worker:
             "mean_grade_performance": "label_performance",
             "mean_interactions_cognitive": "label_cognitive",
             "mean_responses_relation_teacher_student": "label_relation_teacher_student",
-            # "label_give_up" 
+            "mean_give_up": "label_give_up",
         }
 
         for metric_col, label_col in metric_to_label_col.items():
@@ -372,6 +396,7 @@ class Worker:
                     "label_performance": row.get("label_performance"),
                     "label_cognitive": row.get("label_cognitive"),
                     "label_relation_teacher_student": row.get("label_relation_teacher_student"),
+                    "label_give_up": row.get("label_give_up"),
                 }
 
                 conn.execute(
@@ -383,7 +408,8 @@ class Worker:
                             label_motivation = :label_motivation,
                             label_performance = :label_performance,
                             label_cognitive = :label_cognitive,
-                            label_relation_teacher_student = :label_relation_teacher_student
+                            label_relation_teacher_student = :label_relation_teacher_student,
+                            label_give_up = :label_give_up
                         WHERE
                             institution_id = :institution_id
                             AND version = :version

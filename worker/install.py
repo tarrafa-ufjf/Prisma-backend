@@ -57,15 +57,6 @@ def create_table(table_name, columns, primary_key=None):
         print("Erro ao criar tabela:", e)
 
 if __name__ == "__main__":
-    columns_indicators_status = {
-        "institution_id": Integer,
-        "indicator": Integer,
-        "status": String(1),
-    }
-
-    primary_keys = ["institution_id", "indicator"]
-    create_table("indicators_status", columns_indicators_status, primary_key=primary_keys)
-
     columns_configs = {
         "institution_id": Integer,
         "version": String(40),

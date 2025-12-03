@@ -126,14 +126,12 @@ if __name__ == "__main__":
         "label_performance": String(32),
 
         "mean_interactions_cognitive": Float,
-        # "mean_forum_interactions_cognitive": Float,
-        # "mean_quiz_interactions_cognitive": Float,
-        # "mean_assign_interactions_cognitive": Float,
         "label_cognitive": String(32),
 
         "mean_responses_relation_teacher_student": Float,
         "label_relation_teacher_student": String(32),
-
+        
+        "mean_give_up": Float,
         "label_give_up": String(32),
     }
     create_table(

@@ -36,6 +36,10 @@ class Performance(Indicator):
         df_alunos = self.mapper.get_all_students(connector, subject_id, version)
         df_alunos["subject_id"] = subject_id
         df_alunos_full_name = df_alunos[["user_id","subject_id"]].copy()
+        
+        print("DataFrame alunos:")
+        print(df_alunos["full_name"])
+        
         if "full_name" in df_alunos.columns:
             df_alunos_full_name["full_name"] = df_alunos["full_name"]
         else:
@@ -86,7 +90,7 @@ class Performance(Indicator):
         df_final = df_final.merge(notas_finais[['user_id','situacao']], on=['user_id'], how='left')
         df_final.rename(columns={'situacao': 'situation'}, inplace=True)
 
-        df_final = df_final[["subject_id","user_id","situation","media_percentual","performance_label"]]
+        df_final = df_final[["subject_id", "user_id", "full_name", "situation", "media_percentual", "performance_label"]]
 
         turma_mean = float(df_final['media_percentual'].mean(skipna=True))
         turma_std  = float(df_final['media_percentual'].std(ddof=1, skipna=True))
@@ -96,7 +100,7 @@ class Performance(Indicator):
             0.0
         ).round(2)
 
-        col_order = ["subject_id","user_id","situation","media_percentual","performance_label", "comparative"]
+        col_order = ["subject_id","user_id","full_name", "situation","media_percentual","performance_label", "comparative"]
         col_order = [c for c in col_order if c in df_final.columns]
         df_final = df_final[col_order].copy()
 

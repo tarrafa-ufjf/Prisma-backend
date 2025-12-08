@@ -127,7 +127,7 @@ if __name__ == "__main__":
         "mean_interactions_cognitive": Float,
         "label_cognitive": String(32),
 
-        "n_responses_relation_teacher_student": Float,
+        "mean_responses_relation_teacher_student": Float,
         "label_relation_teacher_student": String(32),
         
         "mean_give_up": Float,

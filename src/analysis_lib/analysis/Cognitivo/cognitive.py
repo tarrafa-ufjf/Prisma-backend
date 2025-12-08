@@ -19,7 +19,7 @@ class Cognitive(Indicator):
         row = row.where(pd.notna(row), None).to_dict()
         return row
     
-    def course_analysis(self, subject_id, version, connector):
+    def subject_analysis(self, subject_id, version, connector):
         all_students = self.mapper.get_all_students(connector, subject_id, version)
 
         assign_viewed = self.mapper.get_assign_submission_status_viewed(connector, subject_id, version)

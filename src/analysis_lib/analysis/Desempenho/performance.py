@@ -29,7 +29,7 @@ class Performance(Indicator):
         row = row.where(pd.notna(row), None).to_dict()
         return row
     
-    def course_analysis(self, subject_id, version, connector, returnOnlyStudentStatus = False):
+    def subject_analysis(self, subject_id, version, connector, returnOnlyStudentStatus = False):
         df_grades = self.mapper.get_grades_by_course(connector, subject_id, version)
         df_pesos = self.mapper.get_activity_weights(connector, subject_id, version)
         
@@ -188,79 +188,6 @@ class Performance(Indicator):
         df_norm["subject_id"] = subject_id
 
         return df_norm[["user_id", "subject_id", "performance"]]
-    
-    def general_analysis(self, version, connector, analysis_config):
-        batch_size = analysis_config.get("batch_size")
-        processed = analysis_config.get("processed", 0)
-        engine = self.get_connector()
-
-        # Se total ainda não foi definido, calcular (baseado no banco fonte)
-        if analysis_config["total"] == 0:
-            df_courses = self.mapper.get_courses(connector, version)  
-            df_courses = pd.DataFrame(df_courses, columns=['subject_id'])
-            analysis_config["total"] = len(df_courses)
-
-        total = analysis_config["total"]
-
-        # Lista para acumular resultados
-        results = []
-
-        # Processar cursos a partir do ponto onde parou
-        for i in range(processed + 1, total + 1):
-            result = self.course_analysis(i, version, connector, returnOnlyStudentStatus=False)
-            result = result.drop_duplicates(subset=['user_id'], keep='first')
-            result.rename(columns={'performance_label': 'label'}, inplace=True)
-            result.rename(columns={'media_percentual': 'grade'}, inplace=True)
-
-            result = result[["subject_id", "user_id", "grade", "label", "situation", "comparative"]]
-            if not result.empty:
-                result["subject_id"] = i
-                results.append(result)
-
-            analysis_config["processed"] += 1
-
-            self.print_load("Desempenho", analysis_config["processed"], total, 6)
-
-            # Quando atingir batch_size, salvar e retornar
-            if analysis_config["processed"] % batch_size == 0 and results:
-                df = pd.concat(results, ignore_index=True)
-                df["institution_id"] = 1 
-                df_counts = (
-                    df.groupby(["institution_id", "subject_id", "label"])
-                    .size()
-                    .unstack(fill_value=0)
-                    .reset_index()
-                )
-
-                labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
-                for lbl in labels:
-                    if lbl not in df_counts.columns:
-                        df_counts[lbl] = 0
-
-                df_counts.to_sql("performance_global", engine, if_exists="append", index=False)
-
-                return analysis_config
-
-        # Se terminar todos os cursos (salva o que restou)
-        if results:
-            df = pd.concat(results, ignore_index=True)
-            df["institution_id"] = 1 
-
-            df_counts = (
-                df.groupby(["institution_id", "subject_id", "performance"])
-                .size()
-                .unstack(fill_value=0)
-                .reset_index()
-            )
-
-            labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
-            for lbl in labels:
-                if lbl not in df_counts.columns:
-                    df_counts[lbl] = 0
-
-            df_counts.to_sql("performance_global", engine, if_exists="append", index=False)
-
-        return analysis_config
     
     def status_students_analysis(self, version, connector, subject_id=None):
         rows = []

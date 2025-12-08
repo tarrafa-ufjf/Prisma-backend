@@ -13,50 +13,14 @@ class Analyzer:
     def get_moodle_version(self, connector):
         return self.mapper.get_moodle_version(connector)
 
-    def general_engagement_analysis(self, connector, version, analysis_config):
-        engagement = Engagement(self.mapper)
-        analysis_config = engagement.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-    
-    def general_performance_analysis(self, connector, version, analysis_config):
-        performance = Performance(self.mapper)
-        analysis_config = performance.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-    
-    def general_motivation_analysis(self, connector, version, analysis_config):
-        motivation = Motivation(self.mapper)
-        analysis_config = motivation.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-    
-    def general_cognitive_analysis(self, connector, version, analysis_config):
-        cognitive = Cognitive(self.mapper)
-        analysis_config = cognitive.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-    
-    def general_pedagogic_analysis(self, connector, version, analysis_config):
-        pedagogic = Pedagogic(self.mapper)
-        analysis_config = pedagogic.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-    
-    def general_give_up_analysis(self, connector, version, analysis_config):
-        give_up = Give_Up(self.mapper)
-        analysis_config = give_up.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-
     def engagement_analysis(self, subject_id, type_query, version, connector, student_id = None):
         engagement = Engagement(self.mapper)
         res = None
 
         if type_query == 'user':
             res = engagement.student_analysis(subject_id, student_id, version, connector)
-        elif type_query == 'course': 
-            res = engagement.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = engagement.subject_analysis(subject_id, version, connector)
         return res
     
     def performance_analysis(self, subject_id, type_query, version, connector, student_id = None):
@@ -65,8 +29,8 @@ class Analyzer:
 
         if type_query == 'user':
             res = performance.student_analysis(subject_id, student_id, version, connector)
-        elif type_query == 'course': 
-            res = performance.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = performance.subject_analysis(subject_id, version, connector)
 
         return res
     
@@ -76,8 +40,8 @@ class Analyzer:
 
         if type_query == 'user':
             res = motivation.student_analysis(subject_id, student_id, version, connector)
-        elif type_query == 'course': 
-            res = motivation.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = motivation.subject_analysis(subject_id, version, connector)
 
         return res
     
@@ -87,8 +51,8 @@ class Analyzer:
 
         if type_query == 'user':
             pass
-        elif type_query == 'course': 
-            res = pedagogic.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = pedagogic.subject_analysis(subject_id, version, connector)
 
         return res
     
@@ -98,8 +62,8 @@ class Analyzer:
 
         if type_query == 'user':
             res = cognitive.student_analysis(subject_id, student_id, version, connector)
-        elif type_query == 'course': 
-            res = cognitive.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = cognitive.subject_analysis(subject_id, version, connector)
 
         return res
     
@@ -109,8 +73,8 @@ class Analyzer:
 
         if type_query == 'user':
             res = give_up.student_analysis(subject_id, student_id, version, connector)
-        elif type_query == 'course': 
-            res = give_up.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = give_up.subject_analysis(subject_id, version, connector)
 
         return res
     

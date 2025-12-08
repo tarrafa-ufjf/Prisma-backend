@@ -9,7 +9,7 @@ class Motivation(Indicator):
         super().__init__(mapper)
 
     def student_analysis(self, subject_id, student_id, version, connector):
-        df_course = self.course_analysis(subject_id, version, connector)
+        df_course = self.subject_analysis(subject_id, version, connector)
 
         df_course["user_id"] = pd.to_numeric(df_course["user_id"], errors="coerce")
         sid = pd.to_numeric(student_id, errors="coerce")
@@ -62,7 +62,7 @@ class Motivation(Indicator):
         
     
     def discrete_analysis(self, subject_id, version, connector):
-        df_sit = self.course_analysis(subject_id, version, connector)
+        df_sit = self.subject_analysis(subject_id, version, connector)
         q1 = df_sit["num_posts_unrequired"].quantile(0.25)
         q3 = df_sit["num_posts_unrequired"].quantile(0.75)
         q2 = df_sit["num_posts_unrequired"].quantile(0.5)

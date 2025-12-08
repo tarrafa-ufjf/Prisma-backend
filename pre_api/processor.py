@@ -44,26 +44,6 @@ class Processor:
                 time.sleep(0.25)
         return res
 
-    # def wait_until_done(self, institution_id, indicator, status, poll_interval=2):
-    #     engine = self.db_admin.get_connector()
-    #     global_analysis = self.db_admin.get_global_analysis_table()
-
-    #     while True:
-    #         with engine.connect() as conn:
-    #             query = select(global_analysis.c.status).where(
-    #                 and_(
-    #                     global_analysis.c.institution_id == institution_id,
-    #                     global_analysis.c.status == status,
-    #                     global_analysis.c.indicator == indicator
-    #                 )
-    #             )
-    #             result = conn.execute(query).fetchone()
-
-    #             if result and result.status == "D":
-    #                 return True
-
-    #         time.sleep(poll_interval)  # espera antes de checar de novo
-
     def wait_subject_done(self, institution_id, subject_id, status='D', poll_interval=2):
         engine = self.db_admin.get_connector()
         table = self.db_admin.get_subjects_status_table()
@@ -163,31 +143,6 @@ class Processor:
     
     def get_all_give_up_global(self, institution_id=1):
         return self.db_admin.get_all_from_table("give_up_global", institution_id)
-    
-    # def set_global_analysis(self, indicators, db_config=None):
-    #     counter = 1
-    #     for indicator in indicators:
-    #         task = {
-    #             "name" : f"user:global_analysis_{indicator.lower()}",
-    #             "body" : {
-    #                 "db_inst_config" : db_config,
-    #                 "type" : f"global_analysis_{indicator.lower()}",
-    #                 "analysis_config" : {
-    #                     "id" : None,
-    #                     "type" : "general",
-    #                     "batch_size" : 20,
-    #                     "processed" : 0,
-    #                     "total" : 0
-    #                 }
-    #             }
-    #         }
-
-    #         # try:
-    #         self.db_admin.insert_global_analysis_status(1, counter, 'P')  # Indicador 1: Engagement, Status 'I' (Idle
-    #         counter += 1
-    #         self.rabbit_admin.publish_message("tasks_to_process", task, priority=1)
-    #         # except Exception as e:
-    #         #     print(f"Erro ao inserir status para {indicator}: {e}")
 
     def set_subjects_analysis(self, db_config=None, subject_ids=None, batch_size=1):
         connector = self.connector_inst.get_connection_with_config(db_config)

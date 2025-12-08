@@ -11,101 +11,52 @@ class Pedagogic(Indicator):
 
     def course_analysis(self, subject_id, version, connector):
         df = self.mapper.get_forum_data(connector, subject_id, version)
-
-        df_tutores = df[['tutor_id', 'tutor_completo']].drop_duplicates()
-        df_forum = df.dropna(subset=['resposta_id'])
-        df_forum = df.dropna(subset=['resposta_id']).copy()
-
-        # ===============================
-        # Normalizações
-        # ===============================
-        df_forum["autor_resposta_completo"] = df_forum.get("autor_resposta_completo", pd.Series()).fillna("Sem resposta")
-        df_forum["resposta_enviada_em"] = pd.to_datetime(df_forum["resposta_enviada_em"], errors='coerce')
-        df_forum["post_criado_em"] = pd.to_datetime(df_forum["post_criado_em"], errors='coerce')
-
-        # ===============================
-        # Primeira resposta por post
-        # ===============================
-        if not df_forum.empty:
-            df_forum_primeira = (
-                df_forum.sort_values("resposta_enviada_em")
-                .groupby("post_aluno_id", as_index=False)
-                .first()
-            )
-        else:
-            df_forum_primeira = pd.DataFrame(columns=df_forum.columns)
-
-        # ===============================
-        # Calcular tempo de resposta (horas)
-        # ===============================
-        if not df_forum_primeira.empty:
-            valid_dates = df_forum_primeira["resposta_enviada_em"].notna() & df_forum_primeira["post_criado_em"].notna()
-            if valid_dates.any():
-                time_diff = (df_forum_primeira.loc[valid_dates, "resposta_enviada_em"] -
-                            df_forum_primeira.loc[valid_dates, "post_criado_em"])
-                df_forum_primeira.loc[valid_dates, "horas"] = time_diff.dt.total_seconds() / 3600
-            else:
-                df_forum_primeira["horas"] = np.nan
-        else:
-            df_forum_primeira["horas"] = np.nan
+        df_alunos = self.mapper.get_all_students(connector, subject_id, version)
+        df_alunos["subject_id"] = subject_id
         
-        def classificar_resposta(horas):
-            if pd.isna(horas):
-                return 'sem resposta'
-            elif horas <= 24:
-                return 'rapida'
-            elif horas > 120:
-                return 'atrasada'
-            else:
-                return 'normal'
+        if df.empty or "post_aluno_id" not in df.columns or "resposta_id" not in df.columns:
+            df_alunos["n_responses_relation_teacher_student"] = 0
+            df_alunos["label_relation_teacher_student"] = "muito_baixo"
+            return df_alunos[
+                ["subject_id", "user_id", "n_responses_relation_teacher_student", "label_relation_teacher_student"]
+            ]
 
-        df_forum_primeira["classificacao"] = df_forum_primeira["horas"].apply(classificar_resposta)
-
-        # ===============================
-        # Contagens por tutor
-        # ===============================
-        if not df_forum_primeira.empty:
-            forum_count = df_forum_primeira.groupby(["autor_resposta_id", "autor_resposta_completo"])["resposta_id"].count().reset_index()
-            forum_count.columns = ["tutor_id", "tutor_completo", "total_respostas_forum"]
-
-            class_count = df_forum_primeira.groupby(["autor_resposta_id", "classificacao"])["resposta_id"].count().unstack(fill_value=0).reset_index()
-            class_count = class_count.rename(columns={"autor_resposta_id": "tutor_id"})
-
-            estatisticas = (
-                df_forum_primeira.groupby("autor_resposta_id")["horas"]
-                .agg(["mean", "median"])
-                .reset_index()
-                .rename(columns={
-                    "autor_resposta_id": "tutor_id",
-                    "mean": "media_horas_resposta",
-                    "median": "mediana_horas_resposta"
-                })
-            )
-
-            forum_count = forum_count.merge(estatisticas, on="tutor_id", how="left")
-            forum_count = forum_count.merge(class_count, on="tutor_id", how="left")
-        else:
-            forum_count = pd.DataFrame(columns=[
-                "tutor_id", "tutor_completo", "total_respostas_forum",
-                "media_horas_resposta", "mediana_horas_resposta"
-            ])
-
-        # ===============================
-        # Integração com todos os tutores
-        # ===============================
-        forum_count = df_tutores.merge(forum_count, on=["tutor_id", "tutor_completo"], how="left")
-
-        forum_count["total_respostas_forum"] = forum_count["total_respostas_forum"].fillna(0).astype(int)
-        forum_count["media_horas_resposta"] = forum_count["media_horas_resposta"].fillna(0).astype(int)
-        forum_count["mediana_horas_resposta"] = forum_count["mediana_horas_resposta"].fillna(0).astype(int)
-
-        for col in ["rapida", "normal", "atrasada", "sem resposta"]:
-            if col not in forum_count.columns:
-                forum_count[col] = 0
-            forum_count[col] = forum_count[col].fillna(0).astype(int)
+        df_respostas = (
+            df.dropna(subset=["resposta_id"])
+            .groupby("aluno_id")
+            .agg(n_responses_relation_teacher_student=("resposta_id", "count"))
+            .reset_index()
+            .rename(columns={"aluno_id": "user_id"})
+        )
         
-        return forum_count
+        df_final = df_alunos.merge(df_respostas, on="user_id", how="left")
+        df_final["n_responses_relation_teacher_student"] = df_final["n_responses_relation_teacher_student"].fillna(0).astype(int)
 
+        valores = df_final["n_responses_relation_teacher_student"].astype(float)
+        q1 = valores.quantile(0.25)
+        q3 = valores.quantile(0.75)
+        iqr = q3 - q1
+        lim_inf = q1 - 1.5 * iqr
+        lim_sup = q3 + 1.5 * iqr
+
+        def discretize(x):
+            if x <= lim_inf:
+                return "muito_baixo"
+            elif x <= q1:
+                return "baixo"
+            elif x <= q3:
+                return "medio"
+            elif x <= lim_sup:
+                return "alto"
+            else:
+                return "muito_alto"
+
+        df_final["label_relation_teacher_student"] = df_final["n_responses_relation_teacher_student"].apply(discretize)
+
+        df_final["version"] = version
+        df_final["institution_id"] = 1
+
+        return df_final[["institution_id","version","subject_id","user_id","n_responses_relation_teacher_student","label_relation_teacher_student"]]
         
     def general_analysis(self, version, connector, analysis_config):
         batch_size = analysis_config["batch_size"]

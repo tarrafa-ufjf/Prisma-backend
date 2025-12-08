@@ -53,12 +53,12 @@ class Worker:
         connector = conn.get_connection_with_config(body.get("db_inst_config"))
         engine = self.db_admin.get_connector()
 
-        eng = self.analyzer.engagement_analysis(subject_id, 'course', version, connector)
-        per = self.analyzer.performance_analysis(subject_id, 'course', version, connector)
-        mot = self.analyzer.motivation_analysis(subject_id, 'course', version, connector)
-        cog = self.analyzer.cognitive_analysis(subject_id, 'course', version, connector)
-        ped = self.analyzer.pedagogic_analysis(subject_id, 'course', version, connector)
-        giv = self.analyzer.give_up_analysis(subject_id, 'course', version, connector)
+        eng = self.analyzer.engagement_analysis(subject_id, 'subject', version, connector)
+        per = self.analyzer.performance_analysis(subject_id, 'subject', version, connector)
+        mot = self.analyzer.motivation_analysis(subject_id, 'subject', version, connector)
+        cog = self.analyzer.cognitive_analysis(subject_id, 'subject', version, connector)
+        ped = self.analyzer.pedagogic_analysis(subject_id, 'subject', version, connector)
+        giv = self.analyzer.give_up_analysis(subject_id, 'subject', version, connector)
 
         indicator_dfs = {"eng": eng, "per": per, "mot": mot, "ped": ped, "cog": cog, "giv": giv}
         normalized = []

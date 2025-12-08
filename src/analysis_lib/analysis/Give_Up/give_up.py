@@ -21,7 +21,7 @@ class Give_Up(Indicator):
         row = row.where(pd.notna(row), None).to_dict()
         return row
     
-    def course_analysis(self, subject_id, version, connector):
+    def subject_analysis(self, subject_id, version, connector):
         """
         Analisa 'give-up' por aluno:
         - Retorna os labels de cada classe (engagement/motivation/performance/cognitive)
@@ -37,10 +37,10 @@ class Give_Up(Indicator):
         performance = Performance(self.mapper)
         motivation = Motivation(self.mapper)
 
-        df_cognitive   = cognitive.course_analysis(subject_id, version, connector)
-        df_engagement  = engagement.course_analysis(subject_id, version, connector)
-        df_performance = performance.course_analysis(subject_id, version, connector)
-        df_motivation  = motivation.course_analysis(subject_id, version, connector)
+        df_cognitive   = cognitive.subject_analysis(subject_id, version, connector)
+        df_engagement  = engagement.subject_analysis(subject_id, version, connector)
+        df_performance = performance.subject_analysis(subject_id, version, connector)
+        df_motivation  = motivation.subject_analysis(subject_id, version, connector)
 
         dfs = [df_cognitive, df_engagement, df_performance, df_motivation]
         dfs = [df for df in dfs if isinstance(df, pd.DataFrame) and not df.empty]
@@ -83,44 +83,3 @@ class Give_Up(Indicator):
             "engagement_label", "motivation_label", "performance_label", "cognitive_label",
             "give_up"
         ]]
-    
-    def general_analysis(self, version, connector, analysis_config):
-        batch_size = analysis_config["batch_size"]
-        processed = analysis_config["processed"]
-        engine = self.get_connector()
-
-        # Se total ainda não foi definido, calcular (baseado no banco fonte)
-        if analysis_config["total"] == 0:
-            df_courses = self.mapper.get_courses(connector, version)  
-            df_courses = pd.DataFrame(df_courses, columns=['subject_id'])
-            analysis_config["total"] = len(df_courses)
-
-        total = analysis_config["total"]
-        df = pd.DataFrame(columns=["user_id", "give_up", "subject_id", "institution_id"])
-
-        results = []
-
-        for i in range(processed + 2, total + 1):
-            result = self.course_analysis(i, version, connector)
-            result = result.drop_duplicates(subset=['user_id'], keep='first')
-
-            result = result[["user_id", "give_up"]]
-            result["subject_id"] = i
-            result["institution_id"] = 1
-            results.append(result)
-
-            analysis_config["processed"] += 1
-            self.print_load("Desistência", analysis_config["processed"], total, 10)
-
-            if i % batch_size == 0 or i == total:
-                df_batch = pd.concat(results, ignore_index=True)
-                df = pd.concat([df, df_batch], ignore_index=True)
-                df.to_sql("give_up_global",con=engine,if_exists="append",index=False)
-
-                results = []
-                return analysis_config
-        if not df.empty:
-            df_batch = pd.concat(results, ignore_index=True)
-            df = pd.concat([df, df_batch], ignore_index=True)
-            df.to_sql("give_up_global",con=engine,if_exists="append",index=False)
-        return analysis_config

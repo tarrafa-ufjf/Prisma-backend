@@ -90,71 +90,6 @@ def get_db_config_from_database(institution_id: int):
         
         return None
 
-
-def handle_analysis(analysis_type, global_fn, indicator_index=0):
-    global db_config, version
-
-    version = get_version_in_database(1)
-
-    db_config = get_db_config_from_database(institution_id=1)
-
-    subject_id = request.args.get("id", type=int)
-    type_ = request.args.get("query")
-
-    if not subject_id and type_ != "general":
-        return jsonify({"error": "Course ID is required"}), 400
-
-    analysis_config = {"type": type_, "id": subject_id}
-
-    if type_ != "general":
-        name = f"user:{analysis_type}"
-        task = {
-            "name": name,
-            "version": version,
-            "body": {
-                "db_inst_config": db_config,
-                "analysis_config": analysis_config,
-                "type": analysis_type,
-            },
-        }
-        body = select_indicator(analysis_type, task)
-        return jsonify(body), 200
-    else:
-        name = f"user:global_analysis_{analysis_type}"
-        wait_until_done(1, indicator_index, "D")
-        rows = global_fn()
-        data = [dict(row) for row in rows]
-        return jsonify(data), 200
-
-def select_indicator(indicator, message):
-    if indicator == "global_analysis_performance" or indicator == "performance":
-        return performance(message)
-    elif indicator == "global_analysis_engagement" or indicator == "engagement":
-        return engagement(message)
-    elif indicator == "global_analysis_motivation" or indicator == "motivation":
-        return motivation(message)
-    elif indicator == "global_analysis_pedagogic" or indicator == "pedagogic":
-        return pedagogic(message)
-    else:
-        return {"error": "Invalid indicator"}, 400
-    
-
-@app.route("/pedagogic", methods=["GET"])
-def pedagogic():
-    return handle_analysis("pedagogic", get_all_from_table, indicator_index=4)
-
-@app.route("/performance", methods=["GET"])
-def performance():
-    return handle_analysis("performance", get_all_performance_global, indicator_index=2)
-
-@app.route("/motivation", methods=["GET"])
-def motivation():
-    return handle_analysis("motivation", get_all_motivation_global, indicator_index=3)
-
-@app.route("/engagement", methods=["GET"])
-def engagement():
-    return handle_analysis("engagement", get_all_engajamento_global, indicator_index=1)
-
 @app.route("/set_version", methods=["POST"])
 def set_version():
     global db_config, version
@@ -174,9 +109,6 @@ def analysis():
     body = message.get("body", {})
     analysis_type = body["type"]
 
-    if analysis_type not in ["global_analysis_performance", "global_analysis_engagement", "global_analysis_motivation", "global_analysis_pedagogic"]:
-        return jsonify({"error": "Tipo de análise desconhecido"}), 400
-
     config = body.get("db_inst_config") or db_config
 
     analysis_config = body.get("analysis_config", {})
@@ -194,42 +126,6 @@ def analysis():
 
     result = select_indicator(analysis_type, message)
     return jsonify(result), 200
-
-@app.route("/handle-analysis", methods=["POST"])
-def handleAnalysis():
-    global db_config, channel, version
-    data = request.get_json()
-    version = get_version_in_database(1)
-
-    db_config = get_db_config_from_database(institution_id=1)
-
-    subject_id = data["id"]
-    type_ = data["query"]
-
-    if not subject_id and type_ != "general":
-        return jsonify({"error": "Course ID is required"}), 400
-
-    analysis_config = {"type": type_, "id": subject_id}
-
-    if type_ != "general":
-        name = f"user:{data['analysis_type']}"
-        task = {
-            "name": name,
-            "version": version,
-            "body": {
-                "db_inst_config": db_config,
-                "analysis_config": analysis_config,
-                "type": data['analysis_type'],
-            },
-        }
-        body = select_indicator(data['analysis_type'], task)
-        return jsonify(body), 200
-    else:
-        name = f"user:global_analysis_{data['analysis_type']}"
-        wait_until_done(1, data['indicator_index'], "D")
-        rows = get_all_from_table(data['analysis_type'], 1)
-        data = [dict(row) for row in rows]
-        return jsonify(data), 200
 
 def get_all_from_table(table_name, institution_id=1):
     engine = get_connector()
@@ -254,9 +150,6 @@ def performance(message):
     connector = conn.get_connection_with_config(body["db_inst_config"])
 
     analysis_config = body.get("analysis_config")
-    if analysis_config["type"] == 'general':
-        response = analyzer.general_performance_analysis(connector, message.get("version"), analysis_config)
-        return response
     response = analyzer.performance_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
     return response.to_dict(orient="records")
 
@@ -265,9 +158,6 @@ def engagement(message):
     connector = conn.get_connection_with_config(body["db_inst_config"])
 
     analysis_config = body.get("analysis_config")
-    if analysis_config["type"] == 'general':
-        res = analyzer.general_engagement_analysis(connector, message.get("version"), analysis_config)
-        return res
     res = analyzer.engagement_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
     
     return res.to_dict(orient="records")
@@ -277,9 +167,6 @@ def motivation(message):
     connector = conn.get_connection_with_config(body["db_inst_config"])
 
     analysis_config = body.get("analysis_config")
-    if analysis_config["type"] == 'general':
-        res = analyzer.general_motivation_analysis(connector, message.get("version"), analysis_config)
-        return res
     res = analyzer.motivation_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
     return res
 
@@ -288,9 +175,6 @@ def pedagogic(message):
     connector = conn.get_connection_with_config(body["db_inst_config"])
 
     analysis_config = body.get("analysis_config")
-    if analysis_config["type"] == 'general':
-        res = analyzer.general_pedagogic_analysis(connector, message.get("version"), analysis_config)
-        return res
     res = analyzer.pedagogic_analysis(analysis_config["id"], analysis_config["type"], message.get("version"), connector)
     return res.to_dict(orient="records")
 

@@ -101,15 +101,16 @@ class Worker:
         per = self.analyzer.performance_analysis(subject_id, 'course', version, connector)
         mot = self.analyzer.motivation_analysis(subject_id, 'course', version, connector)
         cog = self.analyzer.cognitive_analysis(subject_id, 'course', version, connector)
+        ped = self.analyzer.pedagogic_analysis(subject_id, 'course', version, connector)
         giv = self.analyzer.give_up_analysis(subject_id, 'course', version, connector)
 
-        indicator_dfs = {"eng": eng, "per": per, "mot": mot, "cog": cog, "giv": giv}
+        indicator_dfs = {"eng": eng, "per": per, "mot": mot, "ped": ped, "cog": cog, "giv": giv}
         normalized = []
 
         for name, df in indicator_dfs.items():
             if df is None or df.empty:
                 continue
-
+            
             df = df.copy()
             normalized.append(df)
 
@@ -133,7 +134,7 @@ class Worker:
                 merged = merged.loc[:, ~merged.columns.str.endswith("_dup")]
             else:
                 merged = merged.merge(df, on="user_id", how="outer")
-
+        
         merged["subject_id"] = subject_id
         merged["version"] = version
 
@@ -149,6 +150,8 @@ class Worker:
             "quiz_mean_level": "mean_quiz_interactions_cognitive",
             "assign_mean_level": "mean_assign_interactions_cognitive",
             "cognitive_label": "label_cognitive",
+            "n_responses_relation_teacher_student": "n_responses_relation_teacher_student",
+            "label_relation_teacher_student": "label_relation_teacher_student",
             "give_up": "label_give_up",
         }
         merged = merged.rename(
@@ -174,7 +177,6 @@ class Worker:
             "mean_assign_interactions_cognitive",
             "label_cognitive",
             "n_responses_relation_teacher_student",
-            "mean_responses_relation_teacher_student",
             "label_relation_teacher_student",
             "label_give_up",
         ]
@@ -208,7 +210,6 @@ class Worker:
                 "mean_assign_interactions_cognitive": "first",
                 "label_cognitive": "first",
                 "n_responses_relation_teacher_student": "first",
-                "mean_responses_relation_teacher_student": "first",
                 "label_relation_teacher_student": "first",
                 "label_give_up": "first",
             }
@@ -272,7 +273,6 @@ class Worker:
         # mean_posts_motivation      -> média de n_posts_motivation
         # mean_grade_performance     -> média de grade_performance
         # mean_interactions_cognitive-> média da média cognitiva
-        # mean_responses_relation_teacher_student -> média de n_responses_relation_teacher_student
         # mean_give_up               -> média de give_up_numeric (proporção de "true")
         # ------------------------------------------------------------------
         global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(
@@ -280,10 +280,6 @@ class Worker:
                 mean_posts_motivation=("n_posts_motivation", "mean"),
                 mean_grade_performance=("grade_performance", "mean"),
                 mean_interactions_cognitive=("mean_interactions_cognitive", "mean"),
-                mean_responses_relation_teacher_student=(
-                    "n_responses_relation_teacher_student",
-                    "mean",
-                ),
                 mean_give_up=("give_up_numeric", "mean"),
             )
 
@@ -313,7 +309,6 @@ class Worker:
                 "label_performance",
                 "mean_interactions_cognitive",
                 "label_cognitive",
-                "mean_responses_relation_teacher_student",
                 "label_relation_teacher_student",
                 "mean_give_up",
                 "label_give_up",
@@ -371,7 +366,6 @@ class Worker:
             "mean_posts_motivation": "label_motivation",
             "mean_grade_performance": "label_performance",
             "mean_interactions_cognitive": "label_cognitive",
-            "mean_responses_relation_teacher_student": "label_relation_teacher_student",
             "mean_give_up": "label_give_up",
         }
 

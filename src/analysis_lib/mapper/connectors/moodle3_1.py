@@ -217,7 +217,8 @@ class Moodle31(Moodle):
                     r.resposta_enviada_em,
                     r.post_aluno_id,
                     r.autor_aluno_completo,
-                    r.post_criado_em
+                    r.post_criado_em,
+                    r.aluno_id
                 FROM
                     (
                     SELECT u.id AS tutor_id,
@@ -242,6 +243,7 @@ class Moodle31(Moodle):
                         CONCAT_WS(' ', u.firstname, u.lastname) AS autor_resposta_completo,
                         FROM_UNIXTIME(p.created) AS resposta_enviada_em,
                         parent.id AS post_aluno_id,
+                        parent.userid AS aluno_id,
                         CONCAT_WS(' ', u2.firstname, u2.lastname) AS autor_aluno_completo,
                         FROM_UNIXTIME(parent.created) AS post_criado_em
                     FROM mdl_forum_posts p

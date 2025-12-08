@@ -225,17 +225,19 @@ class Worker:
         # ------------------------------------------------------------------
         # Agregação por disciplina na instituição
         #
-        # mean_posts_engagement      -> média de n_posts_engagement
-        # mean_posts_motivation      -> média de n_posts_motivation
-        # mean_grade_performance     -> média de grade_performance
-        # mean_interactions_cognitive-> média da média cognitiva
-        # mean_give_up               -> média de give_up_numeric (proporção de "true")
+        # mean_posts_engagement                   -> média de n_posts_engagement
+        # mean_posts_motivation                   -> média de n_posts_motivation
+        # mean_grade_performance                  -> média de grade_performance
+        # mean_interactions_cognitive             -> média da média cognitiva
+        # mean_give_up                            -> média de give_up_numeric (proporção de "true")
+        # mean_responses_relation_teacher_student -> média de número de respostas do tutor e professor para os alunos
         # ------------------------------------------------------------------
         global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(
                 mean_posts_engagement=("n_posts_engagement", "mean"),
                 mean_posts_motivation=("n_posts_motivation", "mean"),
                 mean_grade_performance=("grade_performance", "mean"),
                 mean_interactions_cognitive=("mean_interactions_cognitive", "mean"),
+                mean_responses_relation_teacher_student = ("n_responses_relation_teacher_student", "mean"),
                 mean_give_up=("give_up_numeric", "mean"),
             )
 
@@ -265,6 +267,7 @@ class Worker:
                 "label_performance",
                 "mean_interactions_cognitive",
                 "label_cognitive",
+                "mean_responses_relation_teacher_student",
                 "label_relation_teacher_student",
                 "mean_give_up",
                 "label_give_up",
@@ -277,7 +280,7 @@ class Worker:
             if_exists="append",  
             index=False,
         )
-        
+                
     def discretize_global_indicators(self, institution_id: int = 1):
         engine = self.db_admin.get_connector()
         version = self.db_admin.get_version_in_database(institution_id)
@@ -323,6 +326,7 @@ class Worker:
             "mean_posts_motivation": "label_motivation",
             "mean_grade_performance": "label_performance",
             "mean_interactions_cognitive": "label_cognitive",
+            "mean_responses_relation_teacher_student": "label_relation_teacher_student",
             "mean_give_up": "label_give_up",
         }
 
@@ -331,6 +335,12 @@ class Worker:
                 df_sub[label_col] = discretize_metric(df_sub[metric_col])
             else:
                 df_sub[label_col] = pd.NA
+                
+        
+        def clean_na(value):
+                    if pd.isna(value):
+                        return None
+                    return value
 
         # ------------------------------------------------------------------
         # Atualiza a tabela global_indicators no banco
@@ -342,14 +352,14 @@ class Worker:
                     "institution_id": int(row["institution_id"]),
                     "version": str(row["version"]),
                     "subject_id": int(row["subject_id"]),
-                    "label_engagement": row.get("label_engagement"),
-                    "label_motivation": row.get("label_motivation"),
-                    "label_performance": row.get("label_performance"),
-                    "label_cognitive": row.get("label_cognitive"),
-                    "label_relation_teacher_student": row.get("label_relation_teacher_student"),
-                    "label_give_up": row.get("label_give_up"),
+                    "label_engagement": clean_na(row.get("label_engagement")),
+                    "label_motivation": clean_na(row.get("label_motivation")),
+                    "label_performance": clean_na(row.get("label_performance")),
+                    "label_cognitive": clean_na(row.get("label_cognitive")),
+                    "label_relation_teacher_student": clean_na(row.get("label_relation_teacher_student")),
+                    "label_give_up": clean_na(row.get("label_give_up")),
                 }
-
+                
                 conn.execute(
                     text(
                         """

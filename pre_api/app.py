@@ -463,7 +463,6 @@ def courseGraphs(id):
     except ValueError:
         return jsonify({"error": "id must be a number"}), 400
 
-
 @app.route("/analysis/percentual/<id>", methods=["GET"])
 def coursePercentual(id):
     """
@@ -517,7 +516,6 @@ def coursePercentual(id):
             return jsonify({"error": "error to decode json"}), 500
     except ValueError:
         return jsonify({"error": "id must be a number"}), 400
-
 
 @app.route("/analysis/ranking/<id>", methods=["GET"])
 def classRanking(id):
@@ -643,22 +641,6 @@ def classRanking(id):
     except ValueError:
         return jsonify({"error": "id must be a number"}), 400
     
-
-@app.route("/analysis/<indicator>", methods=["GET"])
-def indicatorAnalysis(indicator):
-    indicator = indicator.lower()
-    processor = Processor(user=1)
-
-    global indicator_index_translate
-    if indicator not in indicator_index_translate:
-        return jsonify({"error": "indicador inválido"}), 400
-
-    # try: 
-    response = processor.handle_analysis(indicator, 'get_all_'+indicator+'_global', request, indicator_index=indicator_index_translate[indicator])
-    return jsonify(response), 200
-    # except Exception as error:
-    #     return jsonify({"error": f"erro interno: {str(error)}"}), 500
-
 @app.route("/analysis", methods=["PUT"])
 def analysis():
     # global indicators
@@ -671,7 +653,6 @@ def analysis():
     except Exception as e:
         print(f"Erro ao inserir versão na base de dados: {e}")
 
-    # processor.set_global_analysis(indicators, db_config=db_inst_config)
     processor.set_subjects_analysis(db_config=db_inst_config)
 
     result = {"message": "Análises iniciadas com sucesso",

@@ -16,7 +16,7 @@ class Performance(Indicator):
         ]
 
     def student_analysis(self, subject_id, student_id, version, connector):
-        df_course = self.course_analysis(subject_id, version, connector)
+        df_course = self.subject_analysis(subject_id, version, connector)
 
         df_course["user_id"] = pd.to_numeric(df_course["user_id"], errors="coerce")
         sid = pd.to_numeric(student_id, errors="coerce")
@@ -191,7 +191,7 @@ class Performance(Indicator):
     
     def status_students_analysis(self, version, connector, subject_id=None):
         rows = []
-        df = self.course_analysis(subject_id, version, connector,  returnOnlyStudentStatus = True)
+        df = self.subject_analysis(subject_id, version, connector,  returnOnlyStudentStatus = True)
 
         s = df["situacao"].astype(str)
         status = np.where(
@@ -211,4 +211,4 @@ class Performance(Indicator):
         return pd.DataFrame(rows, columns=["subject_id", "Aprovado", "Reprovado", "RI"])
     
     def grades_students_analysis(self, version, connector, subject_id=None):
-        return self.course_analysis(subject_id, version, connector, returnOnlyStudentStatus=True)
+        return self.subject_analysis(subject_id, version, connector, returnOnlyStudentStatus=True)

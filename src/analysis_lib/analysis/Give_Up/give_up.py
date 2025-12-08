@@ -8,7 +8,7 @@ class Give_Up(Indicator):
         self.mapper = mapper
 
     def student_analysis(self, subject_id, student_id, version, connector):
-        df_course = self.course_analysis(subject_id, version, connector)
+        df_course = self.subject_analysis(subject_id, version, connector)
 
         df_course["user_id"] = pd.to_numeric(df_course["user_id"], errors="coerce")
         sid = pd.to_numeric(student_id, errors="coerce")
@@ -41,7 +41,7 @@ class Give_Up(Indicator):
         df_engagement  = engagement.subject_analysis(subject_id, version, connector)
         df_performance = performance.subject_analysis(subject_id, version, connector)
         df_motivation  = motivation.subject_analysis(subject_id, version, connector)
-
+        
         dfs = [df_cognitive, df_engagement, df_performance, df_motivation]
         dfs = [df for df in dfs if isinstance(df, pd.DataFrame) and not df.empty]
         if not dfs:

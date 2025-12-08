@@ -96,6 +96,7 @@ class Analyzer:
             mot = self.motivation_analysis(subject_id, 'user', version, connector, student_id) or {}
             per = self.performance_analysis(subject_id, 'user', version, connector, student_id) or {}
             cog = self.cognitive_analysis(subject_id, 'user', version, connector, student_id) or {}
+            ped = self.pedagogic_analysis(subject_id, 'user', version, connector, student_id) or {}
             gu  = self.give_up_analysis(subject_id, 'user', version, connector, student_id) or {}
 
             return {
@@ -106,6 +107,7 @@ class Analyzer:
                     "motivation": mot.get("posts_unrequired_label"),
                     "performance": per.get("performance_label"),
                     "cognitive": cog.get("label"),
+                    "ped": ped.get("label_relation_teacher_student"),
                     "give_up": gu.get("give_up")
                 },
             }

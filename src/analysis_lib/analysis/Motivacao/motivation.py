@@ -34,8 +34,6 @@ class Motivation(Indicator):
         df_final = df_alunos.merge(posts_por_usuario, on='user_id', how='left')
         df_final['num_posts_unrequired'] = df_final['num_posts_unrequired'].fillna(0).astype(int) 
 
-        # print(f"df: {df_final}")
-
         q1 = df_final["num_posts_unrequired"].quantile(0.25)
         q3 = df_final["num_posts_unrequired"].quantile(0.75)
         q2 = df_final["num_posts_unrequired"].quantile(0.5)

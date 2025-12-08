@@ -37,9 +37,6 @@ class Performance(Indicator):
         df_alunos["subject_id"] = subject_id
         df_alunos_full_name = df_alunos[["user_id","subject_id"]].copy()
         
-        print("DataFrame alunos:")
-        print(df_alunos["full_name"])
-        
         if "full_name" in df_alunos.columns:
             df_alunos_full_name["full_name"] = df_alunos["full_name"]
         else:

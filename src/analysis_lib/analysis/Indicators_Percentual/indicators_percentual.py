@@ -19,8 +19,8 @@ class Indicators_Percentual(Indicator):
         counts_performance = self._fetch_performance_counts(subject_id, institution_id=1)
         perc_high_performance = self._calc_high_percentage(counts_performance)
 
-        # counts_pedagogical = self._fetch_pedagogic_counts(subject_id, institution_id=1)
-        # responded_pct = self._calc_pedagogic_responded_percentage(counts_pedagogical)
+        counts_pedagogical = self._fetch_pedagogic_counts(subject_id, institution_id=1)
+        perc_high_pedagogical = self._calc_high_percentage(counts_pedagogical)
 
         counts_cognitive = self._fetch_cognitive_counts(subject_id, institution_id=1)
         perc_high_cognitive = self._calc_high_percentage(counts_cognitive)
@@ -34,7 +34,7 @@ class Indicators_Percentual(Indicator):
                 "good_percentage_engagement": perc_high_engagement,
                 "good_percentage_motivation": perc_high_motivation,
                 "good_percentage_performance": perc_high_performance,
-                "good_percentage_pedagogical": -1.0,
+                "good_percentage_pedagogical": perc_high_pedagogical,
                 "good_percentage_cognitive": perc_high_cognitive,
                 "percentage_give_up": perc_high_give_up
             }
@@ -95,6 +95,13 @@ class Indicators_Percentual(Indicator):
     def _fetch_performance_counts(self, subject_id: int, institution_id: int = 1):
         return self._fetch_label_counts_from_local_indicators(
             label_column_name="label_performance",
+            subject_id=subject_id,
+            institution_id=institution_id,
+        )
+        
+    def _fetch_pedagogic_counts(self, subject_id: int, institution_id: int = 1):
+        return self._fetch_label_counts_from_local_indicators(
+            label_column_name="label_relation_teacher_student",
             subject_id=subject_id,
             institution_id=institution_id,
         )

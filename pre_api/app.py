@@ -7,12 +7,14 @@ from pre_api.services.build_subject_students_engagement import build_subject_stu
 from pre_api.services.build_subject_students_motivation import build_subject_students_motivation
 from pre_api.services.build_subject_students_performance import build_subject_students_performance
 from pre_api.services.build_subject_students_cognitive import build_subject_students_cognitive
+from pre_api.services.build_subject_students_pedagogic import build_subject_students_pedagogic
 from pre_api.services.build_subject_students_give_up import build_subject_students_give_up
 from pre_api.services.student.build_subject_student_summary import build_subject_student_summary
 from pre_api.services.student.build_subject_student_grades import build_subject_student_grades
 from pre_api.services.student.build_subject_student_engagement import build_subject_student_engagement
 from pre_api.services.student.build_subject_student_motivation import build_subject_student_motivation
 from pre_api.services.student.build_subject_student_performance import build_subject_student_performance
+from pre_api.services.student.build_subject_student_pedagogic import build_subject_student_pedagogic
 from pre_api.services.student.build_subject_student_cognitive import build_subject_student_cognitive
 from pre_api.services.student.build_subject_student_give_up import build_subject_student_give_up
 from pre_api.services.student.build_subject_student_indicators import build_subject_student_indicators
@@ -150,6 +152,16 @@ def subject_students_cognitive(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
+@app.route("/analysis/subject/<int:id>/students/pedagogic", methods=["GET"])
+def subject_students_pedagogic(id):
+    try:
+        data = build_subject_students_pedagogic(id)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
 @app.route("/analysis/subject/<int:id>/students/give_up", methods=["GET"])
 def subject_students_give_up(id):
     try:
@@ -215,6 +227,16 @@ def subject_student_performance(subject_id, student_id):
 def subject_student_cognitive(subject_id, student_id):
     try:
         data = build_subject_student_cognitive(subject_id, student_id)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/pedagogic", methods=["GET"])
+def subject_student_pedagogic(subject_id, student_id):
+    try:
+        data = build_subject_student_pedagogic(subject_id, student_id)
         if not data:
             return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
         return jsonify({"data": data}), 200

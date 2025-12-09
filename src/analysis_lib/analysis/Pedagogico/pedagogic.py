@@ -8,6 +8,20 @@ class Pedagogic(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
         pd.set_option('future.no_silent_downcasting', True)
+        
+    def student_analysis(self, subject_id, student_id, version, connector):
+        df_course = self.subject_analysis(subject_id, version, connector)
+
+        df_course["user_id"] = pd.to_numeric(df_course["user_id"], errors="coerce")
+        sid = pd.to_numeric(student_id, errors="coerce")
+
+        student_df = df_course.loc[df_course["user_id"] == sid]
+        if student_df.empty:
+            return None 
+
+        row = student_df.iloc[0]
+        row = row.where(pd.notna(row), None).to_dict()
+        return row
 
     def subject_analysis(self, subject_id, version, connector):
         df = self.mapper.get_forum_data(connector, subject_id, version)
@@ -56,4 +70,4 @@ class Pedagogic(Indicator):
         df_final["version"] = version
         df_final["institution_id"] = 1
 
-        return df_final[["institution_id","version","subject_id","user_id","n_responses_relation_teacher_student","label_relation_teacher_student"]]
+        return df_final[["institution_id","version","subject_id","user_id", "full_name", "n_responses_relation_teacher_student","label_relation_teacher_student"]]

@@ -45,12 +45,12 @@ class Analyzer:
 
         return res
     
-    def pedagogic_analysis(self, subject_id, type_query, version, connector):
+    def pedagogic_analysis(self, subject_id, type_query, version, connector, student_id = None):
         pedagogic = Pedagogic(self.mapper)
         res = None
 
         if type_query == 'user':
-            pass
+            res = pedagogic.student_analysis(subject_id, student_id, version, connector)
         elif type_query == 'subject': 
             res = pedagogic.subject_analysis(subject_id, version, connector)
 

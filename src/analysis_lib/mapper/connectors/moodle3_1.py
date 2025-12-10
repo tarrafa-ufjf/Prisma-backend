@@ -677,3 +677,38 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
+    
+    def fetch_subjects_summary(self, connector):
+        conn = connector
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    c.id        AS subject_id,
+                    c.fullname  AS name,
+                    c.shortname AS abrev,
+                    FROM_UNIXTIME(c.timecreated) AS date,
+                    GROUP_CONCAT(
+                        DISTINCT CASE
+                            WHEN r.id = 3 THEN CONCAT(u.firstname, ' ', u.lastname)
+                            ELSE NULL
+                        END
+                        ORDER BY u.firstname, u.lastname SEPARATOR ', '
+                    ) AS teachers,
+                    COUNT(
+                        DISTINCT CASE
+                            WHEN r.id = 5 THEN u.id
+                            ELSE NULL
+                        END
+                    ) AS total_enrolled
+                FROM mdl_course c
+                LEFT JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+                LEFT JOIN mdl_role_assignments ra ON ra.contextid = ctx.id
+                LEFT JOIN mdl_role r ON r.id = ra.roleid
+                LEFT JOIN mdl_user u ON u.id = ra.userid
+                GROUP BY c.id, c.fullname, c.shortname, c.timecreated;
+            """)
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        df = pd.DataFrame(rows, columns=cols)
+        return df

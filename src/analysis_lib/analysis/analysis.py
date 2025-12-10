@@ -89,6 +89,12 @@ class Analyzer:
             res = summary.subject_analysis(subject_id, version, connector)
 
         return res
+    
+    def general_subjects_indicators(self, version, connector):
+        from .General.general_subjects_indicators import General_subjects_indicators
+
+        general = General_subjects_indicators(self.mapper)
+        return general.general_subjects_indicators(version, connector)
 
     def indicators_analysis(self, subject_id, type_query, version, connector, student_id=None):
         if type_query == 'user':

@@ -21,6 +21,7 @@ from pre_api.services.student.build_subject_student_indicators import build_subj
 from pre_api.services.build_general_subjects_indicators import build_general_subjects_indicators
 from pre_api.services.build_all_subjects import build_all_subjects
 from pre_api.services.build_subject_indicators import build_subject_indicators
+from pre_api.services.build_general_indicators import build_general_indicators
 from processor import Processor
 from flasgger import Swagger
 import json
@@ -268,6 +269,16 @@ def subject_student_indicators(subject_id, student_id):
 def general_subjects_indicators():
     try:
         data = build_general_subjects_indicators()
+        if not data:
+            return jsonify({"data": {}, "error": f"error /analysis/general/subjects/indicators"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/general/indicators", methods=["GET"])
+def general_indicators():
+    try:
+        data = build_general_indicators()
         if not data:
             return jsonify({"data": {}, "error": f"error /analysis/general/subjects/indicators"}), 404
         return jsonify({"data": data}), 200

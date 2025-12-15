@@ -178,4 +178,10 @@ class Analyzer:
         student_grades = Student_Grades(self.mapper)
 
         return student_grades.subject_analysis(subject_id, student_id, version, connector)
+    
+    def rankings_general_analysis(self, version, connector, kind: str = "best-performance", limit: int = 10):
+        from .Rankings.rankings import Rankings  
+        rankings = Rankings(self.mapper)
+
+        return rankings.general_analysis(version, connector, kind=kind, limit=limit)
 

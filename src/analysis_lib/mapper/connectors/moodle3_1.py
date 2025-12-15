@@ -678,6 +678,10 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
+    '''
+    Página de Home
+    '''
+    
     def fetch_subjects_summary(self, connector):
         conn = connector
         with conn.cursor() as cur:
@@ -712,3 +716,28 @@ class Moodle31(Moodle):
 
         df = pd.DataFrame(rows, columns=cols)
         return df
+    
+    def fetch_institution_info(self, connector):
+        conn = connector
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    (SELECT COUNT(*)
+                    FROM mdl_user
+                    WHERE deleted = 0) AS total_users,
+
+                    (SELECT COUNT(*)
+                    FROM mdl_course_categories
+                    WHERE parent = 0
+                    AND visible = 1) AS total_courses_offered,
+
+                    (SELECT COUNT(*)
+                    FROM mdl_course
+                    WHERE id <> 1) AS total_subjects
+            """)
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        df = pd.DataFrame(rows, columns=cols)
+        return df   
+    

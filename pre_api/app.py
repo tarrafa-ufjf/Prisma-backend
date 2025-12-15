@@ -22,6 +22,7 @@ from pre_api.services.build_general_subjects_indicators import build_general_sub
 from pre_api.services.build_all_subjects import build_all_subjects
 from pre_api.services.build_subject_indicators import build_subject_indicators
 from pre_api.services.build_general_indicators import build_general_indicators
+from pre_api.services.build_general_summary import build_general_summary
 from processor import Processor
 from flasgger import Swagger
 import json
@@ -280,10 +281,21 @@ def general_indicators():
     try:
         data = build_general_indicators()
         if not data:
-            return jsonify({"data": {}, "error": f"error /analysis/general/subjects/indicators"}), 404
+            return jsonify({"data": {}, "error": f"error /analysis/general/indicators"}), 404
         return jsonify({"data": data}), 200
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/general/summary", methods=["GET"])
+def general_summary():
+    try:
+        data = build_general_summary()
+        if not data:
+            return jsonify({"data": {}, "error": f"error /analysis/general/summary"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+
 
 @app.route("/analysis/general-data/<id>", methods=["GET"])
 def courseGeneralData(id):

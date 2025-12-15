@@ -726,14 +726,16 @@ class Moodle31(Moodle):
                     FROM mdl_user
                     WHERE deleted = 0) AS total_users,
 
-                    (SELECT COUNT(*)
+                    (SELECT COUNT(id) AS total_degree_programs
                     FROM mdl_course_categories
-                    WHERE parent = 0
-                    AND visible = 1) AS total_courses_offered,
+                    WHERE depth = 2 AND parent IN (1, 20, 63, 233, 315)) AS total_courses_offered,
 
-                    (SELECT COUNT(*)
-                    FROM mdl_course
-                    WHERE id <> 1) AS total_subjects
+                    (SELECT DISTINCT COUNT(c.id) AS total_subjects
+                    FROM mdl_course_categories cc1
+                    JOIN mdl_course_categories cc2 ON cc2.parent = cc1.id
+                    JOIN mdl_course_categories cc3 ON cc3.parent = cc2.id
+                    JOIN mdl_course c ON c.category = cc3.id
+                    WHERE cc2.depth = 2 AND cc2.parent IN (1, 20, 63, 233, 315)) AS total_subjects
             """)
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]

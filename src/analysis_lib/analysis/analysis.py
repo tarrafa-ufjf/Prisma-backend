@@ -101,6 +101,12 @@ class Analyzer:
 
         general = General_indicators(self.mapper)
         return general.general_indicators(version, connector)
+    
+    def general_summary(self, version, connector):
+        from .General.general_summary import General_summary
+
+        general = General_summary(self.mapper)
+        return general.general_summary(version, connector)
 
     def indicators_analysis(self, subject_id, type_query, version, connector, student_id=None):
         if type_query == 'user':
@@ -172,10 +178,4 @@ class Analyzer:
         student_grades = Student_Grades(self.mapper)
 
         return student_grades.subject_analysis(subject_id, student_id, version, connector)
-    
-    # def get_subject_student_engagement(self, subject_id, student_id, version, connector):
-    #     from .Student.Engagement.engagement import Engagement
-    #     student_engagement = Engagement(self.mapper)
-
-    #     return student_engagement.subject_analysis(subject_id, student_id, version, connector)
 

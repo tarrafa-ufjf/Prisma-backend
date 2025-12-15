@@ -135,3 +135,7 @@ class Mapper:
     def fetch_subjects_summary(self, connector, version):
         moodle = self.get_moodle(connector, version)
         return moodle.fetch_subjects_summary(connector)
+    
+    def fetch_institution_info(self, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_institution_info(connector)

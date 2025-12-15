@@ -1,11 +1,13 @@
 import pandas as pd
 from typing import List, Dict, Any
 from ..indicator import Indicator
-from ..Desempenho.performance import Performance 
+from database import DatabaseAdmin
+from sqlalchemy import MetaData, Table, select, func
 
 class Rankings(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
+        self.db_admin = DatabaseAdmin()
  
     def _ensure_numeric(self, df: pd.DataFrame, cols: List[str]): 
         df = df.copy()
@@ -88,3 +90,48 @@ class Rankings(Indicator):
         ]
 
         return {"id": subject_id, "type": kind, "ranking": ranking}
+    
+    def general_analysis(self, version, connector, institution_id: int = 1, kind: str = "best-performance", limit: int = 10):
+        engine = self.db_admin.get_connector()
+        metadata = MetaData()
+        global_indicators = Table("global_indicators", metadata, autoload_with=engine)
+
+        with engine.connect() as conn:
+            query = (
+                select(
+                    global_indicators.c.subject_id,
+                    global_indicators.c.mean_grade_performance.label("grade_mean"),
+                )
+                .where(global_indicators.c.institution_id == institution_id)
+                .where(global_indicators.c.mean_grade_performance.isnot(None))
+            )
+            rows = conn.execute(query).mappings().all()
+
+        df_rank = pd.DataFrame(rows)
+        if df_rank.empty:
+            return {"id": institution_id, "type": kind, "ranking": []}
+
+        ascending = (kind == "at-risk")
+        df_rank = df_rank.sort_values("grade_mean", ascending=ascending, na_position="last").head(limit)
+
+        df_subjects = self.mapper.get_all_subjects(connector, version)
+        df_subjects["id"] = df_subjects["id"].astype(int)
+        df_rank["subject_id"] = df_rank["subject_id"].astype(int)
+
+        df_join = df_rank.merge(
+            df_subjects[["id", "fullname", "shortname"]],
+            left_on="subject_id",
+            right_on="id",
+            how="left"
+        )
+
+        ranking = [
+            {
+                "subject_id": int(r.subject_id),
+                "name": str(r.fullname) if r.fullname is not None else None,
+                "grade_mean": float(r.grade_mean),
+            }
+            for r in df_join.itertuples(index=False)
+        ]
+
+        return {"id": institution_id, "type": kind, "ranking": ranking}

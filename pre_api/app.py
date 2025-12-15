@@ -22,7 +22,8 @@ from pre_api.services.build_general_subjects_indicators import build_general_sub
 from pre_api.services.build_all_subjects import build_all_subjects
 from pre_api.services.build_subject_indicators import build_subject_indicators
 from pre_api.services.build_general_indicators import build_general_indicators
-from pre_api.services.build_general_summary import build_general_summary
+from pre_api.services.build_general_summary import build_general_summary 
+from pre_api.services.build_general_rankings import build_general_rankings
 from processor import Processor
 from flasgger import Swagger
 import json
@@ -295,7 +296,28 @@ def general_summary():
         return jsonify({"data": data}), 200
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/general/rankings", methods=["GET"])
+def general_rankings():
+    kind = request.args.get("type", "best-performance")
+    limit_str = request.args.get("limit", "5")
 
+    if kind not in ("best-performance", "at-risk"):
+        return jsonify({"error": "invalid 'type'. Use 'best-performance' or 'at-risk'"}), 400
+
+    try:
+        limit = int(limit_str)
+    except ValueError:
+        limit = 5
+    limit = max(1, min(limit, 100))  
+
+    try:
+        data = build_general_rankings(kind, limit)
+        if not data:
+            return jsonify({"data": {}, "error": f"error /analysis/general/rankings"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
 
 @app.route("/analysis/general-data/<id>", methods=["GET"])
 def courseGeneralData(id):
@@ -632,7 +654,27 @@ def classRanking(id):
                         },
                         {
                             "final_grade": 0.0,
-                            "name": "CAMILA MIRANDA",
+                            "name": "CAMILA MIRANDA",@app.route("/analysis/subject/<int:id>/rankings", methods=["GET"])
+def subject_rankings(id):
+    kind = request.args.get("type", "best-performance")
+    limit_str = request.args.get("limit", "5")
+
+    if kind not in ("best-performance", "at-risk"):
+        return jsonify({"error": "invalid 'type'. Use 'best-performance' or 'at-risk'"}), 400
+
+    try:
+        limit = int(limit_str)
+    except ValueError:
+        limit = 5
+    limit = max(1, min(limit, 100))  
+
+    try:
+        data = build_subject_rankings(id, kind, limit)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 
                             "percentual": 0.0,
                             "pos": 2,
                             "user_id": 861

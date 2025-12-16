@@ -138,6 +138,29 @@ if __name__ == "__main__":
         columns_gl_global,
         primary_key=["institution_id", "version", "subject_id"]
     )
+    
+    columns_gl_local_tutors = {
+        "institution_id": Integer,
+        "version": String(40),
+        "subject_id": Integer,
+        "tutor_id": Integer,
+
+        "median_forums_response_hours": Float,
+        "mean_forums_response_hours": Float,
+        "label_forums_response": String(32),
+        
+        "median_messages_response_hours": Float,
+        "mean_messages_response_hours": Float,
+        "label_messages_response": String(32),
+
+        "n_login": Integer,
+        "label_access": String(32),
+    }
+    create_table(
+        "local_indicators_tutors",
+        columns_gl_local_tutors,
+        primary_key=["institution_id", "version", "subject_id", "tutor_id"]
+    )
 
     channel.queue_declare(
         queue="tasks_to_process",

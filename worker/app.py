@@ -171,7 +171,7 @@ class Worker:
             }
         )
 
-        subject_df.to_sql("local_indicators", engine, if_exists="append", index=False)
+        subject_df.to_sql("local_indicators_students", engine, if_exists="append", index=False)
 
         self.save_subject_global_indicators(subject_df, engine)
 

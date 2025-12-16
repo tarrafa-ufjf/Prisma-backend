@@ -78,7 +78,7 @@ if __name__ == "__main__":
     primary_keys = ["institution_id", "subject_id"]
     create_table("subjects_status", columns_subjects_status, primary_key=primary_keys)
 
-    columns_gl_student = {
+    columns_gl_local_students = {
         "institution_id": Integer,
         "version": String(40),
         "subject_id": Integer,
@@ -105,12 +105,12 @@ if __name__ == "__main__":
         "label_give_up": String(32),
     }
     create_table(
-        "local_indicators",
-        columns_gl_student,
+        "local_indicators_students",
+        columns_gl_local_students,
         primary_key=["institution_id", "version", "subject_id", "student_id"]
     )
 
-    columns_gl_subject = {
+    columns_gl_global = {
         "institution_id": Integer,
         "version": String(40),
         "subject_id": Integer,
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     }
     create_table(
         "global_indicators",
-        columns_gl_subject,
+        columns_gl_global,
         primary_key=["institution_id", "version", "subject_id"]
     )
 

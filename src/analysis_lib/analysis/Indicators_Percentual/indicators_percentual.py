@@ -40,17 +40,17 @@ class Indicators_Percentual(Indicator):
             }
         }
         
-    def _fetch_label_counts_from_local_indicators(self, label_column_name: str, subject_id: int, institution_id: int = 1):
+    def _fetch_label_counts_from_local_indicators_students(self, label_column_name: str, subject_id: int, institution_id: int = 1):
         """
-        Lê a tabela local_indicators e conta quantos alunos há em cada faixa de valor (muito_baixo, baixo, medio, alto, muito_alto) para o rótulo informado.
+        Lê a tabela local_indicators_students e conta quantos alunos há em cada faixa de valor (muito_baixo, baixo, medio, alto, muito_alto) para o rótulo informado.
 
         Se não houver NENHUMA linha para a turma, marca como "_not_processed": True.
         """
         engine = self.db_admin.get_connector()
         metadata = MetaData()
-        local_indicators = Table("local_indicators", metadata, autoload_with=engine)
+        local_indicators_students = Table("local_indicators_students", metadata, autoload_with=engine)
 
-        label_column = getattr(local_indicators.c, label_column_name)
+        label_column = getattr(local_indicators_students.c, label_column_name)
 
         with engine.connect() as conn:
             query = (
@@ -58,8 +58,8 @@ class Indicators_Percentual(Indicator):
                     label_column.label("label"),
                     func.count().label("count"),
                 )
-                .where(local_indicators.c.institution_id == institution_id)
-                .where(local_indicators.c.subject_id == int(subject_id))
+                .where(local_indicators_students.c.institution_id == institution_id)
+                .where(local_indicators_students.c.subject_id == int(subject_id))
                 .group_by(label_column)
             )
             rows = conn.execute(query).mappings().all()
@@ -79,35 +79,35 @@ class Indicators_Percentual(Indicator):
         return counts
 
     def _fetch_engagement_counts(self, subject_id: int, institution_id: int = 1):
-        return self._fetch_label_counts_from_local_indicators(
+        return self._fetch_label_counts_from_local_indicators_students(
             label_column_name="label_engagement",
             subject_id=subject_id,
             institution_id=institution_id,
         )
         
     def _fetch_motivation_counts(self, subject_id: int, institution_id: int = 1):
-        return self._fetch_label_counts_from_local_indicators(
+        return self._fetch_label_counts_from_local_indicators_students(
             label_column_name="label_motivation",
             subject_id=subject_id,
             institution_id=institution_id,
         )
 
     def _fetch_performance_counts(self, subject_id: int, institution_id: int = 1):
-        return self._fetch_label_counts_from_local_indicators(
+        return self._fetch_label_counts_from_local_indicators_students(
             label_column_name="label_performance",
             subject_id=subject_id,
             institution_id=institution_id,
         )
         
     def _fetch_pedagogic_counts(self, subject_id: int, institution_id: int = 1):
-        return self._fetch_label_counts_from_local_indicators(
+        return self._fetch_label_counts_from_local_indicators_students(
             label_column_name="label_relation_teacher_student",
             subject_id=subject_id,
             institution_id=institution_id,
         )
     
     def _fetch_cognitive_counts(self, subject_id: int, institution_id: int = 1):
-        return self._fetch_label_counts_from_local_indicators(
+        return self._fetch_label_counts_from_local_indicators_students(
             label_column_name="label_cognitive",
             subject_id=subject_id,
             institution_id=institution_id,
@@ -115,21 +115,21 @@ class Indicators_Percentual(Indicator):
 
     def _fetch_give_up_counts(self, subject_id: int, institution_id: int = 1):
         """
-        Lê a tabela local_indicators e conta quantos alunos da turma estão com label_give_up = true/false.
+        Lê a tabela local_indicators_students e conta quantos alunos da turma estão com label_give_up = true/false.
         """
         engine = self.db_admin.get_connector()
         metadata = MetaData()
-        local_indicators = Table("local_indicators", metadata, autoload_with=engine)
+        local_indicators_students = Table("local_indicators_students", metadata, autoload_with=engine)
 
         with engine.connect() as conn:
             query = (
                 select(
-                    local_indicators.c.label_give_up.label("label"),
+                    local_indicators_students.c.label_give_up.label("label"),
                     func.count().label("count"),
                 )
-                .where(local_indicators.c.institution_id == institution_id)
-                .where(local_indicators.c.subject_id == int(subject_id))
-                .group_by(local_indicators.c.label_give_up)
+                .where(local_indicators_students.c.institution_id == institution_id)
+                .where(local_indicators_students.c.subject_id == int(subject_id))
+                .group_by(local_indicators_students.c.label_give_up)
             )
             rows = conn.execute(query).mappings().all()
 

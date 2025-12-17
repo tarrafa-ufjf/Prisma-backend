@@ -1,8 +1,8 @@
-from .Engajamento.engagement import Engagement
-from .Desempenho.performance import Performance
-from .Motivacao.motivation import Motivation
-from .Pedagogico.pedagogic import Pedagogic
-from .Cognitivo.cognitive import Cognitive
+from .Engagement.engagement import Engagement
+from .Performance.performance import Performance
+from .Motivation.motivation import Motivation
+from .Pedagogic.pedagogic import Pedagogic
+from .Cognitive.cognitive import Cognitive
 from .Give_Up.give_up import Give_Up
 
 class StudentAnalyzer:
@@ -17,7 +17,6 @@ class StudentAnalyzer:
             return engagement.subject_analysis(subject_id, version, connector)
         raise ValueError("invalid type_query")
 
-    # Repete o padrão pros outros...
     def performance_analysis(self, subject_id, type_query, version, connector, user_id=None):
         performance = Performance(self.mapper)
         if type_query == "user":
@@ -69,7 +68,7 @@ class StudentAnalyzer:
 
             return {
                 "subject_id": subject_id,
-                "student_id": user_id,  # Comentário: mantém compatível por enquanto
+                "student_id": user_id,  
                 "indicators": {
                     "engagement": eng.get("posts_required_label"),
                     "motivation": mot.get("posts_unrequired_label"),
@@ -81,7 +80,7 @@ class StudentAnalyzer:
             }
 
         if type_query == "subject":
-            from ..Indicators_Percentual.indicators_percentual import Indicators_Percentual
+            from ...Indicators_Percentual.indicators_percentual import Indicators_Percentual
             return Indicators_Percentual(self.mapper).subject_analysis(subject_id)
 
         raise ValueError("invalid type_query")

@@ -3,7 +3,6 @@ class TutorAnalyzer:
         self.mapper = mapper
 
     def _not_implemented(self, name: str):
-        # Comentário: útil pra você plugar a UI sem quebrar tudo
         raise NotImplementedError(f"{name} for tutor is not implemented yet")
 
     def engagement_analysis(self, subject_id, type_query, version, connector, user_id=None):

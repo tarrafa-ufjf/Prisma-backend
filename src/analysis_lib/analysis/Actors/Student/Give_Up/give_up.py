@@ -27,10 +27,10 @@ class Give_Up(Indicator):
         - Retorna os labels de cada classe (engagement/motivation/performance/cognitive)
         - Retorna a flag give_up=True se todos os labels forem 'baixo' ou 'muito_baixo'
         """
-        from ..Cognitivo.cognitive import Cognitive
-        from ..Engajamento.engagement import Engagement
-        from ..Desempenho.performance import Performance
-        from ..Motivacao.motivation import Motivation
+        from ..Cognitive.cognitive import Cognitive
+        from ..Engagement.engagement import Engagement
+        from ..Performance.performance import Performance
+        from ..Motivation.motivation import Motivation
 
         cognitive = Cognitive(self.mapper)
         engagement = Engagement(self.mapper)

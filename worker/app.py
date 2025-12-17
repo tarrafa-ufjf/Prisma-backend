@@ -183,10 +183,64 @@ class Worker:
         
         return subject_df
     
+    
     def tutors_subject_analysis(self, subject_id, version, connector, engine):
-        # response_foruns = self.analyzer.foruns_response_hours_analysis(subject_id, 'subject', version, connector)
-        
-        return None
+        response_foruns = self.analyzer.response_foruns(subject_id, "subject", version, connector)
+
+        if response_foruns is None or response_foruns.empty:
+            return
+
+        df = response_foruns.copy()
+
+        df["institution_id"] = 1
+        df["subject_id"] = subject_id
+        df["version"] = version
+
+        desired_cols = [
+            "institution_id",
+            "version",
+            "subject_id",
+            "tutor_id",
+
+            "median_forums_response_hours",
+            "mean_forums_response_hours",
+            "label_forums_response",
+
+            "num_no_response_forum",
+            "num_response_fast_forum",
+            "num_response_late_forum",
+            "num_response_normal_forum",
+
+            "median_messages_response_hours",
+            "mean_messages_response_hours",
+            "label_messages_response",
+
+            "n_login",
+            "label_access",
+        ]
+
+        for c in desired_cols:
+            if c not in df.columns:
+                df[c] = np.nan
+
+        int_cols = [
+            "institution_id", "subject_id", "tutor_id",
+            "num_no_response_forum", "num_response_fast_forum",
+            "num_response_late_forum", "num_response_normal_forum",
+            "n_login",
+        ]
+        for c in int_cols:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")
+
+        df = df.groupby(["institution_id", "version", "subject_id", "tutor_id"], as_index=False).agg(
+            {c: "first" for c in desired_cols if c not in ["institution_id", "version", "subject_id", "tutor_id"]}
+        )
+
+        df = df[desired_cols]
+        df.to_sql("local_indicators_tutors", engine, if_exists="append", index=False)
+
+        return df
     
     # ------------------------------------------------------------------
     # Calcula as médias da disciplina e salva em global_indicators

@@ -743,3 +743,82 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df   
     
+    def fetch_responses_forums(self, connector, subject_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT
+                    t.tutor_id,
+                    t.tutor_completo,
+                    r.resposta_id,
+                    r.discussion_id,
+                    r.discussion_title,
+                    r.forum_id,
+                    r.forum_name,
+                    r.autor_resposta_id,
+                    r.autor_resposta_completo,
+                    r.resposta_enviada_em,
+                    r.post_aluno_id,
+                    r.autor_aluno_completo,
+                    r.post_criado_em
+                FROM
+                    (
+                    SELECT u.id AS tutor_id,
+                            CONCAT_WS(' ', u.firstname, u.lastname) AS tutor_completo
+                    FROM mdl_user u
+                    JOIN mdl_role_assignments ra ON ra.userid = u.id
+                    JOIN mdl_role r ON r.id = ra.roleid
+                    JOIN mdl_context c ON c.id = ra.contextid
+                    WHERE r.id IN (3,4,9,17)
+                        AND c.contextlevel = 50
+                        AND c.instanceid = %s
+                    ) AS t
+                LEFT JOIN
+                    (
+                    SELECT 
+                        p.id AS resposta_id,
+                        p.discussion AS discussion_id,
+                        d.name AS discussion_title,
+                        f.id AS forum_id,
+                        f.name AS forum_name,
+                        p.userid AS autor_resposta_id,
+                        CONCAT_WS(' ', u.firstname, u.lastname) AS autor_resposta_completo,
+                        FROM_UNIXTIME(p.created) AS resposta_enviada_em,
+                        parent.id AS post_aluno_id,
+                        CONCAT_WS(' ', u2.firstname, u2.lastname) AS autor_aluno_completo,
+                        FROM_UNIXTIME(parent.created) AS post_criado_em
+                    FROM mdl_forum_posts p
+                    JOIN mdl_user u ON u.id = p.userid
+                    JOIN mdl_forum_discussions d ON d.id = p.discussion
+                    JOIN mdl_forum f ON f.id = d.forum
+                    JOIN mdl_forum_posts parent ON parent.id = p.parent
+                    JOIN mdl_user u2 ON u2.id = parent.userid
+                    WHERE f.course = %s
+                        AND EXISTS (
+                            SELECT 1
+                            FROM mdl_role_assignments ra
+                            JOIN mdl_role r ON r.id = ra.roleid
+                            JOIN mdl_context c ON c.id = ra.contextid
+                            WHERE ra.userid = p.userid
+                            AND r.id IN (3,4,9,17)
+                            AND c.contextlevel = 50
+                            AND c.instanceid = f.course
+                        )
+                        AND EXISTS (
+                            SELECT 1
+                            FROM mdl_role_assignments ra2
+                            JOIN mdl_role r2 ON r2.id = ra2.roleid
+                            JOIN mdl_context c2 ON c2.id = ra2.contextid
+                            WHERE ra2.userid = parent.userid
+                            AND r2.id IN (5)
+                            AND c2.contextlevel = 50
+                            AND c2.instanceid = f.course
+                        )
+                    ) AS r
+                ON t.tutor_id = r.autor_resposta_id
+                ORDER BY r.discussion_id, r.resposta_enviada_em;
+            ''', (subject_id, subject_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df

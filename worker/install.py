@@ -149,6 +149,11 @@ if __name__ == "__main__":
         "mean_forums_response_hours": Float,
         "label_forums_response": String(32),
         
+        "num_no_response_forum": Integer,
+        "num_response_fast_forum": Integer,
+        "num_response_late_forum": Integer,
+        "num_response_normal_forum": Integer,
+        
         "median_messages_response_hours": Float,
         "mean_messages_response_hours": Float,
         "label_messages_response": String(32),

@@ -2,7 +2,7 @@ import pandas as pd
 from ..indicator import Indicator
 from sqlalchemy import MetaData, Table, select, func
 from database import DatabaseAdmin
-from src.analysis_lib.analysis.analysis import Analyzer
+from src.analysis_lib.analysis.analyzer import Analyzer
 
 class Indicators_Percentual(Indicator):
     def __init__(self, mapper):

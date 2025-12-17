@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from database import DatabaseAdmin, Database  
-from src.analysis_lib.analysis.analysis import Analyzer  
+from src.analysis_lib.analysis.analyzer import Analyzer  
 
 def build_general_summary():
     processor_db = DatabaseAdmin()

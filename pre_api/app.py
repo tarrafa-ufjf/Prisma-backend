@@ -1,5 +1,5 @@
 from flask import request, jsonify, Flask, send_file
-from src.analysis_lib.analysis.analysis import Analyzer
+from src.analysis_lib.analysis.analyzer import Analyzer
 from pre_api.services.build_subject_summary import build_subject_summary
 from pre_api.services.build_subject_info_graphs import build_subject_info_graphs
 from pre_api.services.build_subject_rankings import build_subject_rankings

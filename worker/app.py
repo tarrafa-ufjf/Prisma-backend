@@ -1,6 +1,6 @@
 from database import Database, DatabaseAdmin
 from rabbit import RabbitMQAdmin
-from src.analysis_lib.analysis.analysis import Analyzer
+from src.analysis_lib.analysis.analyzer import Analyzer
 import json
 import pandas as pd
 from sqlalchemy import text
@@ -53,6 +53,14 @@ class Worker:
         connector = conn.get_connection_with_config(body.get("db_inst_config"))
         engine = self.db_admin.get_connector()
 
+        subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
+        subject_df_tutor = self.tutors_subject_analysis(subject_id, version, connector, engine)
+
+        self.save_subject_global_indicators(subject_df_student, engine)
+
+        self.db_admin.update_subject_analysis_status(1, subject_id, "D")
+    
+    def students_subject_analysis(self, subject_id, version, connector, engine):
         eng = self.analyzer.engagement_analysis(subject_id, 'subject', version, connector)
         per = self.analyzer.performance_analysis(subject_id, 'subject', version, connector)
         mot = self.analyzer.motivation_analysis(subject_id, 'subject', version, connector)
@@ -172,10 +180,13 @@ class Worker:
         )
 
         subject_df.to_sql("local_indicators_students", engine, if_exists="append", index=False)
-
-        self.save_subject_global_indicators(subject_df, engine)
-
-        self.db_admin.update_subject_analysis_status(1, subject_id, "D")
+        
+        return subject_df
+    
+    def tutors_subject_analysis(self, subject_id, version, connector, engine):
+        # response_foruns = self.analyzer.foruns_response_hours_analysis(subject_id, 'subject', version, connector)
+        
+        return None
     
     # ------------------------------------------------------------------
     # Calcula as médias da disciplina e salva em global_indicators

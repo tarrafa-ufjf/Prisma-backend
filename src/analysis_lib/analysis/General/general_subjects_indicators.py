@@ -3,7 +3,7 @@ import numpy as np
 import time
 from database import DatabaseAdmin
 from sqlalchemy import MetaData, Table, select, func
-from ..Desempenho.performance import Performance
+from ..Actors.Student.Performance.performance import Performance
 
 class General_subjects_indicators:
     def __init__(self, mapper):

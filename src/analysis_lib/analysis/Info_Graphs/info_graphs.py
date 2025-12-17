@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from ..indicator import Indicator
-from ..Desempenho.performance import Performance
+from ..Actors.Student.Performance.performance import Performance
 
 class Info_Graphs(Indicator):
     def __init__(self, mapper):

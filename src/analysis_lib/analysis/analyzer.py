@@ -6,7 +6,6 @@ class Analyzer:
     def __init__(self):
         self.mapper = Mapper()
 
-        # Comentário: um "registry" de atores. Fácil de expandir depois.
         self._actors = {
             "student": StudentAnalyzer(self.mapper),
             "tutor": TutorAnalyzer(self.mapper),

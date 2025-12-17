@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from database import DatabaseAdmin, Database  
-from src.analysis_lib.analysis.analysis import Analyzer  
+from src.analysis_lib.analysis.analyzer import Analyzer  
 
 def build_subject_rankings(subject_id: int, kind: str = "best-performance", limit: int = 10):
     db_admin = DatabaseAdmin()

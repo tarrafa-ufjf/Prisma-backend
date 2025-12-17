@@ -1,6 +1,6 @@
 from flask import request, jsonify, Flask
 from sqlalchemy import and_, select, create_engine, MetaData, Table, Column, Integer, String
-from src.analysis_lib.analysis.analysis import Analyzer
+from src.analysis_lib.analysis.analyzer import Analyzer
 import os
 from dotenv import load_dotenv 
 import time

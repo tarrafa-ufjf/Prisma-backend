@@ -1,5 +1,5 @@
 import pandas as pd
-from ..indicator import Indicator
+from ....indicator import Indicator
 from sqlalchemy import MetaData, Table, select
 from database import DatabaseAdmin
 

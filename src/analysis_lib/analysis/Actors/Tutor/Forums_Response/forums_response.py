@@ -120,10 +120,7 @@ class Forums_Response(Indicator):
             return "rapido"
 
         forum_count["label_forums_response"] = forum_count["score"].apply(label_from_score)
-        
-        forum_count.to_csv(f'response_{subject_id}.csv')
 
-        
         return forum_count[["tutor_id", "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
                             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]]
 

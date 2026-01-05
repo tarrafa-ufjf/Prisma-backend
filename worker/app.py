@@ -206,7 +206,6 @@ class Worker:
             "mean_forums_response_hours",
             "label_forums_response",
 
-            "num_no_response_forum",
             "num_response_fast_forum",
             "num_response_late_forum",
             "num_response_normal_forum",
@@ -225,8 +224,7 @@ class Worker:
 
         int_cols = [
             "institution_id", "subject_id", "tutor_id",
-            "num_no_response_forum", "num_response_fast_forum",
-            "num_response_late_forum", "num_response_normal_forum",
+            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum",
             "n_login",
         ]
         for c in int_cols:

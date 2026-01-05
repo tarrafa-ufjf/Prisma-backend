@@ -6,7 +6,7 @@ class Forums_Response(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
 
-    def student_analysis(self, subject_id, student_id, version, connector):
+    def tutors_analysis(self, subject_id, student_id, version, connector):
         print("Chegou student")
         return None
     
@@ -19,7 +19,7 @@ class Forums_Response(Indicator):
         # ===============================
         # num_response_normal_forumizações
         # ===============================
-        df_forum["autor_resposta_completo"] = df_forum.get("autor_resposta_completo", pd.Series()).fillna("num_no_response_forum")
+        df_forum["autor_resposta_completo"] = df_forum.get("autor_resposta_completo", pd.Series())
         df_forum["resposta_enviada_em"] = pd.to_datetime(df_forum["resposta_enviada_em"], errors='coerce')
         df_forum["post_criado_em"] = pd.to_datetime(df_forum["post_criado_em"], errors='coerce')
         
@@ -50,9 +50,7 @@ class Forums_Response(Indicator):
             df_forum_first_response["horas"] = np.nan
 
         def classificar_resposta(horas):
-            if pd.isna(horas):
-                return 'num_no_response_forum'
-            elif horas <= 24:
+            if horas <= 24:
                 return 'num_response_fast_forum'
             elif horas > 120:
                 return 'num_response_late_forum'
@@ -99,7 +97,7 @@ class Forums_Response(Indicator):
         forum_count["mean_forums_response_hours"] = forum_count["mean_forums_response_hours"].fillna(0)
         forum_count["median_forums_response_hours"] = forum_count["median_forums_response_hours"].fillna(np.nan)
 
-        for col in ["num_response_fast_forum", "num_response_normal_forum", "num_response_late_forum", "num_no_response_forum"]:
+        for col in ["num_response_fast_forum", "num_response_normal_forum", "num_response_late_forum"]:
             if col not in forum_count.columns:
                 forum_count[col] = 0
             forum_count[col] = forum_count[col].fillna(0).astype(int)
@@ -108,49 +106,26 @@ class Forums_Response(Indicator):
 
         forum_count["score"] = np.where(
             total > 0,
-            (forum_count["num_response_fast_forum"]*1.0 + forum_count["num_response_normal_forum"]*0.6 + forum_count["num_response_late_forum"]*0.2) / total,
+            (forum_count["num_response_fast_forum"]*3 + forum_count["num_response_normal_forum"]*2 + forum_count["num_response_late_forum"]*1) / total,
             np.nan
         )
 
         def label_from_score(score):
             if pd.isna(score):
                 return "sem_resposta"
-            if score >= 0.80:
-                return "muito_rapido"
-            if score >= 0.65:
-                return "rapido"
-            if score <= 0.45:
+            if score < 2:
                 return "lento"
-            return "medio"
+            if score <= 2.5:
+                return "normal"
+            return "rapido"
 
         forum_count["label_forums_response"] = forum_count["score"].apply(label_from_score)
         
-        # total = forum_count["total_respostas_forum"]
+        forum_count.to_csv(f'response_{subject_id}.csv')
 
-        # forum_count["score"] = np.where(
-        #     total > 0,
-        #     (forum_count["num_response_fast_forum"]*1.0 + forum_count["num_response_normal_forum"]*0.6 + forum_count["num_response_late_forum"]*0.2) / total,
-        #     np.nan
-        # )
-
-        # q1, q2, q3 = forum_count["score"].dropna().quantile([0.25, 0.50, 0.75])
-
-        # forum_count["label_forums_response"] = np.select(
-        #     [
-        #         forum_count["score"].isna(),
-        #         forum_count["score"] <= q1,
-        #         forum_count["score"] <= q2,
-        #         forum_count["score"] <= q3,
-        #     ],
-        #     ["sem_resposta", "lento", "medio", "rapido"],
-        #     default="muito_rapido",
-        # )
         
-                
-        # forum_count.to_csv(f'teste_{subject_id}.csv')
-        
-        return forum_count[["tutor_id", "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response", 
-                           "num_no_response_forum", "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]]
+        return forum_count[["tutor_id", "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
+                            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]]
 
 
 

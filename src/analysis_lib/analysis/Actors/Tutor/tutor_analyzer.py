@@ -9,7 +9,7 @@ class TutorAnalyzer:
     def response_foruns(self, subject_id, type_query, version, connector, user_id=None):
         forums_response = Forums_Response(self.mapper)
         if type_query == "user":
-            return forums_response.student_analysis(subject_id, user_id, version, connector)
+            return forums_response.tutors_analysis(subject_id, user_id, version, connector)
         if type_query == "subject":
             return forums_response.subject_analysis(subject_id, version, connector)
         raise ValueError("invalid type_query")

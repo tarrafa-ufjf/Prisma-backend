@@ -66,7 +66,7 @@ class Analysis_login(Indicator):
 
         start_at = best["start_day"]
         end_at = best["end_day"]
-        
+                
         return start_at, end_at
     
     def _discretize_by_quantiles(self, s, labels=("Ruim", "Médio", "Bom", "Ótimo")):
@@ -112,12 +112,10 @@ class Analysis_login(Indicator):
 
         window_days = int((end_at - start_at).days) + 1
         window_weeks = max(window_days / 7.0, 1.0)
+        
+        print(start_at, " ", end_at," ", window_days, " ", window_weeks)
 
-        out = (
-            dfw.groupby("tutor_id")
-            .agg(total=("tutor_id", "size"))
-            .reset_index()
-        )
+        out = (dfw.groupby("tutor_id").agg(total=("tutor_id", "size")).reset_index())
         out["weekly"] = out["total"] / window_weeks
 
         return out[base_cols]
@@ -170,12 +168,12 @@ class Analysis_login(Indicator):
                 df_course_views_valid, "course_view_at", start_at, end_at
             ).rename(columns={
                 "total": "n_login",
-                "weekly": "weekly_course_views_window"
+                "weekly": "mean_weekly_course_views_window"
             })
         else:
             start_at = None
             end_at = None
-            df_view_win = pd.DataFrame(columns=["tutor_id", "n_login", "weekly_course_views_window"])
+            df_view_win = pd.DataFrame(columns=["tutor_id", "n_login", "mean_weekly_course_views_window"])
 
         # ===============================
         # CONSOLIDAÇÃO
@@ -187,13 +185,13 @@ class Analysis_login(Indicator):
         df_metrics["weekly_course_views"] = df_metrics["weekly_course_views"].fillna(0)
 
         df_metrics["n_login"] = df_metrics["n_login"].fillna(0).astype(int)
-        df_metrics["weekly_course_views_window"] = df_metrics["weekly_course_views_window"].fillna(0)
+        df_metrics["mean_weekly_course_views_window"] = df_metrics["mean_weekly_course_views_window"].fillna(0).round(3)
 
         # ===============================
         # DISCRETIZAÇÃO
         # ===============================
-        df_metrics["label_access"] = self._discretize_by_quantiles(df_metrics["weekly_course_views_window"])
+        df_metrics["label_access"] = self._discretize_by_quantiles(df_metrics["mean_weekly_course_views_window"])
 
-        # df_metrics.to_csv(f"tutors_{subject_id}.csv", index=False)
+        df_metrics.to_csv(f"tutors_{subject_id}.csv", index=False)
         
-        return df_metrics[['tutor_id', 'n_login', 'label_access']]
+        return df_metrics[['tutor_id', 'n_login', 'label_access', 'mean_weekly_course_views_window']]

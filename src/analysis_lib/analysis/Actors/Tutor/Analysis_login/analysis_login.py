@@ -97,7 +97,7 @@ class Analysis_login(Indicator):
                 return s.apply(f)
 
     def _compute_window_metrics(self, df_events: pd.DataFrame, ts_col: str, start_at: pd.Timestamp, end_at: pd.Timestamp):
-        base_cols = ["userid", "total", "weekly"]
+        base_cols = ["tutor_id", "total", "weekly"]
 
         if df_events.empty or start_at is None or end_at is None:
             return pd.DataFrame(columns=base_cols)
@@ -114,8 +114,8 @@ class Analysis_login(Indicator):
         window_weeks = max(window_days / 7.0, 1.0)
 
         out = (
-            dfw.groupby("userid")
-            .agg(total=("userid", "size"))
+            dfw.groupby("tutor_id")
+            .agg(total=("tutor_id", "size"))
             .reset_index()
         )
         out["weekly"] = out["total"] / window_weeks
@@ -124,11 +124,11 @@ class Analysis_login(Indicator):
 
     def subject_analysis(self, subject_id, version, connector):
         df_course_views = self.mapper.fetch_tutors_login_subject(connector, version, subject_id)
-        all_user_ids = (pd.Series(df_course_views["userid"].unique()).dropna().astype(int))
-        df_metrics = pd.DataFrame({"userid": all_user_ids})
+        all_user_ids = (pd.Series(df_course_views["tutor_id"].unique()).dropna().astype(int))
+        df_metrics = pd.DataFrame({"tutor_id": all_user_ids})
 
         df_course_views["course_view_at"] = pd.to_datetime(df_course_views.get("data_acesso_curso"), errors="coerce")
-        df_course_views = df_course_views.sort_values(["userid", "course_view_at"])
+        df_course_views = df_course_views.sort_values(["tutor_id", "course_view_at"])
 
         df_course_views_valid = df_course_views.dropna(subset=["course_view_at"]).copy()
 
@@ -143,7 +143,7 @@ class Analysis_login(Indicator):
         # ===============================
         course_metrics = []
         if not df_course_views_valid.empty:
-            for tutor_id, group in df_course_views_valid.groupby("userid"):
+            for tutor_id, group in df_course_views_valid.groupby("tutor_id"):
                 group = group.sort_values("course_view_at")
                 total_course_views = len(group)
 
@@ -152,12 +152,12 @@ class Analysis_login(Indicator):
                 weekly_course_views = total_course_views / weeks
 
                 course_metrics.append({
-                    "userid": int(tutor_id),
+                    "tutor_id": int(tutor_id),
                     "total_course_views": int(total_course_views),
                     "weekly_course_views": round(weekly_course_views, 2),
                 })
 
-        df_course_metrics = pd.DataFrame(course_metrics, columns=["userid", "total_course_views", "weekly_course_views"])
+        df_course_metrics = pd.DataFrame(course_metrics, columns=["tutor_id", "total_course_views", "weekly_course_views"])
 
         # ===============================
         # MÉTRICAS NA JANELA
@@ -169,31 +169,31 @@ class Analysis_login(Indicator):
             df_view_win = self._compute_window_metrics(
                 df_course_views_valid, "course_view_at", start_at, end_at
             ).rename(columns={
-                "total": "total_course_views_window",
+                "total": "n_login",
                 "weekly": "weekly_course_views_window"
             })
         else:
             start_at = None
             end_at = None
-            df_view_win = pd.DataFrame(columns=["userid", "total_course_views_window", "weekly_course_views_window"])
+            df_view_win = pd.DataFrame(columns=["tutor_id", "n_login", "weekly_course_views_window"])
 
         # ===============================
         # CONSOLIDAÇÃO
         # ===============================
-        df_metrics = df_metrics.merge(df_course_metrics, on="userid", how="left")
-        df_metrics = df_metrics.merge(df_view_win, on="userid", how="left")
+        df_metrics = df_metrics.merge(df_course_metrics, on="tutor_id", how="left")
+        df_metrics = df_metrics.merge(df_view_win, on="tutor_id", how="left")
 
         df_metrics["total_course_views"] = df_metrics["total_course_views"].fillna(0).astype(int)
         df_metrics["weekly_course_views"] = df_metrics["weekly_course_views"].fillna(0)
 
-        df_metrics["total_course_views_window"] = df_metrics["total_course_views_window"].fillna(0).astype(int)
+        df_metrics["n_login"] = df_metrics["n_login"].fillna(0).astype(int)
         df_metrics["weekly_course_views_window"] = df_metrics["weekly_course_views_window"].fillna(0)
 
         # ===============================
         # DISCRETIZAÇÃO
         # ===============================
-        df_metrics["course_view_class_window"] = self._discretize_by_quantiles(df_metrics["weekly_course_views_window"])
+        df_metrics["label_access"] = self._discretize_by_quantiles(df_metrics["weekly_course_views_window"])
 
-        df_metrics.to_csv(f"tutors_{subject_id}.csv", index=False)
+        # df_metrics.to_csv(f"tutors_{subject_id}.csv", index=False)
         
-        return None
+        return df_metrics[['tutor_id', 'n_login', 'label_access']]

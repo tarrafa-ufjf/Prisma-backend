@@ -55,6 +55,8 @@ class Worker:
 
         subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
         subject_df_tutor = self.tutors_subject_analysis(subject_id, version, connector, engine)
+        
+        print(subject_df_tutor)
 
         self.save_subject_global_indicators(subject_df_student, engine)
 
@@ -183,7 +185,6 @@ class Worker:
         
         return subject_df
     
-    
     def tutors_subject_analysis(self, subject_id, version, connector, engine):
         response_foruns = self.analyzer.response_foruns(subject_id, "subject", version, connector)
         analysis_login = self.analyzer.analysis_login(subject_id, "subject", version, connector)
@@ -196,6 +197,10 @@ class Worker:
         df["institution_id"] = 1
         df["subject_id"] = subject_id
         df["version"] = version
+
+        if analysis_login is not None and not analysis_login.empty:
+            analysis_login = analysis_login.copy()
+            df = df.merge(analysis_login[["tutor_id", "n_login", "label_access"]], on="tutor_id", how="left", validate="m:1")
 
         desired_cols = [
             "institution_id",
@@ -238,7 +243,7 @@ class Worker:
 
         df = df[desired_cols]
         df.to_sql("local_indicators_tutors", engine, if_exists="append", index=False)
-
+        
         return df
     
     # ------------------------------------------------------------------

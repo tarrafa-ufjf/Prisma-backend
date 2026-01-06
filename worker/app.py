@@ -186,6 +186,7 @@ class Worker:
     
     def tutors_subject_analysis(self, subject_id, version, connector, engine):
         response_foruns = self.analyzer.response_foruns(subject_id, "subject", version, connector)
+        analysis_login = self.analyzer.analysis_login(subject_id, "subject", version, connector)
 
         if response_foruns is None or response_foruns.empty:
             return

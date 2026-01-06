@@ -112,8 +112,6 @@ class Analysis_login(Indicator):
 
         window_days = int((end_at - start_at).days) + 1
         window_weeks = max(window_days / 7.0, 1.0)
-        
-        print(start_at, " ", end_at," ", window_days, " ", window_weeks)
 
         out = (dfw.groupby("tutor_id").agg(total=("tutor_id", "size")).reset_index())
         out["weekly"] = out["total"] / window_weeks

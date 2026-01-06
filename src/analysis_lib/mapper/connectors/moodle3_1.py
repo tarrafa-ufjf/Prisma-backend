@@ -828,7 +828,7 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT 
-                    ra.userid,
+                    ra.userid AS tutor_id,
                     FROM_UNIXTIME(l.timecreated) AS data_acesso_curso
                 FROM mdl_role_assignments ra
                 JOIN mdl_context ctx ON ctx.id = ra.contextid

@@ -198,7 +198,7 @@ class Worker:
 
         if analysis_login is not None and not analysis_login.empty:
             analysis_login = analysis_login.copy()
-            df = df.merge(analysis_login[["tutor_id", "n_login", "label_access"]], on="tutor_id", how="left", validate="m:1")
+            df = df.merge(analysis_login[["tutor_id", "n_login", "label_access", "mean_weekly_course_views_window"]], on="tutor_id", how="left", validate="m:1")
 
         desired_cols = [
             "institution_id",
@@ -220,6 +220,7 @@ class Worker:
 
             "n_login",
             "label_access",
+            "mean_weekly_course_views_window"
         ]
 
         for c in desired_cols:
@@ -229,7 +230,7 @@ class Worker:
         int_cols = [
             "institution_id", "subject_id", "tutor_id",
             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum",
-            "n_login",
+            "n_login", "mean_weekly_course_views_window",
         ]
         for c in int_cols:
             if c in df.columns:

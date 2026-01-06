@@ -159,6 +159,7 @@ if __name__ == "__main__":
 
         "n_login": Integer,
         "label_access": String(32),
+        "mean_weekly_course_views_window": Float
     }
     create_table(
         "local_indicators_tutors",

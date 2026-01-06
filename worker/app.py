@@ -55,8 +55,6 @@ class Worker:
 
         subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
         subject_df_tutor = self.tutors_subject_analysis(subject_id, version, connector, engine)
-        
-        print(subject_df_tutor)
 
         self.save_subject_global_indicators(subject_df_student, engine)
 

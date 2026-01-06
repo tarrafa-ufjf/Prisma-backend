@@ -42,6 +42,9 @@ class Analyzer:
     
     def response_foruns(self, subject_id, type_query, version, connector, user_id=None, actor="tutor"):
         return self._actor(actor).response_foruns(subject_id, type_query, version, connector, user_id=user_id)
+    
+    def analysis_login(self, subject_id, type_query, version, connector, user_id=None, actor="tutor"):
+        return self._actor(actor).analysis_login(subject_id, type_query, version, connector, user_id=user_id)
 
     def summary_analysis(self, subject_id, type_query, version, connector):
         from .Summary.summary import Summary

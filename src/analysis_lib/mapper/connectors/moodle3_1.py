@@ -822,3 +822,55 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
+    
+    def fetch_tutors_login_subject(self, connector, subject_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT 
+                    ra.userid,
+                    FROM_UNIXTIME(l.timecreated) AS data_acesso_curso
+                FROM mdl_role_assignments ra
+                JOIN mdl_context ctx ON ctx.id = ra.contextid
+                JOIN mdl_course c ON c.id = ctx.instanceid
+                JOIN mdl_role r ON r.id = ra.roleid
+                LEFT JOIN mdl_logstore_standard_log l ON l.userid = ra.userid 
+                    AND l.action = 'viewed' AND l.target = 'course'
+                    AND l.component = 'core' AND l.courseid = c.id
+                WHERE c.id = %s AND r.id IN (3, 4, 9, 17)
+                ORDER BY ra.userid, l.timecreated;
+            ''', (subject_id, ))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+
+    def fetch_daily_events(self, connector, subject_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT
+                    DATE(FROM_UNIXTIME(timecreated)) AS day,
+                    COUNT(*) AS events
+                FROM mdl_logstore_standard_log
+                WHERE courseid = %s AND action <> 'loggedin'
+                        AND userid IS NOT NULL AND userid <> 0
+                        AND (
+                            target IN ('course','course_module')
+                            OR component LIKE 'mod\\_%%'
+                        )
+                GROUP BY day
+                ORDER BY day;
+            ''', (subject_id, ))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        
+        if df.empty:
+            return df
+
+        df["day"] = pd.to_datetime(df["day"], errors="coerce")
+        df["events"] = df["events"].astype(int)
+        df = df.dropna(subset=["day"]).sort_values("day").reset_index(drop=True)
+        
+        return df

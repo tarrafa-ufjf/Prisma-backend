@@ -214,10 +214,6 @@ class Worker:
             "num_response_late_forum",
             "num_response_normal_forum",
 
-            "median_messages_response_hours",
-            "mean_messages_response_hours",
-            "label_messages_response",
-
             "n_login",
             "label_access",
             "mean_weekly_course_views_window"

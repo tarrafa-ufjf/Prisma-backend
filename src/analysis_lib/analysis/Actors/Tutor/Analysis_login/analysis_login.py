@@ -183,7 +183,8 @@ class Analysis_login(Indicator):
         df_metrics["weekly_course_views"] = df_metrics["weekly_course_views"].fillna(0)
 
         df_metrics["n_login"] = df_metrics["n_login"].fillna(0).astype(int)
-        df_metrics["mean_weekly_course_views_window"] = df_metrics["mean_weekly_course_views_window"].fillna(0).round(3)
+        df_metrics["mean_weekly_course_views_window"] = (pd.to_numeric(df_metrics["mean_weekly_course_views_window"], errors="coerce").fillna(0).round(3)
+)
 
         # ===============================
         # DISCRETIZAÇÃO

@@ -40,6 +40,8 @@ class Processor:
         # for sid in subjects:
         # for sid in subjects[:200]:
         for sid in [37, 41, 78, 83, 84, 222, 223, 224]:
+        # for sid in [78, 222, 223, 224]:
+        # for sid in [78, 222]:
             try:
                 self.db_admin.insert_subject_analysis_status(1, sid, 'P')
             except Exception as e:

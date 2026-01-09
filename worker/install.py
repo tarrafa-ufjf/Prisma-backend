@@ -153,10 +153,6 @@ if __name__ == "__main__":
         "num_response_late_forum": Integer,
         "num_response_normal_forum": Integer,
         "score": Float,
-        
-        # "median_messages_response_hours": Float,
-        # "mean_messages_response_hours": Float,
-        # "label_messages_response": String(32),
 
         "n_login": Integer,
         "label_access": String(32),
@@ -171,18 +167,16 @@ if __name__ == "__main__":
     columns_gl_global = {
         "institution_id": Integer,
         "version": String(40),
-        "subject_id": Integer,
+        "tutor_id": Integer,
 
-        "mean_score": Float,
-        "label_forum_response": String(32),
-
-        "mean_access": Float,
-        "label_access": String(32),
+        "median_messages_response_hours": Float,
+        "mean_messages_response_hours": Float,
+        "label_messages_response": String(32),
     }
     create_table(
-        "global_indicators_tutors",
+        "messages_tutors",
         columns_gl_global,
-        primary_key=["institution_id", "version", "subject_id"]
+        primary_key=["institution_id", "version", "tutor_id"]
     )
 
     channel.queue_declare(

@@ -152,6 +152,7 @@ if __name__ == "__main__":
         "num_response_fast_forum": Integer,
         "num_response_late_forum": Integer,
         "num_response_normal_forum": Integer,
+        "score": Float,
         
         # "median_messages_response_hours": Float,
         # "mean_messages_response_hours": Float,
@@ -175,7 +176,7 @@ if __name__ == "__main__":
         "mean_score": Float,
         "label_forum_response": String(32),
 
-        "weekly_course_views_window": Float,
+        "mean_access": Float,
         "label_access": String(32),
     }
     create_table(

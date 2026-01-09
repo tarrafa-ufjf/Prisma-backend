@@ -95,7 +95,7 @@ class Forums_Response(Indicator):
 
         forum_count["total_respostas_forum"] = forum_count["total_respostas_forum"].fillna(0).astype(int)
         forum_count["mean_forums_response_hours"] = forum_count["mean_forums_response_hours"].fillna(0)
-        forum_count["median_forums_response_hours"] = forum_count["median_forums_response_hours"].fillna(np.nan)
+        forum_count["median_forums_response_hours"] = forum_count["median_forums_response_hours"].fillna(0)
 
         for col in ["num_response_fast_forum", "num_response_normal_forum", "num_response_late_forum"]:
             if col not in forum_count.columns:
@@ -122,7 +122,7 @@ class Forums_Response(Indicator):
         forum_count["label_forums_response"] = forum_count["score"].apply(label_from_score)
 
         return forum_count[["tutor_id", "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
-                            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]]
+                            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum", "score"]]
 
 
 

@@ -56,7 +56,8 @@ class Worker:
         subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
         subject_df_tutor = self.tutors_subject_analysis(subject_id, version, connector, engine)
 
-        self.save_subject_global_indicators(subject_df_student, engine)
+        self.save_subject_global_indicators_students(subject_df_student, engine)
+        self.save_subject_global_indicators_tutors(subject_df_tutor, engine)
 
         self.db_admin.update_subject_analysis_status(1, subject_id, "D")
     
@@ -213,6 +214,7 @@ class Worker:
             "num_response_fast_forum",
             "num_response_late_forum",
             "num_response_normal_forum",
+            "score",
 
             "n_login",
             "label_access",
@@ -244,8 +246,8 @@ class Worker:
     # ------------------------------------------------------------------
     # Calcula as médias da disciplina e salva em global_indicators
     # ------------------------------------------------------------------
-    def save_subject_global_indicators(self, subject_df, engine):
-        if subject_df.empty:
+    def save_subject_global_indicators_students(self, subject_df, engine):
+        if subject_df is None or subject_df.empty:
             return
 
         df = subject_df.copy()
@@ -443,6 +445,132 @@ class Worker:
                     ),
                     params,
                 )
+    
+    def save_subject_global_indicators_tutors(self, subject_df, engine):
+        if subject_df is None or subject_df.empty:
+            return
+
+        df = subject_df.copy()
+
+        global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(
+                mean_score=("score", "mean"),
+                mean_access=("mean_weekly_course_views_window", "mean"),
+            )
+
+        # ------------------------------------------------------------------
+        # Labels globais ainda não calculados -> NA
+        # ------------------------------------------------------------------
+        for col in [
+            "label_forum_response",
+            "label_access",
+        ]:
+            global_subject_df[col] = pd.NA
+
+        global_subject_df = global_subject_df[
+            [
+                "institution_id",
+                "version",
+                "subject_id",
+                "mean_score",
+                "label_forum_response",
+                "mean_access",
+                "label_access",
+            ]
+        ]
+
+        global_subject_df.to_sql(
+            "global_indicators_tutors",
+            engine,
+            if_exists="append",  
+            index=False,
+        )
+
+    def discretize_global_indicators_tutors(self, institution_id: int = 1):
+        engine = self.db_admin.get_connector()
+        version = self.db_admin.get_version_in_database(institution_id)
+
+        df = pd.read_sql_table("global_indicators_tutors", engine)
+
+        if df.empty:
+            return
+
+        mask = (df["institution_id"] == institution_id) & (df["version"] == str(version))
+        df_sub = df.loc[mask].copy()
+
+        if df_sub.empty:
+            return
+
+        def discretize_metric(series: pd.Series) -> pd.Series:
+            if series.isna().all():
+                return pd.Series([pd.NA] * len(series), index=series.index)
+
+            values = series.astype(float)
+
+            q1 = values.quantile(0.25)
+            q3 = values.quantile(0.75)
+            iqr = q3 - q1
+
+            lower = q1 - 1.5 * iqr
+            upper = q3 + 1.5 * iqr
+
+            labels = pd.Series(index=values.index, dtype="object")
+
+            labels[values < lower] = "muito_baixo"
+            labels[(values >= lower) & (values < q1)] = "baixo"
+            labels[(values >= q1) & (values <= q3)] = "medio"
+            labels[(values > q3) & (values <= upper)] = "alto"
+            labels[values > upper] = "muito_alto"
+
+            labels[values.isna()] = pd.NA
+
+            return labels
+
+        metric_to_label_col = {
+            "mean_score": "label_forum_response",
+            "mean_access": "label_access",
+        }
+
+        for metric_col, label_col in metric_to_label_col.items():
+            if metric_col in df_sub.columns:
+                df_sub[label_col] = discretize_metric(df_sub[metric_col])
+            else:
+                df_sub[label_col] = pd.NA
+                
+        
+        def clean_na(value):
+                    if pd.isna(value):
+                        return None
+                    return value
+
+        # ------------------------------------------------------------------
+        # Atualiza a tabela global_indicators_tutors no banco
+        # PK: (institution_id, version, subject_id)
+        # ------------------------------------------------------------------
+        with engine.begin() as conn:
+            for _, row in df_sub.iterrows():
+                params = {
+                    "institution_id": int(row["institution_id"]),
+                    "version": str(row["version"]),
+                    "subject_id": int(row["subject_id"]),
+                    "label_forum_response": clean_na(row.get("label_forum_response")),
+                    "label_access": clean_na(row.get("label_access")),
+                }
+                
+                conn.execute(
+                    text(
+                        """
+                        UPDATE global_indicators_tutors
+                        SET
+                            label_forum_response = :label_forum_response,
+                            label_access = :label_access
+                        WHERE
+                            institution_id = :institution_id
+                            AND version = :version
+                            AND subject_id = :subject_id
+                        """
+                    ),
+                    params,
+                )
 
 def continuously_listen():
     rabbit_admin = RabbitMQAdmin()
@@ -475,6 +603,7 @@ def continuously_listen():
         state = ch.queue_declare(queue='tasks_to_process', passive=True)
         if state.method.message_count == 0:
             worker.discretize_global_indicators(1)
+            worker.discretize_global_indicators_tutors(1)
 
     rabbit_admin.channel.basic_qos(prefetch_count=1)
     rabbit_admin.channel.basic_consume(queue='tasks_to_process', on_message_callback=callback)

@@ -55,7 +55,7 @@ class Worker:
 
         subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
         subject_df_tutor = self.tutors_subject_analysis(subject_id, version, connector, engine)
-
+        
         self.save_subject_global_indicators_students(subject_df_student, engine)
         self.save_subject_global_indicators_tutors(subject_df_tutor, engine)
 
@@ -186,53 +186,35 @@ class Worker:
     
     def tutors_subject_analysis(self, subject_id, version, connector, engine):
         response_foruns = self.analyzer.response_foruns(subject_id, "subject", version, connector)
-        analysis_login = self.analyzer.analysis_login(subject_id, "subject", version, connector)
+        analysis_login_df, start_at, end_at = self.analyzer.analysis_login(subject_id, "subject", version, connector)
 
         if response_foruns is None or response_foruns.empty:
-            return
+            return None
 
         df = response_foruns.copy()
-
         df["institution_id"] = 1
         df["subject_id"] = subject_id
         df["version"] = version
 
-        if analysis_login is not None and not analysis_login.empty:
-            analysis_login = analysis_login.copy()
-            df = df.merge(analysis_login[["tutor_id", "n_login", "label_access", "mean_weekly_course_views_window"]], on="tutor_id", how="left", validate="m:1")
+        # merge com login DF (se tiver)
+        if analysis_login_df is not None and not analysis_login_df.empty:
+            df = df.merge(
+                analysis_login_df[["tutor_id", "n_login", "label_access", "mean_weekly_course_views_window"]],
+                on="tutor_id",
+                how="left",
+                validate="m:1",
+            )
 
         desired_cols = [
-            "institution_id",
-            "version",
-            "subject_id",
-            "tutor_id",
-
-            "median_forums_response_hours",
-            "mean_forums_response_hours",
-            "label_forums_response",
-
-            "num_response_fast_forum",
-            "num_response_late_forum",
-            "num_response_normal_forum",
-            "score",
-
-            "n_login",
-            "label_access",
-            "mean_weekly_course_views_window"
+            "institution_id", "version", "subject_id", "tutor_id",
+            "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
+            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum", "score",
+            "n_login", "label_access", "mean_weekly_course_views_window",
         ]
 
         for c in desired_cols:
             if c not in df.columns:
                 df[c] = np.nan
-
-        int_cols = [
-            "institution_id", "subject_id", "tutor_id",
-            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum",
-            "n_login", "mean_weekly_course_views_window",
-        ]
-        for c in int_cols:
-            if c in df.columns:
-                df[c] = pd.to_numeric(df[c], errors="coerce")
 
         df = df.groupby(["institution_id", "version", "subject_id", "tutor_id"], as_index=False).agg(
             {c: "first" for c in desired_cols if c not in ["institution_id", "version", "subject_id", "tutor_id"]}
@@ -240,7 +222,34 @@ class Worker:
 
         df = df[desired_cols]
         df.to_sql("local_indicators_tutors", engine, if_exists="append", index=False)
-        
+
+        # ---- UPDATE subjects_status (1 vez por subject) ----
+        def to_db_date(x):
+            if x is None or (isinstance(x, pd.Timestamp) and pd.isna(x)):
+                return None
+            return pd.to_datetime(x).date()  
+
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    UPDATE subjects_status
+                    SET
+                        start_date = :start_date,
+                        end_date = :end_date
+                    WHERE
+                        institution_id = :institution_id
+                        AND subject_id = :subject_id
+                    """
+                ),
+                {
+                    "institution_id": 1,
+                    "subject_id": subject_id,
+                    "start_date": to_db_date(start_at),
+                    "end_date": to_db_date(end_at),
+                },
+            )
+
         return df
     
     # ------------------------------------------------------------------

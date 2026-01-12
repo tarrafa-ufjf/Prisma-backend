@@ -191,4 +191,8 @@ class Analysis_login(Indicator):
         # ===============================
         df_metrics["label_access"] = self._discretize_by_quantiles(df_metrics["mean_weekly_course_views_window"])
         
-        return df_metrics[['tutor_id', 'n_login', 'label_access', 'mean_weekly_course_views_window']]
+        return (
+            df_metrics[['tutor_id', 'n_login', 'label_access', 'mean_weekly_course_views_window']].copy(),
+            start_at,
+            end_at,
+        )

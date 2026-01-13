@@ -13,50 +13,14 @@ class Analyzer:
     def get_moodle_version(self, connector):
         return self.mapper.get_moodle_version(connector)
 
-    def general_engagement_analysis(self, connector, version, analysis_config):
-        engagement = Engagement(self.mapper)
-        analysis_config = engagement.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-    
-    def general_performance_analysis(self, connector, version, analysis_config):
-        performance = Performance(self.mapper)
-        analysis_config = performance.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-    
-    def general_motivation_analysis(self, connector, version, analysis_config):
-        motivation = Motivation(self.mapper)
-        analysis_config = motivation.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-    
-    def general_cognitive_analysis(self, connector, version, analysis_config):
-        cognitive = Cognitive(self.mapper)
-        analysis_config = cognitive.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-    
-    def general_pedagogic_analysis(self, connector, version, analysis_config):
-        pedagogic = Pedagogic(self.mapper)
-        analysis_config = pedagogic.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-    
-    def general_give_up_analysis(self, connector, version, analysis_config):
-        give_up = Give_Up(self.mapper)
-        analysis_config = give_up.general_analysis(version, connector, analysis_config)
-
-        return analysis_config
-
     def engagement_analysis(self, subject_id, type_query, version, connector, student_id = None):
         engagement = Engagement(self.mapper)
         res = None
 
         if type_query == 'user':
             res = engagement.student_analysis(subject_id, student_id, version, connector)
-        elif type_query == 'course': 
-            res = engagement.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = engagement.subject_analysis(subject_id, version, connector)
         return res
     
     def performance_analysis(self, subject_id, type_query, version, connector, student_id = None):
@@ -65,8 +29,8 @@ class Analyzer:
 
         if type_query == 'user':
             res = performance.student_analysis(subject_id, student_id, version, connector)
-        elif type_query == 'course': 
-            res = performance.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = performance.subject_analysis(subject_id, version, connector)
 
         return res
     
@@ -76,19 +40,19 @@ class Analyzer:
 
         if type_query == 'user':
             res = motivation.student_analysis(subject_id, student_id, version, connector)
-        elif type_query == 'course': 
-            res = motivation.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = motivation.subject_analysis(subject_id, version, connector)
 
         return res
     
-    def pedagogic_analysis(self, subject_id, type_query, version, connector):
+    def pedagogic_analysis(self, subject_id, type_query, version, connector, student_id = None):
         pedagogic = Pedagogic(self.mapper)
         res = None
 
         if type_query == 'user':
-            pass
-        elif type_query == 'course': 
-            res = pedagogic.course_analysis(subject_id, version, connector)
+            res = pedagogic.student_analysis(subject_id, student_id, version, connector)
+        elif type_query == 'subject': 
+            res = pedagogic.subject_analysis(subject_id, version, connector)
 
         return res
     
@@ -98,8 +62,8 @@ class Analyzer:
 
         if type_query == 'user':
             res = cognitive.student_analysis(subject_id, student_id, version, connector)
-        elif type_query == 'course': 
-            res = cognitive.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = cognitive.subject_analysis(subject_id, version, connector)
 
         return res
     
@@ -109,8 +73,8 @@ class Analyzer:
 
         if type_query == 'user':
             res = give_up.student_analysis(subject_id, student_id, version, connector)
-        elif type_query == 'course': 
-            res = give_up.course_analysis(subject_id, version, connector)
+        elif type_query == 'subject': 
+            res = give_up.subject_analysis(subject_id, version, connector)
 
         return res
     
@@ -125,6 +89,24 @@ class Analyzer:
             res = summary.subject_analysis(subject_id, version, connector)
 
         return res
+    
+    def general_subjects_indicators(self, version, connector):
+        from .General.general_subjects_indicators import General_subjects_indicators
+
+        general = General_subjects_indicators(self.mapper)
+        return general.general_subjects_indicators(version, connector)
+    
+    def general_indicators(self, version, connector):
+        from .General.general_indicators import General_indicators
+
+        general = General_indicators(self.mapper)
+        return general.general_indicators(version, connector)
+    
+    def general_summary(self, version, connector):
+        from .General.general_summary import General_summary
+
+        general = General_summary(self.mapper)
+        return general.general_summary(version, connector)
 
     def indicators_analysis(self, subject_id, type_query, version, connector, student_id=None):
         if type_query == 'user':
@@ -132,6 +114,7 @@ class Analyzer:
             mot = self.motivation_analysis(subject_id, 'user', version, connector, student_id) or {}
             per = self.performance_analysis(subject_id, 'user', version, connector, student_id) or {}
             cog = self.cognitive_analysis(subject_id, 'user', version, connector, student_id) or {}
+            ped = self.pedagogic_analysis(subject_id, 'user', version, connector, student_id) or {}
             gu  = self.give_up_analysis(subject_id, 'user', version, connector, student_id) or {}
 
             return {
@@ -142,6 +125,7 @@ class Analyzer:
                     "motivation": mot.get("posts_unrequired_label"),
                     "performance": per.get("performance_label"),
                     "cognitive": cog.get("label"),
+                    "ped": ped.get("label_relation_teacher_student"),
                     "give_up": gu.get("give_up")
                 },
             }
@@ -195,9 +179,9 @@ class Analyzer:
 
         return student_grades.subject_analysis(subject_id, student_id, version, connector)
     
-    # def get_subject_student_engagement(self, subject_id, student_id, version, connector):
-    #     from .Student.Engagement.engagement import Engagement
-    #     student_engagement = Engagement(self.mapper)
+    def rankings_general_analysis(self, version, connector, kind: str = "best-performance", limit: int = 10):
+        from .Rankings.rankings import Rankings  
+        rankings = Rankings(self.mapper)
 
-    #     return student_engagement.subject_analysis(subject_id, student_id, version, connector)
+        return rankings.general_analysis(version, connector, kind=kind, limit=limit)
 

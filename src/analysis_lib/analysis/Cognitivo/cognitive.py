@@ -6,7 +6,7 @@ class Cognitive(Indicator):
         super().__init__(mapper)
 
     def student_analysis(self, subject_id, student_id, version, connector):
-        df_course = self.course_analysis(subject_id, version, connector)
+        df_course = self.subject_analysis(subject_id, version, connector)
 
         df_course["user_id"] = pd.to_numeric(df_course["user_id"], errors="coerce")
         sid = pd.to_numeric(student_id, errors="coerce")
@@ -19,7 +19,7 @@ class Cognitive(Indicator):
         row = row.where(pd.notna(row), None).to_dict()
         return row
     
-    def course_analysis(self, subject_id, version, connector):
+    def subject_analysis(self, subject_id, version, connector):
         all_students = self.mapper.get_all_students(connector, subject_id, version)
 
         assign_viewed = self.mapper.get_assign_submission_status_viewed(connector, subject_id, version)
@@ -187,37 +187,9 @@ class Cognitive(Indicator):
         cognitive_label = self.discretize_student_levels_class(out)
         out = out.merge(cognitive_label, on="user_id", how="left")
 
-        return out[["user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]]
+        out["subject_id"] = subject_id
 
-            
-    '''Implementar análise cognitiva global'''
-
-    # def discretize_student_levels_class(self, df: pd.DataFrame) -> pd.DataFrame:
-    #     mask_real = df["cognitive_depth_mean"].notna()
-    #     q1 = df["cognitive_depth_mean"].quantile(0.25)
-    #     q3 = df["cognitive_depth_mean"].quantile(0.75)
-
-    #     iqr = q3 - q1
-    #     lim_inf = q1 - 1.5 * iqr
-    #     lim_sup = q3 + 1.5 * iqr
-        
-    #     def discretize(x, lim_inf, q1, q3, lim_sup):
-    #         if x <= lim_inf:
-    #             return 0
-    #         elif x <= q1:
-    #             return 1
-    #         elif x <= q3:
-    #             return 2
-    #         elif x <= lim_sup:
-    #             return 3
-    #         else:
-    #             return 4
-
-    #     df["label"] = df["cognitive_depth_mean"].apply(
-    #         lambda x: discretize(x, lim_inf, q1, q3, lim_sup)
-    #     )
-
-    #     return df[["user_id", "label"]]
+        return out[["subject_id", "user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]]
 
     def discretize_student_levels_class(self, df):
         if df is None or df.empty or "cognitive_depth_mean" not in df.columns:
@@ -255,103 +227,3 @@ class Cognitive(Indicator):
             out["label"] = out["cognitive_depth_mean"].apply(bucket_quantis)
 
         return out[["user_id", "label"]]
-
-
-    def general_analysis(self, version, connector, analysis_config):
-        batch_size = analysis_config["batch_size"]
-        processed = analysis_config["processed"]
-        engine = self.get_connector()
-
-        df_courses = pd.DataFrame(
-            self.mapper.get_courses(connector, version),
-            columns=['subject_id']
-        )
-
-        if analysis_config["total"] == 0:
-            analysis_config["total"] = len(df_courses)
-
-        total = analysis_config["total"]
-        df = pd.DataFrame(columns=['subject_id', 'user_id', 'label'])
-
-        for i in range(processed + 2, total + 1):
-            try:
-                subject_id = int(df_courses.iloc[i - 1]['subject_id'])
-            except IndexError: # Se 'total' > len(df_courses), evita quebrar
-                break
-
-            result = self.course_analysis(subject_id, version, connector)
-
-            if result is not None and not result.empty:
-                result_dis = (
-                    result.loc[:, ["user_id", "label"]].copy().assign(subject_id=subject_id, institution_id=1))
-
-                df = pd.concat([df, result_dis.loc[:, ["subject_id", "user_id", "label"]]], ignore_index=True)
-
-            analysis_config["processed"] += 1
-            self.print_load("Cognitivo", analysis_config["processed"], total, 8)
-
-            if analysis_config["processed"] % batch_size == 0 and not df.empty:
-                self.aggregate_user_results(df.assign(institution_id=1), engine)
-                return analysis_config
-
-        if not df.empty:
-            self.aggregate_user_results(df.assign(institution_id=1), engine)
-
-        return analysis_config
-
-    
-    def create_user_course_label_df(self, result_df: pd.DataFrame) -> pd.DataFrame:
-        df = result_df[['user_id', 'subject_id', 'label']].copy()
-        df = df.rename(columns={'subject_id': 'course_id'})
-        return df
-
-
-    def aggregate_user_results(self, df: pd.DataFrame, engine) -> pd.DataFrame:
-        label_map = {
-            'muito_baixo': 0,
-            'baixo': 1,
-            'medio': 2,
-            'alto': 3,
-            'muito_alto': 4
-        }
-
-        df['label_num'] = df['label'].map(label_map)
-
-        df_user_mean = (
-            df.groupby('user_id')['label_num']
-            .mean()
-            .reset_index()
-            .rename(columns={'label_num': 'avg_label_num'})
-        )
-
-        def discretize_label(value):
-            if value < 0.5:
-                return 'muito_baixo'
-            elif value < 1.5:
-                return 'baixo'
-            elif value < 2.5:
-                return 'medio'
-            elif value < 3.5:
-                return 'alto'
-            else:
-                return 'muito_alto'
-
-        df_user_mean['label_final'] = df_user_mean['avg_label_num'].apply(discretize_label)
-
-        df_merged = df.merge(df_user_mean[['user_id', 'label_final']], on='user_id', how='left')
-
-        df_summary = (
-            df_merged.groupby(['subject_id', 'label_final'])
-            .size()
-            .unstack(fill_value=0)
-            .reset_index()
-        )
-
-        for col in ['muito_baixo', 'baixo', 'medio', 'alto', 'muito_alto']:
-            if col not in df_summary.columns:
-                df_summary[col] = 0
-
-        df_summary['institution_id'] = 1
-        df_summary.to_sql("cognitive_global", engine, if_exists="append", index=False)
-
-        return df_summary

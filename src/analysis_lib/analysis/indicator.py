@@ -36,7 +36,7 @@ class Indicator:
     def get_global_analysis_table(self):
         metadata = MetaData()
         global_analysis = Table(
-            'gl_indicators_status', metadata,
+            'indicators_status', metadata,
             Column('institution_id', Integer, primary_key=True),
             Column('subject_id', Integer, primary_key=True),
             Column('indicator', Integer, primary_key=True),

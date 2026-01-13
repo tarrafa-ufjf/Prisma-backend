@@ -12,7 +12,7 @@ def build_subject_students_engagement(subject_id: int):
 
     try:
         version = analyzer.get_moodle_version(connector)
-        df = analyzer.engagement_analysis(subject_id, 'course', version, connector)
+        df = analyzer.engagement_analysis(subject_id, 'subject', version, connector)
         
         if df is None or df.empty:
             return []

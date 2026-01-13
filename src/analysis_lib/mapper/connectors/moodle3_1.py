@@ -217,7 +217,8 @@ class Moodle31(Moodle):
                     r.resposta_enviada_em,
                     r.post_aluno_id,
                     r.autor_aluno_completo,
-                    r.post_criado_em
+                    r.post_criado_em,
+                    r.aluno_id
                 FROM
                     (
                     SELECT u.id AS tutor_id,
@@ -242,6 +243,7 @@ class Moodle31(Moodle):
                         CONCAT_WS(' ', u.firstname, u.lastname) AS autor_resposta_completo,
                         FROM_UNIXTIME(p.created) AS resposta_enviada_em,
                         parent.id AS post_aluno_id,
+                        parent.userid AS aluno_id,
                         CONCAT_WS(' ', u2.firstname, u2.lastname) AS autor_aluno_completo,
                         FROM_UNIXTIME(parent.created) AS post_criado_em
                     FROM mdl_forum_posts p
@@ -633,3 +635,69 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
+    
+    '''
+    Página de Home
+    '''
+    
+    def fetch_subjects_summary(self, connector):
+        conn = connector
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    c.id        AS subject_id,
+                    c.fullname  AS name,
+                    c.shortname AS abrev,
+                    FROM_UNIXTIME(c.timecreated) AS date,
+                    GROUP_CONCAT(
+                        DISTINCT CASE
+                            WHEN r.id = 3 THEN CONCAT(u.firstname, ' ', u.lastname)
+                            ELSE NULL
+                        END
+                        ORDER BY u.firstname, u.lastname SEPARATOR ', '
+                    ) AS teachers,
+                    COUNT(
+                        DISTINCT CASE
+                            WHEN r.id = 5 THEN u.id
+                            ELSE NULL
+                        END
+                    ) AS total_enrolled
+                FROM mdl_course c
+                LEFT JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+                LEFT JOIN mdl_role_assignments ra ON ra.contextid = ctx.id
+                LEFT JOIN mdl_role r ON r.id = ra.roleid
+                LEFT JOIN mdl_user u ON u.id = ra.userid
+                GROUP BY c.id, c.fullname, c.shortname, c.timecreated;
+            """)
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        df = pd.DataFrame(rows, columns=cols)
+        return df
+    
+    def fetch_institution_info(self, connector):
+        conn = connector
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    (SELECT COUNT(*)
+                    FROM mdl_user
+                    WHERE deleted = 0) AS total_users,
+
+                    (SELECT COUNT(id) AS total_degree_programs
+                    FROM mdl_course_categories
+                    WHERE depth = 2 AND parent IN (1, 20, 63, 233, 315)) AS total_courses_offered,
+
+                    (SELECT DISTINCT COUNT(c.id) AS total_subjects
+                    FROM mdl_course_categories cc1
+                    JOIN mdl_course_categories cc2 ON cc2.parent = cc1.id
+                    JOIN mdl_course_categories cc3 ON cc3.parent = cc2.id
+                    JOIN mdl_course c ON c.category = cc3.id
+                    WHERE cc2.depth = 2 AND cc2.parent IN (1, 20, 63, 233, 315)) AS total_subjects
+            """)
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        df = pd.DataFrame(rows, columns=cols)
+        return df   
+    

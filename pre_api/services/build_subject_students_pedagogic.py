@@ -3,7 +3,7 @@ from typing import Any, Dict
 from database import DatabaseAdmin, Database  
 from src.analysis_lib.analysis.analysis import Analyzer  
 
-def build_subject_students_performance(subject_id: int):
+def build_subject_students_pedagogic(subject_id: int):
     processor_db = DatabaseAdmin()
     analyzer = Analyzer()
 
@@ -12,17 +12,17 @@ def build_subject_students_performance(subject_id: int):
 
     try:
         version = analyzer.get_moodle_version(connector)
-        df = analyzer.performance_analysis(subject_id, 'subject', version, connector)
+        df = analyzer.pedagogic_analysis(subject_id, 'subject', version, connector)
         
         if df is None or df.empty:
             return []
         
-        missing = [c for c in ["subject_id", "user_id", "full_name", "media_percentual", "performance_label", "comparative"] if c not in df.columns]
+        missing = [c for c in ["user_id", "full_name", "n_responses_relation_teacher_student","label_relation_teacher_student"] if c not in df.columns]
         if missing:
-            raise KeyError(f"missing columns in performance_analysis output: {missing}")
+            raise KeyError(f"missing columns in pedagogic_analysis output: {missing}")
 
 
-        out = df.loc[:, ["subject_id", "user_id", "full_name", "media_percentual", "performance_label", "comparative"]].copy()
+        out = df.loc[:, ["user_id", "full_name", "n_responses_relation_teacher_student","label_relation_teacher_student"]].copy()
         out["full_name"] = out["full_name"].astype(str)
 
         return out.to_dict(orient="records")

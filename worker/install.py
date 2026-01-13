@@ -57,42 +57,6 @@ def create_table(table_name, columns, primary_key=None):
         print("Erro ao criar tabela:", e)
 
 if __name__ == "__main__":
-    columns_engajamento_global = {
-        "institution_id": Integer,
-        "subject_id": Integer,
-        "muito_baixo": Integer,
-        "baixo": Integer,
-        "medio": Integer,
-        "alto": Integer,
-        "muito_alto": Integer,
-    }
-
-    primary_keys = ["institution_id", "subject_id"]
-    create_table("engagement_global", columns_engajamento_global, primary_key=primary_keys)
-
-    columns_indicators_status = {
-        "institution_id": Integer,
-        "indicator": Integer,
-        "status": String(1),
-    }
-
-    primary_keys = ["institution_id", "indicator"]
-    create_table("gl_indicators_status", columns_indicators_status, primary_key=primary_keys)
-
-    columns_configs = {
-        "institution_id": Integer,
-        "subject_id": Integer,
-        "muito_baixo": Integer,
-        "baixo": Integer,
-        "medio": Integer,
-        "alto": Integer,
-        "muito_alto": Integer,
-    }
-
-    primary_keys = ["institution_id", "subject_id"]
-
-    create_table("performance_global", columns_configs, primary_key=primary_keys)
-
     columns_configs = {
         "institution_id": Integer,
         "version": String(40),
@@ -104,56 +68,76 @@ if __name__ == "__main__":
     }
 
     primary_keys = ["institution_id", "version"]
-
     create_table("configs", columns_configs, primary_key=primary_keys)
 
-    columns_configs = {
+    columns_subjects_status = {
         "institution_id": Integer,
         "subject_id": Integer,
-        "muito_baixo": Integer,
-        "baixo": Integer,
-        "medio": Integer,
-        "alto": Integer,
-        "muito_alto": Integer,
+        "status": String(1),   # P=Processing, D=Done, E=Error
     }
-
     primary_keys = ["institution_id", "subject_id"]
-    create_table("motivation_global", columns_configs, primary_key=primary_keys)
+    create_table("subjects_status", columns_subjects_status, primary_key=primary_keys)
 
-    columns_configs = {
+    columns_gl_local_students = {
         "institution_id": Integer,
+        "version": String(40),
         "subject_id": Integer,
-        "muito_baixo": Integer,
-        "baixo": Integer,
-        "medio": Integer,
-        "alto": Integer,
-        "muito_alto": Integer,
+        "student_id": Integer,
+
+        "n_posts_engagement": Integer,
+        "label_engagement": String(32),
+
+        "n_posts_motivation": Integer,
+        "label_motivation": String(32),
+
+        "grade_performance": Float,
+        "grade_comparative_performance": Float,
+        "label_performance": String(32),
+
+        "mean_forum_interactions_cognitive": Float,
+        "mean_quiz_interactions_cognitive": Float,
+        "mean_assign_interactions_cognitive": Float,
+        "label_cognitive": String(32),
+
+        "n_responses_relation_teacher_student": Integer,
+        "label_relation_teacher_student": String(32),
+
+        "label_give_up": String(32),
     }
+    create_table(
+        "local_indicators_students",
+        columns_gl_local_students,
+        primary_key=["institution_id", "version", "subject_id", "student_id"]
+    )
 
-    primary_keys = ["institution_id", "subject_id"]
-    create_table("cognitive_global", columns_configs, primary_key=primary_keys)
-
-    columns_configs = {
+    columns_gl_global = {
         "institution_id": Integer,
+        "version": String(40),
         "subject_id": Integer,
-        "rapida": Integer,
-        "normal": Integer,
-        "atrasada": Integer,
-        "sem_resposta": Integer,
+
+        "mean_posts_engagement": Float,
+        "label_engagement": String(32),
+
+        "mean_posts_motivation": Float,
+        "label_motivation": String(32),
+
+        "mean_grade_performance": Float,
+        "label_performance": String(32),
+
+        "mean_interactions_cognitive": Float,
+        "label_cognitive": String(32),
+
+        "mean_responses_relation_teacher_student": Float,
+        "label_relation_teacher_student": String(32),
+        
+        "mean_give_up": Float,
+        "label_give_up": String(32),
     }
-
-    primary_keys = ["institution_id", "subject_id"]
-    create_table("pedagogico_global", columns_configs, primary_key=primary_keys)
-
-    columns_configs = {
-        "institution_id": Integer,
-        "subject_id": Integer,
-        "user_id": Integer,
-        "give_up": String(20),
-    }
-
-    primary_keys = ["institution_id", "subject_id", "user_id"]
-    create_table("give_up_global", columns_configs, primary_key=primary_keys)
+    create_table(
+        "global_indicators",
+        columns_gl_global,
+        primary_key=["institution_id", "version", "subject_id"]
+    )
 
     channel.queue_declare(
         queue="tasks_to_process",

@@ -1,10 +1,10 @@
-from .Engagement.engagement import Engagement
-from .Performance.performance import Performance
-from .Motivation.motivation import Motivation
-from .Pedagogic.pedagogic import Pedagogic
-from .Cognitive.cognitive import Cognitive
-from .Give_Up.give_up import Give_Up
 
+from src.analysis_lib.analysis.Actors.Student.Subject.Indicators.Engagement.engagement import Engagement
+from src.analysis_lib.analysis.Actors.Student.Subject.Indicators.Performance.performance import Performance
+from src.analysis_lib.analysis.Actors.Student.Subject.Indicators.Motivation.motivation import Motivation
+from src.analysis_lib.analysis.Actors.Student.Subject.Indicators.Pedagogic.pedagogic import Pedagogic
+from src.analysis_lib.analysis.Actors.Student.Subject.Indicators.Cognitive.cognitive import Cognitive
+from src.analysis_lib.analysis.Actors.Student.Subject.Indicators.Give_Up.give_up import Give_Up
 class StudentAnalyzer:
     def __init__(self, mapper):
         self.mapper = mapper
@@ -80,7 +80,7 @@ class StudentAnalyzer:
             }
 
         if type_query == "subject":
-            from ...Indicators_Percentual.indicators_percentual import Indicators_Percentual
+            from analysis_lib.analysis.Actors.Student.Subject.Indicators_Percentual import Indicators_Percentual
             return Indicators_Percentual(self.mapper).subject_analysis(subject_id)
 
         raise ValueError("invalid type_query")

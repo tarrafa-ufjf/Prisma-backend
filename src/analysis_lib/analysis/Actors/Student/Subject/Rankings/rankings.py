@@ -1,9 +1,9 @@
 import pandas as pd
 from typing import List, Dict, Any
-from ..indicator import Indicator
+from indicator import Indicator
 from database import DatabaseAdmin
 from sqlalchemy import MetaData, Table, select, func
-from ..Actors.Student.Performance.performance import Performance
+from ..Indicators.Performance.performance import Performance
 
 class Rankings(Indicator):
     def __init__(self, mapper):

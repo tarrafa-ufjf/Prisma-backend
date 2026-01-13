@@ -45,9 +45,33 @@ class Analyzer:
     
     def analysis_login(self, subject_id, type_query, version, connector,start_at, end_at, user_id=None, actor="tutor"):
         return self._actor(actor).analysis_login(subject_id, type_query, version, connector, start_at, end_at, user_id=user_id)
+    
+    def get_all_subjects(self, version, connector):
+        from .Actors.Student.General.subjects import Subjects
+        subjects = Subjects(self.mapper)
 
+        return subjects.get_subjects(version, connector)
+    
+    def general_subjects_indicators(self, version, connector):
+        from .Actors.Student.General.general_subjects_indicators import General_subjects_indicators
+
+        general = General_subjects_indicators(self.mapper)
+        return general.general_subjects_indicators(version, connector)
+    
+    def general_indicators(self, version, connector):
+        from .Actors.Student.General.general_indicators import General_indicators
+
+        general = General_indicators(self.mapper)
+        return general.general_indicators(version, connector)
+    
+    def general_summary(self, version, connector):
+        from .Actors.Student.General.general_summary import General_summary
+
+        general = General_summary(self.mapper)
+        return general.general_summary(version, connector)
+    
     def summary_analysis(self, subject_id, type_query, version, connector):
-        from .Summary.summary import Summary
+        from .Actors.Student.Subject.Summary.summary import Summary
         summary = Summary(self.mapper)
         res = None
 
@@ -58,26 +82,8 @@ class Analyzer:
 
         return res
     
-    def general_subjects_indicators(self, version, connector):
-        from .General.general_subjects_indicators import General_subjects_indicators
-
-        general = General_subjects_indicators(self.mapper)
-        return general.general_subjects_indicators(version, connector)
-    
-    def general_indicators(self, version, connector):
-        from .General.general_indicators import General_indicators
-
-        general = General_indicators(self.mapper)
-        return general.general_indicators(version, connector)
-    
-    def general_summary(self, version, connector):
-        from .General.general_summary import General_summary
-
-        general = General_summary(self.mapper)
-        return general.general_summary(version, connector)
-    
     def info_graphs_analysis(self, subject_id, type_query, version, connector):
-        from .Info_Graphs.info_graphs import Info_Graphs
+        from .Actors.Student.Subject.Info_Graphs.info_graphs import Info_Graphs
         info_graphs = Info_Graphs(self.mapper)
         res = None
 
@@ -89,7 +95,7 @@ class Analyzer:
         return res
 
     def rankings_analysis(self, entity_id: int, scope: str, version, connector, kind: str = "best-performance", limit: int = 10):
-        from .Rankings.rankings import Rankings  
+        from .Actors.Student.Subject.Rankings.rankings import Rankings  
         rankings = Rankings(self.mapper)
 
         if scope == 'user':
@@ -98,27 +104,21 @@ class Analyzer:
             return rankings.subject_analysis(entity_id, version, connector, kind=kind, limit=limit)
         else:
             raise ValueError("invalid scope")
-        
-    def get_all_subjects(self, version, connector):
-        from .General.subjects import Subjects
-        subjects = Subjects(self.mapper)
-
-        return subjects.get_subjects(version, connector)
     
     def get_subject_student_summary(self, subject_id, student_id, version, connector):
-        from .Actors.Student.Student_Summary.summary import Student_Summary
+        from .Actors.Student.Student.Summary.summary import Student_Summary
         student_summary = Student_Summary(self.mapper)
 
         return student_summary.subject_analysis(subject_id, student_id, version, connector)
     
     def get_subject_student_grades(self, subject_id, student_id, version, connector):
-        from .Actors.Student.Student_Grades.grades import Student_Grades
+        from .Actors.Student.Student.Grades.grades import Student_Grades
         student_grades = Student_Grades(self.mapper)
 
         return student_grades.subject_analysis(subject_id, student_id, version, connector)
     
     def rankings_general_analysis(self, version, connector, kind: str = "best-performance", limit: int = 10):
-        from .Rankings.rankings import Rankings  
+        from .Actors.Student.Subject.Rankings.rankings import Rankings  
         rankings = Rankings(self.mapper)
 
         return rankings.general_analysis(version, connector, kind=kind, limit=limit)

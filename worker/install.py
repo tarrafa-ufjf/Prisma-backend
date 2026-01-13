@@ -146,7 +146,7 @@ if __name__ == "__main__":
         "label_give_up": String(32),
     }
     create_table(
-        "global_indicators",
+        "global_indicators_student",
         columns_gl_global,
         primary_key=["institution_id", "version", "subject_id"]
     )

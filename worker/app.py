@@ -333,7 +333,7 @@ class Worker:
         return df
     
     # ------------------------------------------------------------------
-    # Calcula as médias da disciplina e salva em global_indicators
+    # Calcula as médias da disciplina e salva em global_indicators_student
     # ------------------------------------------------------------------
     def save_subject_global_indicators_students(self, subject_df, engine):
         if subject_df is None or subject_df.empty:
@@ -430,7 +430,7 @@ class Worker:
         ]
 
         global_subject_df.to_sql(
-            "global_indicators",
+            "global_indicators_student",
             engine,
             if_exists="append",  
             index=False,
@@ -440,7 +440,7 @@ class Worker:
         engine = self.db_admin.get_connector()
         version = self.db_admin.get_version_in_database(institution_id)
 
-        df = pd.read_sql_table("global_indicators", engine)
+        df = pd.read_sql_table("global_indicators_student", engine)
 
         if df.empty:
             return
@@ -498,7 +498,7 @@ class Worker:
                     return value
 
         # ------------------------------------------------------------------
-        # Atualiza a tabela global_indicators no banco
+        # Atualiza a tabela global_indicators_student no banco
         # PK: (institution_id, version, subject_id)
         # ------------------------------------------------------------------
         with engine.begin() as conn:
@@ -518,7 +518,7 @@ class Worker:
                 conn.execute(
                     text(
                         """
-                        UPDATE global_indicators
+                        UPDATE global_indicators_student
                         SET
                             label_engagement = :label_engagement,
                             label_motivation = :label_motivation,

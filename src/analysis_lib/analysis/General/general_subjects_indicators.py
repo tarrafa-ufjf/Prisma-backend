@@ -70,21 +70,21 @@ class General_subjects_indicators:
     def _fetch_flags_general(self, institution_id: int = 1):
         engine = self.db_admin.get_connector()
         metadata = MetaData()
-        global_indicators = Table("global_indicators", metadata, autoload_with=engine)
+        global_indicators_student = Table("global_indicators_student", metadata, autoload_with=engine)
 
         with engine.connect() as conn:
             query = (
                 select(
-                    global_indicators.c.subject_id,
-                    global_indicators.c.label_engagement,
-                    global_indicators.c.label_motivation,
-                    global_indicators.c.label_performance,
-                    global_indicators.c.label_cognitive,
-                    global_indicators.c.label_relation_teacher_student,
-                    global_indicators.c.label_give_up,
-                    global_indicators.c.mean_grade_performance
+                    global_indicators_student.c.subject_id,
+                    global_indicators_student.c.label_engagement,
+                    global_indicators_student.c.label_motivation,
+                    global_indicators_student.c.label_performance,
+                    global_indicators_student.c.label_cognitive,
+                    global_indicators_student.c.label_relation_teacher_student,
+                    global_indicators_student.c.label_give_up,
+                    global_indicators_student.c.mean_grade_performance
                 )
-                .where(global_indicators.c.institution_id == institution_id)
+                .where(global_indicators_student.c.institution_id == institution_id)
             )
 
             rows = conn.execute(query).mappings().all()

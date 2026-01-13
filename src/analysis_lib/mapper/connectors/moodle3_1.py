@@ -863,17 +863,66 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT
-                    DATE(FROM_UNIXTIME(timecreated)) AS day,
-                    COUNT(*) AS events
-                FROM mdl_logstore_standard_log
-                WHERE courseid = %s AND action <> 'loggedin'
-                        AND userid IS NOT NULL AND userid <> 0
-                        AND (
-                            target IN ('course','course_module')
-                            OR component LIKE 'mod\\_%%'
+                    (
+                        SELECT COUNT(DISTINCT ra_t.userid)
+                        FROM mdl_role_assignments ra_t
+                        JOIN mdl_context c_t ON c_t.id = ra_t.contextid
+                        WHERE c_t.contextlevel = 50
+                        AND c_t.instanceid = %s
+                        AND ra_t.roleid IN (9,17)
+                    ) AS total_tutors,
+                    (
+                        (
+                        SELECT COUNT(DISTINCT ra_s.userid)
+                        FROM mdl_role_assignments ra_s
+                        JOIN mdl_context c_s ON c_s.id = ra_s.contextid
+                        WHERE c_s.contextlevel = 50
+                            AND c_s.instanceid = %s
+                            AND ra_s.roleid = 5
+                        ) /
+                        NULLIF(
+                        (
+                            SELECT COUNT(DISTINCT ra_t.userid)
+                            FROM mdl_role_assignments ra_t
+                            JOIN mdl_context c_t ON c_t.id = ra_t.contextid
+                            WHERE c_t.contextlevel = 50
+                            AND c_t.instanceid = %s
+                            AND ra_t.roleid IN (9,17)
+                        ),
+                        0
                         )
-                GROUP BY day
-                ORDER BY day;
+                    ) AS students_per_tutor,
+                    logs.average_logs_per_day_per_tutor
+                    FROM
+                    (
+                        SELECT c.id AS subject_id, c.fullname AS subject_name
+                        FROM mdl_course c
+                        WHERE c.id = %s
+                    ) AS base
+                    JOIN
+                    (
+                        SELECT
+                        sub.subject_id,
+                        sub.subject_name,
+                        AVG(sub.logs_per_tutor / NULLIF(sub.days_per_tutor, 0)) AS average_logs_per_day_per_tutor
+                        FROM
+                        (
+                            SELECT
+                            c.id AS subject_id,
+                            c.fullname AS subject_name,
+                            ra.userid,
+                            COUNT(l.id) AS logs_per_tutor,
+                            DATEDIFF(MAX(FROM_UNIXTIME(l.timecreated)), MIN(FROM_UNIXTIME(l.timecreated))) + 1 AS days_per_tutor
+                            FROM mdl_course c
+                            JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+                            JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.roleid IN (9,17)
+                            JOIN mdl_logstore_standard_log l ON l.userid = ra.userid AND l.courseid = c.id
+                            WHERE c.id = 222
+                            GROUP BY c.id, c.fullname, ra.userid
+                        ) AS sub
+                        GROUP BY sub.subject_id, sub.subject_name
+                    ) AS logs
+                    ON logs.subject_id = base.subject_id;
             ''', (subject_id, ))
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -886,4 +935,76 @@ class Moodle31(Moodle):
         df["events"] = df["events"].astype(int)
         df = df.dropna(subset=["day"]).sort_values("day").reset_index(drop=True)
         
+        return df
+    
+    def fetch_subject_info_tutors(self, subject_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute('''
+                SELECT
+                    base.subject_id,
+                    (
+                        SELECT COUNT(DISTINCT ra_t.userid)
+                        FROM mdl_role_assignments ra_t
+                        JOIN mdl_context c_t ON c_t.id = ra_t.contextid
+                        WHERE c_t.contextlevel = 50
+                        AND c_t.instanceid = 222
+                        AND ra_t.roleid IN (9,17)
+                    ) AS total_tutors,
+                    (
+                        (
+                        SELECT COUNT(DISTINCT ra_s.userid)
+                        FROM mdl_role_assignments ra_s
+                        JOIN mdl_context c_s ON c_s.id = ra_s.contextid
+                        WHERE c_s.contextlevel = 50
+                            AND c_s.instanceid = %s
+                            AND ra_s.roleid = 5
+                        ) /
+                        NULLIF(
+                        (
+                            SELECT COUNT(DISTINCT ra_t.userid)
+                            FROM mdl_role_assignments ra_t
+                            JOIN mdl_context c_t ON c_t.id = ra_t.contextid
+                            WHERE c_t.contextlevel = 50
+                            AND c_t.instanceid = %s
+                            AND ra_t.roleid IN (9,17)
+                        ),
+                        0
+                        )
+                    ) AS students_per_tutor,
+                    logs.average_logs_per_day_per_tutor
+                    FROM
+                    (
+                        SELECT c.id AS subject_id, c.fullname AS subject_name
+                        FROM mdl_course c
+                        WHERE c.id = %s
+                    ) AS base
+                    JOIN
+                    (
+                        SELECT
+                        sub.subject_id,
+                        sub.subject_name,
+                        AVG(sub.logs_per_tutor / NULLIF(sub.days_per_tutor, 0)) AS average_logs_per_day_per_tutor
+                        FROM
+                        (
+                            SELECT
+                            c.id AS subject_id,
+                            c.fullname AS subject_name,
+                            ra.userid,
+                            COUNT(l.id) AS logs_per_tutor,
+                            DATEDIFF(MAX(FROM_UNIXTIME(l.timecreated)), MIN(FROM_UNIXTIME(l.timecreated))) + 1 AS days_per_tutor
+                            FROM mdl_course c
+                            JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+                            JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.roleid IN (9,17)
+                            JOIN mdl_logstore_standard_log l ON l.userid = ra.userid AND l.courseid = c.id
+                            WHERE c.id = %s
+                            GROUP BY c.id, c.fullname, ra.userid
+                        ) AS sub
+                        GROUP BY sub.subject_id, sub.subject_name
+                    ) AS logs
+                    ON logs.subject_id = base.subject_id;
+            ''', (subject_id, subject_id, subject_id, subject_id,))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
         return df

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from ..indicator import Indicator
+from ....indicator import Indicator
 import time
 
 class Subjects(Indicator):

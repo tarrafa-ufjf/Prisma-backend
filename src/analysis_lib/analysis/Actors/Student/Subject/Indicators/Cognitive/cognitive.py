@@ -1,5 +1,5 @@
 import pandas as pd
-from ....indicator import Indicator
+from ......indicator import Indicator
 
 class Cognitive(Indicator):
     def __init__(self, mapper):

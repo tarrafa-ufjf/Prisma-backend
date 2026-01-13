@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from ..indicator import Indicator
+from indicator import Indicator
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import MetaData, Table
 

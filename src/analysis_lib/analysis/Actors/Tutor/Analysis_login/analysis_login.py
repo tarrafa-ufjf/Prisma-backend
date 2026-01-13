@@ -11,64 +11,6 @@ class Analysis_login(Indicator):
         print("Chegou student")
         return None
     
-    def _best_block_dynamic_window(self, df_daily_events, gap_days: int = 21, pct_of_peak: float = 0.02, floor_min: int = 10,):
-        """
-        - A ideia é ignorar "cauda longa" (acessos anos depois).
-        - 1) Agrega logs por dia (df_daily_events já vem assim).
-        - 2) Calcula pico_diario = max(events).
-        - 3) Define "dia ativo" como: events_dia >= max(floor_min, ceil(pct_of_peak * pico_diario))
-             * O pct escala com o tamanho da turma/curso
-             * O floor evita que cursos pequenos considerem 1-2 eventos como "dia ativo"
-        - 4) Considera apenas dias ativos e agrupa em blocos permitindo gaps <= gap_days.
-        - 5) Escolhe o bloco com maior soma de eventos (bloco "principal" do curso).
-        """
-        if df_daily_events is None or df_daily_events.empty:
-            return None, None
-        
-        daily = df_daily_events.copy()
-
-        if "day" not in daily.columns or "events" not in daily.columns:
-            return None, None
-
-        daily["day"] = pd.to_datetime(daily["day"], errors="coerce").dt.normalize()
-        daily["events"] = pd.to_numeric(daily["events"], errors="coerce").fillna(0).astype(int)
-        daily = daily.dropna(subset=["day"]).sort_values("day").reset_index(drop=True)
-
-        if daily.empty or daily["events"].sum() <= 0:
-            return None, None
-
-        peak_daily = int(daily["events"].max())
-        active_min_dynamic = max(floor_min, int(math.ceil(pct_of_peak * peak_daily)))
-
-        active_days = daily[daily["events"] >= active_min_dynamic].copy()
-        if active_days.empty:
-            pos = daily[daily["events"] > 0] # se nada bater o active_min, devolve janela total (dias com evento > 0)
-            if pos.empty:
-                return None, None
-            return pos["day"].iloc[0], pos["day"].iloc[-1]
-
-        active_days = active_days.sort_values("day").reset_index(drop=True)
-
-        # Quebra em blocos quando gap > gap_days
-        active_days["prev_day"] = active_days["day"].shift(1)
-        active_days["gap"] = (active_days["day"] - active_days["prev_day"]).dt.days
-        active_days["new_block"] = active_days["gap"].isna() | (active_days["gap"] > gap_days)
-        active_days["block_id"] = active_days["new_block"].cumsum()
-
-        agg = active_days.groupby("block_id").agg(
-            start_day=("day", "min"),
-            end_day=("day", "max"),
-            events_sum=("events", "sum"),
-            days=("day", "count"),
-        ).reset_index()
-
-        best = agg.sort_values(["events_sum", "days"], ascending=[False, False]).iloc[0]
-
-        start_at = best["start_day"]
-        end_at = best["end_day"]
-                
-        return start_at, end_at
-    
     def _discretize_by_quantiles(self, s, labels=("Ruim", "Médio", "Bom", "Ótimo")):
         s = pd.to_numeric(s, errors="coerce").fillna(0)
 
@@ -118,81 +60,38 @@ class Analysis_login(Indicator):
 
         return out[base_cols]
 
-    def subject_analysis(self, subject_id, version, connector):
-        df_course_views = self.mapper.fetch_tutors_login_subject(connector, version, subject_id)
-        all_user_ids = (pd.Series(df_course_views["tutor_id"].unique()).dropna().astype(int))
-        df_metrics = pd.DataFrame({"tutor_id": all_user_ids})
+    def subject_analysis(self, subject_id, version, connector, start_at, end_at):
+        if start_at is None or end_at is None:
+            empty = pd.DataFrame(columns=["tutor_id","n_login","label_access","mean_weekly_course_views_window"])
+            return empty, None, None
 
-        df_course_views["course_view_at"] = pd.to_datetime(df_course_views.get("data_acesso_curso"), errors="coerce")
-        df_course_views = df_course_views.sort_values(["tutor_id", "course_view_at"])
+        start_date = pd.to_datetime(start_at).date()
+        end_date = pd.to_datetime(end_at).date()
 
-        df_course_views_valid = df_course_views.dropna(subset=["course_view_at"]).copy()
+        df_course_views = self.mapper.fetch_tutors_login_subject(connector, version, subject_id, start_date, end_date)
 
-        # ===============================
-        # JANELA DO CURSO 
-        # ===============================
-        df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
-        start_at, end_at = self._best_block_dynamic_window(df_daily_events=df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)
-
-        # ===============================
-        # MÉTRICAS GERAIS 
-        # ===============================
-        course_metrics = []
-        if not df_course_views_valid.empty:
-            for tutor_id, group in df_course_views_valid.groupby("tutor_id"):
-                group = group.sort_values("course_view_at")
-                total_course_views = len(group)
-
-                active_period_days = (group["course_view_at"].max() - group["course_view_at"].min()).days + 1
-                weeks = max(active_period_days / 7, 1)
-                weekly_course_views = total_course_views / weeks
-
-                course_metrics.append({
-                    "tutor_id": int(tutor_id),
-                    "total_course_views": int(total_course_views),
-                    "weekly_course_views": round(weekly_course_views, 2),
-                })
-
-        df_course_metrics = pd.DataFrame(course_metrics, columns=["tutor_id", "total_course_views", "weekly_course_views"])
-
-        # ===============================
-        # MÉTRICAS NA JANELA
-        # ===============================
-        if start_at is not None and end_at is not None:
-            start_at = pd.to_datetime(start_at).normalize()
-            end_at = pd.to_datetime(end_at).normalize()
-
-            df_view_win = self._compute_window_metrics(
-                df_course_views_valid, "course_view_at", start_at, end_at
-            ).rename(columns={
-                "total": "n_login",
-                "weekly": "mean_weekly_course_views_window"
-            })
+        if "course_view_at" not in df_course_views.columns and "data_acesso_curso" in df_course_views.columns:
+            df_course_views["course_view_at"] = pd.to_datetime(df_course_views["data_acesso_curso"], errors="coerce")
         else:
-            start_at = None
-            end_at = None
-            df_view_win = pd.DataFrame(columns=["tutor_id", "n_login", "mean_weekly_course_views_window"])
+            df_course_views["course_view_at"] = pd.to_datetime(df_course_views["course_view_at"], errors="coerce")
 
-        # ===============================
-        # CONSOLIDAÇÃO
-        # ===============================
-        df_metrics = df_metrics.merge(df_course_metrics, on="tutor_id", how="left")
-        df_metrics = df_metrics.merge(df_view_win, on="tutor_id", how="left")
+        df_course_views = df_course_views.dropna(subset=["course_view_at"])
 
-        df_metrics["total_course_views"] = df_metrics["total_course_views"].fillna(0).astype(int)
-        df_metrics["weekly_course_views"] = df_metrics["weekly_course_views"].fillna(0)
+        tutor_ids = df_course_views["tutor_id"].dropna().astype(int).unique().tolist()
+        df_metrics = pd.DataFrame({"tutor_id": tutor_ids})
 
-        df_metrics["n_login"] = df_metrics["n_login"].fillna(0).astype(int)
-        df_metrics["mean_weekly_course_views_window"] = (pd.to_numeric(df_metrics["mean_weekly_course_views_window"], errors="coerce").fillna(0).round(3)
-)
+        start_ts = pd.to_datetime(start_at).normalize()
+        end_ts = pd.to_datetime(end_at).normalize()
 
-        # ===============================
-        # DISCRETIZAÇÃO
-        # ===============================
-        df_metrics["label_access"] = self._discretize_by_quantiles(df_metrics["mean_weekly_course_views_window"])
-        
-        return (
-            df_metrics[['tutor_id', 'n_login', 'label_access', 'mean_weekly_course_views_window']].copy(),
-            start_at,
-            end_at,
+        df_view_win = self._compute_window_metrics(df_course_views, "course_view_at", start_ts, end_ts).rename(
+            columns={"total": "n_login", "weekly": "mean_weekly_course_views_window"}
         )
+
+        df_metrics = df_metrics.merge(df_view_win, on="tutor_id", how="left")
+        df_metrics["n_login"] = df_metrics["n_login"].fillna(0).astype(int)
+        df_metrics["mean_weekly_course_views_window"] = (
+            pd.to_numeric(df_metrics["mean_weekly_course_views_window"], errors="coerce").fillna(0).round(3)
+        )
+        df_metrics["label_access"] = self._discretize_by_quantiles(df_metrics["mean_weekly_course_views_window"])
+
+        return df_metrics[["tutor_id","n_login","label_access","mean_weekly_course_views_window"]].copy()

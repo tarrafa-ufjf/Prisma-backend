@@ -140,13 +140,13 @@ class Mapper:
         moodle = self.get_moodle(connector, version)
         return moodle.fetch_institution_info(connector)
     
-    def fetch_responses_forums(self, connector, version, subject_id):
+    def fetch_responses_forums(self, connector, version, subject_id, start_at, end_at):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_responses_forums(connector, subject_id)
+        return moodle.fetch_responses_forums(connector, subject_id, start_at, end_at)
     
-    def fetch_tutors_login_subject(self, connector, version, subject_id):
+    def fetch_tutors_login_subject(self, connector, version, subject_id, start_date, end_date):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_tutors_login_subject(connector, subject_id)
+        return moodle.fetch_tutors_login_subject(connector, subject_id, start_date, end_date)
     
     def fetch_daily_events(self, connector, version, subject_id):
         moodle = self.get_moodle(connector, version)

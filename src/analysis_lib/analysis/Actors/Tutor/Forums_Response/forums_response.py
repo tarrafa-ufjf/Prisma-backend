@@ -10,8 +10,8 @@ class Forums_Response(Indicator):
         print("Chegou student")
         return None
     
-    def subject_analysis(self, subject_id, version, connector):
-        df_responses_forums = self.mapper.fetch_responses_forums(connector, version, subject_id)
+    def subject_analysis(self, subject_id, version, connector, start_at, end_at):
+        df_responses_forums = self.mapper.fetch_responses_forums(connector, version, subject_id, start_at, end_at)
         
         df_tutores = df_responses_forums[['tutor_id', 'tutor_completo']].drop_duplicates()
         df_forum = df_responses_forums.dropna(subset=['resposta_id']).copy()

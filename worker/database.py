@@ -64,7 +64,7 @@ class DatabaseAdmin:
     def get_global_analysis_table(self):
         metadata = MetaData()
         global_analysis = Table(
-            'gl_indicators_status', metadata,
+            'indicators_status', metadata,
             Column('institution_id', Integer, primary_key=True),
             Column('indicator', Integer, primary_key=True),
             Column('status', String(1), nullable=False)
@@ -94,7 +94,7 @@ class DatabaseAdmin:
             indicator=indicator,
             status=status
         ).on_conflict_do_update(
-            constraint="gl_indicators_status_pkey",
+            constraint="indicators_status_pkey",
             set_={"status": status}
         )
 
@@ -159,7 +159,7 @@ class DatabaseAdmin:
             f"postgresql+psycopg://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['db']}"
         )
         metadata = MetaData()
-        global_analysis = Table('gl_indicators_status', metadata, autoload_with=engine)
+        global_analysis = Table('indicators_status', metadata, autoload_with=engine)
         with engine.connect() as conn:
             query = global_analysis.select().where(and_(global_analysis.c.institution_id == institution_id,
                                                         global_analysis.c.indicator == indicator))
@@ -175,7 +175,7 @@ class DatabaseAdmin:
             indicator=indicator,
             status=status
         ).on_conflict_do_update(
-            constraint="gl_indicators_status_pkey",
+            constraint="indicators_status_pkey",
             set_={"status": status}
         )
 
@@ -215,6 +215,48 @@ class DatabaseAdmin:
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
         )
+
+    def get_subjects_status_table(self):
+        metadata = MetaData()
+        table = Table(
+            "subjects_status",
+            metadata,
+            Column("institution_id", Integer, primary_key=True),
+            Column("subject_id", Integer, primary_key=True),
+            Column("status", String(1), nullable=False)
+        )
+        return table
+    
+    def insert_subject_analysis_status(self, institution_id: int, subject_id: int, status: str):
+        engine = self.get_connector()
+        table = self.get_subjects_status_table()
+        
+        stmt = pg_insert(table).values(
+            institution_id=institution_id,
+            subject_id=subject_id,
+            status=status
+        ).on_conflict_do_update(
+            constraint="subjects_status_pkey",
+            set_={"status": status}
+        )
+
+        with engine.begin() as conn:
+            conn.execute(stmt)
+
+    def update_subject_analysis_status(self, institution_id: int, subject_id: int, status: str):
+        """Atualiza explicitamente o status"""
+        table = self.get_subjects_status_table()
+        with self.get_connector().begin() as conn:
+            conn.execute(
+                table.update()
+                .where(
+                    and_(
+                        table.c.institution_id == institution_id,
+                        table.c.subject_id == subject_id
+                    )
+                )
+                .values(status=status)
+            )
 
 
 db = SQLAlchemy()

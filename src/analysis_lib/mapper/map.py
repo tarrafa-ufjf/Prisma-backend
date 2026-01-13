@@ -131,3 +131,11 @@ class Mapper:
     def fetch_student_grades(self, subject_id, student_id, connector, version):
         moodle = self.get_moodle(connector, version)
         return moodle.fetch_student_grades(subject_id, student_id)
+    
+    def fetch_subjects_summary(self, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_subjects_summary(connector)
+    
+    def fetch_institution_info(self, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_institution_info(connector)

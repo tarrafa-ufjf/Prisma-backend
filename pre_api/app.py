@@ -7,17 +7,23 @@ from pre_api.services.build_subject_students_engagement import build_subject_stu
 from pre_api.services.build_subject_students_motivation import build_subject_students_motivation
 from pre_api.services.build_subject_students_performance import build_subject_students_performance
 from pre_api.services.build_subject_students_cognitive import build_subject_students_cognitive
+from pre_api.services.build_subject_students_pedagogic import build_subject_students_pedagogic
 from pre_api.services.build_subject_students_give_up import build_subject_students_give_up
 from pre_api.services.student.build_subject_student_summary import build_subject_student_summary
 from pre_api.services.student.build_subject_student_grades import build_subject_student_grades
 from pre_api.services.student.build_subject_student_engagement import build_subject_student_engagement
 from pre_api.services.student.build_subject_student_motivation import build_subject_student_motivation
 from pre_api.services.student.build_subject_student_performance import build_subject_student_performance
+from pre_api.services.student.build_subject_student_pedagogic import build_subject_student_pedagogic
 from pre_api.services.student.build_subject_student_cognitive import build_subject_student_cognitive
 from pre_api.services.student.build_subject_student_give_up import build_subject_student_give_up
 from pre_api.services.student.build_subject_student_indicators import build_subject_student_indicators
+from pre_api.services.build_general_subjects_indicators import build_general_subjects_indicators
 from pre_api.services.build_all_subjects import build_all_subjects
 from pre_api.services.build_subject_indicators import build_subject_indicators
+from pre_api.services.build_general_indicators import build_general_indicators
+from pre_api.services.build_general_summary import build_general_summary 
+from pre_api.services.build_general_rankings import build_general_rankings
 from processor import Processor
 from flasgger import Swagger
 import json
@@ -150,6 +156,16 @@ def subject_students_cognitive(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
+@app.route("/analysis/subject/<int:id>/students/pedagogic", methods=["GET"])
+def subject_students_pedagogic(id):
+    try:
+        data = build_subject_students_pedagogic(id)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
 @app.route("/analysis/subject/<int:id>/students/give_up", methods=["GET"])
 def subject_students_give_up(id):
     try:
@@ -221,6 +237,16 @@ def subject_student_cognitive(subject_id, student_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/pedagogic", methods=["GET"])
+def subject_student_pedagogic(subject_id, student_id):
+    try:
+        data = build_subject_student_pedagogic(subject_id, student_id)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
 @app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/give_up", methods=["GET"])
 def subject_student_give_up(subject_id, student_id):
     try:
@@ -237,6 +263,58 @@ def subject_student_indicators(subject_id, student_id):
         data = build_subject_student_indicators(subject_id, student_id)
         if not data:
             return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/general/subjects/indicators", methods=["GET"])
+def general_subjects_indicators():
+    try:
+        data = build_general_subjects_indicators()
+        if not data:
+            return jsonify({"data": {}, "error": f"error /analysis/general/subjects/indicators"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/general/indicators", methods=["GET"])
+def general_indicators():
+    try:
+        data = build_general_indicators()
+        if not data:
+            return jsonify({"data": {}, "error": f"error /analysis/general/indicators"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/general/summary", methods=["GET"])
+def general_summary():
+    try:
+        data = build_general_summary()
+        if not data:
+            return jsonify({"data": {}, "error": f"error /analysis/general/summary"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/general/rankings", methods=["GET"])
+def general_rankings():
+    kind = request.args.get("type", "best-performance")
+    limit_str = request.args.get("limit", "5")
+
+    if kind not in ("best-performance", "at-risk"):
+        return jsonify({"error": "invalid 'type'. Use 'best-performance' or 'at-risk'"}), 400
+
+    try:
+        limit = int(limit_str)
+    except ValueError:
+        limit = 5
+    limit = max(1, min(limit, 100))  
+
+    try:
+        data = build_general_rankings(kind, limit)
+        if not data:
+            return jsonify({"data": {}, "error": f"error /analysis/general/rankings"}), 404
         return jsonify({"data": data}), 200
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
@@ -463,7 +541,6 @@ def courseGraphs(id):
     except ValueError:
         return jsonify({"error": "id must be a number"}), 400
 
-
 @app.route("/analysis/percentual/<id>", methods=["GET"])
 def coursePercentual(id):
     """
@@ -517,7 +594,6 @@ def coursePercentual(id):
             return jsonify({"error": "error to decode json"}), 500
     except ValueError:
         return jsonify({"error": "id must be a number"}), 400
-
 
 @app.route("/analysis/ranking/<id>", methods=["GET"])
 def classRanking(id):
@@ -578,7 +654,27 @@ def classRanking(id):
                         },
                         {
                             "final_grade": 0.0,
-                            "name": "CAMILA MIRANDA",
+                            "name": "CAMILA MIRANDA",@app.route("/analysis/subject/<int:id>/rankings", methods=["GET"])
+def subject_rankings(id):
+    kind = request.args.get("type", "best-performance")
+    limit_str = request.args.get("limit", "5")
+
+    if kind not in ("best-performance", "at-risk"):
+        return jsonify({"error": "invalid 'type'. Use 'best-performance' or 'at-risk'"}), 400
+
+    try:
+        limit = int(limit_str)
+    except ValueError:
+        limit = 5
+    limit = max(1, min(limit, 100))  
+
+    try:
+        data = build_subject_rankings(id, kind, limit)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 
                             "percentual": 0.0,
                             "pos": 2,
                             "user_id": 861
@@ -643,25 +739,9 @@ def classRanking(id):
     except ValueError:
         return jsonify({"error": "id must be a number"}), 400
     
-
-@app.route("/analysis/<indicator>", methods=["GET"])
-def indicatorAnalysis(indicator):
-    indicator = indicator.lower()
-    processor = Processor(user=1)
-
-    global indicator_index_translate
-    if indicator not in indicator_index_translate:
-        return jsonify({"error": "indicador inválido"}), 400
-
-    # try: 
-    response = processor.handle_analysis(indicator, 'get_all_'+indicator+'_global', request, indicator_index=indicator_index_translate[indicator])
-    return jsonify(response), 200
-    # except Exception as error:
-    #     return jsonify({"error": f"erro interno: {str(error)}"}), 500
-
 @app.route("/analysis", methods=["PUT"])
 def analysis():
-    global indicators
+    # global indicators
     db_inst_config = request.get_json()
     processor = Processor(user=1)
     version = processor.get_version(institution_id=1, db_config=db_inst_config)
@@ -671,7 +751,7 @@ def analysis():
     except Exception as e:
         print(f"Erro ao inserir versão na base de dados: {e}")
 
-    processor.set_global_analysis(indicators, db_config=db_inst_config)
+    processor.set_subjects_analysis(db_config=db_inst_config)
 
     result = {"message": "Análises iniciadas com sucesso",
               "version": version}

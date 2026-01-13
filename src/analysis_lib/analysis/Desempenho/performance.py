@@ -16,7 +16,7 @@ class Performance(Indicator):
         ]
 
     def student_analysis(self, subject_id, student_id, version, connector):
-        df_course = self.course_analysis(subject_id, version, connector)
+        df_course = self.subject_analysis(subject_id, version, connector)
 
         df_course["user_id"] = pd.to_numeric(df_course["user_id"], errors="coerce")
         sid = pd.to_numeric(student_id, errors="coerce")
@@ -29,13 +29,14 @@ class Performance(Indicator):
         row = row.where(pd.notna(row), None).to_dict()
         return row
     
-    def course_analysis(self, subject_id, version, connector, returnOnlyStudentStatus = False):
+    def subject_analysis(self, subject_id, version, connector, returnOnlyStudentStatus = False):
         df_grades = self.mapper.get_grades_by_course(connector, subject_id, version)
         df_pesos = self.mapper.get_activity_weights(connector, subject_id, version)
         
         df_alunos = self.mapper.get_all_students(connector, subject_id, version)
         df_alunos["subject_id"] = subject_id
         df_alunos_full_name = df_alunos[["user_id","subject_id"]].copy()
+        
         if "full_name" in df_alunos.columns:
             df_alunos_full_name["full_name"] = df_alunos["full_name"]
         else:
@@ -86,7 +87,7 @@ class Performance(Indicator):
         df_final = df_final.merge(notas_finais[['user_id','situacao']], on=['user_id'], how='left')
         df_final.rename(columns={'situacao': 'situation'}, inplace=True)
 
-        df_final = df_final[["subject_id","user_id","situation","media_percentual","performance_label"]]
+        df_final = df_final[["subject_id", "user_id", "full_name", "situation", "media_percentual", "performance_label"]]
 
         turma_mean = float(df_final['media_percentual'].mean(skipna=True))
         turma_std  = float(df_final['media_percentual'].std(ddof=1, skipna=True))
@@ -96,7 +97,7 @@ class Performance(Indicator):
             0.0
         ).round(2)
 
-        col_order = ["subject_id","user_id","situation","media_percentual","performance_label", "comparative"]
+        col_order = ["subject_id","user_id","full_name", "situation","media_percentual","performance_label", "comparative"]
         col_order = [c for c in col_order if c in df_final.columns]
         df_final = df_final[col_order].copy()
 
@@ -188,82 +189,9 @@ class Performance(Indicator):
 
         return df_norm[["user_id", "subject_id", "performance"]]
     
-    def general_analysis(self, version, connector, analysis_config):
-        batch_size = analysis_config.get("batch_size")
-        processed = analysis_config.get("processed", 0)
-        engine = self.get_connector()
-
-        # Se total ainda não foi definido, calcular (baseado no banco fonte)
-        if analysis_config["total"] == 0:
-            df_courses = self.mapper.get_courses(connector, version)  
-            df_courses = pd.DataFrame(df_courses, columns=['subject_id'])
-            analysis_config["total"] = len(df_courses)
-
-        total = analysis_config["total"]
-
-        # Lista para acumular resultados
-        results = []
-
-        # Processar cursos a partir do ponto onde parou
-        for i in range(processed + 1, total + 1):
-            result = self.course_analysis(i, version, connector, returnOnlyStudentStatus=False)
-            result = result.drop_duplicates(subset=['user_id'], keep='first')
-            result.rename(columns={'performance_label': 'label'}, inplace=True)
-            result.rename(columns={'media_percentual': 'grade'}, inplace=True)
-
-            result = result[["subject_id", "user_id", "grade", "label", "situation", "comparative"]]
-            if not result.empty:
-                result["subject_id"] = i
-                results.append(result)
-
-            analysis_config["processed"] += 1
-
-            self.print_load("Desempenho", analysis_config["processed"], total, 6)
-
-            # Quando atingir batch_size, salvar e retornar
-            if analysis_config["processed"] % batch_size == 0 and results:
-                df = pd.concat(results, ignore_index=True)
-                df["institution_id"] = 1 
-                df_counts = (
-                    df.groupby(["institution_id", "subject_id", "label"])
-                    .size()
-                    .unstack(fill_value=0)
-                    .reset_index()
-                )
-
-                labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
-                for lbl in labels:
-                    if lbl not in df_counts.columns:
-                        df_counts[lbl] = 0
-
-                df_counts.to_sql("performance_global", engine, if_exists="append", index=False)
-
-                return analysis_config
-
-        # Se terminar todos os cursos (salva o que restou)
-        if results:
-            df = pd.concat(results, ignore_index=True)
-            df["institution_id"] = 1 
-
-            df_counts = (
-                df.groupby(["institution_id", "subject_id", "performance"])
-                .size()
-                .unstack(fill_value=0)
-                .reset_index()
-            )
-
-            labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
-            for lbl in labels:
-                if lbl not in df_counts.columns:
-                    df_counts[lbl] = 0
-
-            df_counts.to_sql("performance_global", engine, if_exists="append", index=False)
-
-        return analysis_config
-    
     def status_students_analysis(self, version, connector, subject_id=None):
         rows = []
-        df = self.course_analysis(subject_id, version, connector,  returnOnlyStudentStatus = True)
+        df = self.subject_analysis(subject_id, version, connector,  returnOnlyStudentStatus = True)
 
         s = df["situacao"].astype(str)
         status = np.where(
@@ -283,4 +211,4 @@ class Performance(Indicator):
         return pd.DataFrame(rows, columns=["subject_id", "Aprovado", "Reprovado", "RI"])
     
     def grades_students_analysis(self, version, connector, subject_id=None):
-        return self.course_analysis(subject_id, version, connector, returnOnlyStudentStatus=True)
+        return self.subject_analysis(subject_id, version, connector, returnOnlyStudentStatus=True)

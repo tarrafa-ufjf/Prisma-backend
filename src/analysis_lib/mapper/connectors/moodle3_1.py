@@ -743,7 +743,7 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df   
     
-    def fetch_responses_forums(self, connector, subject_id):
+    def fetch_responses_forums(self, connector, subject_id, start_at, end_at):
         conn = self.connector
         with conn.cursor() as cur:
             cur.execute('''
@@ -764,16 +764,16 @@ class Moodle31(Moodle):
                 FROM
                     (
                     SELECT u.id AS tutor_id,
-                            CONCAT_WS(' ', u.firstname, u.lastname) AS tutor_completo
+                        CONCAT_WS(' ', u.firstname, u.lastname) AS tutor_completo
                     FROM mdl_user u
                     JOIN mdl_role_assignments ra ON ra.userid = u.id
                     JOIN mdl_role r ON r.id = ra.roleid
                     JOIN mdl_context c ON c.id = ra.contextid
                     WHERE r.id IN (3,4,9,17)
-                        AND c.contextlevel = 50
-                        AND c.instanceid = %s
+                    AND c.contextlevel = 50
+                    AND c.instanceid = %s
                     ) AS t
-                LEFT JOIN
+                JOIN
                     (
                     SELECT 
                         p.id AS resposta_id,
@@ -794,56 +794,69 @@ class Moodle31(Moodle):
                     JOIN mdl_forum_posts parent ON parent.id = p.parent
                     JOIN mdl_user u2 ON u2.id = parent.userid
                     WHERE f.course = %s
-                        AND EXISTS (
-                            SELECT 1
-                            FROM mdl_role_assignments ra
-                            JOIN mdl_role r ON r.id = ra.roleid
-                            JOIN mdl_context c ON c.id = ra.contextid
-                            WHERE ra.userid = p.userid
+                    AND p.created >= UNIX_TIMESTAMP(%s)
+                    AND p.created <  UNIX_TIMESTAMP(DATE_ADD(%s, INTERVAL 1 DAY))
+
+                    AND EXISTS (
+                        SELECT 1
+                        FROM mdl_role_assignments ra
+                        JOIN mdl_role r ON r.id = ra.roleid
+                        JOIN mdl_context c ON c.id = ra.contextid
+                        WHERE ra.userid = p.userid
                             AND r.id IN (3,4,9,17)
                             AND c.contextlevel = 50
                             AND c.instanceid = f.course
-                        )
-                        AND EXISTS (
-                            SELECT 1
-                            FROM mdl_role_assignments ra2
-                            JOIN mdl_role r2 ON r2.id = ra2.roleid
-                            JOIN mdl_context c2 ON c2.id = ra2.contextid
-                            WHERE ra2.userid = parent.userid
+                    )
+                    AND EXISTS (
+                        SELECT 1
+                        FROM mdl_role_assignments ra2
+                        JOIN mdl_role r2 ON r2.id = ra2.roleid
+                        JOIN mdl_context c2 ON c2.id = ra2.contextid
+                        WHERE ra2.userid = parent.userid
                             AND r2.id IN (5)
                             AND c2.contextlevel = 50
                             AND c2.instanceid = f.course
-                        )
+                    )
                     ) AS r
                 ON t.tutor_id = r.autor_resposta_id
                 ORDER BY r.discussion_id, r.resposta_enviada_em;
-            ''', (subject_id, subject_id,))
+            ''', (subject_id, subject_id, start_at, end_at))
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
-        df = pd.DataFrame(rows, columns=cols)
-        return df
+        return pd.DataFrame(rows, columns=cols)
     
-    def fetch_tutors_login_subject(self, connector, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
-            cur.execute('''
+    def fetch_tutors_login_subject(self, connector, subject_id: int, start_date, end_date):
+        with connector.cursor() as cur:
+            cur.execute(
+                """
                 SELECT 
-                    ra.userid AS tutor_id,
+                    l.userid AS tutor_id,
                     FROM_UNIXTIME(l.timecreated) AS data_acesso_curso
-                FROM mdl_role_assignments ra
-                JOIN mdl_context ctx ON ctx.id = ra.contextid
-                JOIN mdl_course c ON c.id = ctx.instanceid
-                JOIN mdl_role r ON r.id = ra.roleid
-                LEFT JOIN mdl_logstore_standard_log l ON l.userid = ra.userid 
-                    AND l.action = 'viewed' AND l.target = 'course'
-                    AND l.component = 'core' AND l.courseid = c.id
-                WHERE c.id = %s AND r.id IN (3, 4, 9, 17)
-                ORDER BY ra.userid, l.timecreated;
-            ''', (subject_id, ))
+                FROM mdl_logstore_standard_log l
+                JOIN mdl_role_assignments ra 
+                    ON ra.userid = l.userid
+                JOIN mdl_context ctx 
+                    ON ctx.id = ra.contextid
+                JOIN mdl_course c 
+                    ON c.id = ctx.instanceid
+                JOIN mdl_role r 
+                    ON r.id = ra.roleid
+                WHERE
+                    c.id = %s
+                    AND r.id IN (3, 4, 9, 17)
+                    AND l.action = 'viewed'
+                    AND l.target = 'course'
+                    AND l.component = 'core'
+                    AND l.courseid = c.id
+                    AND l.timecreated >= UNIX_TIMESTAMP(%s)
+                    AND l.timecreated <  UNIX_TIMESTAMP(DATE_ADD(%s, INTERVAL 1 DAY))
+                ORDER BY l.userid, l.timecreated
+                """,
+                (subject_id, start_date, end_date),
+            )
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
-        df = pd.DataFrame(rows, columns=cols)
-        return df
+        return pd.DataFrame(rows, columns=cols)
 
     def fetch_daily_events(self, connector, subject_id):
         conn = self.connector

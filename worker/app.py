@@ -1,10 +1,12 @@
 from database import Database, DatabaseAdmin
 from rabbit import RabbitMQAdmin
 from src.analysis_lib.analysis.analyzer import Analyzer
+from src.analysis_lib.mapper.map import Mapper
 import json
 import pandas as pd
 from sqlalchemy import text
 import numpy as np
+import math
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -44,6 +46,7 @@ class Worker:
         self.rabbit_admin = rabbit_admin
         self.db_admin = DatabaseAdmin()
         self.analyzer = Analyzer()
+        self.mapper = Mapper()
 
     def subject_analysis(self, message):
         body = message["body"]
@@ -184,25 +187,102 @@ class Worker:
         
         return subject_df
     
-    def tutors_subject_analysis(self, subject_id, version, connector, engine):
-        response_foruns = self.analyzer.response_foruns(subject_id, "subject", version, connector)
-        analysis_login_df, start_at, end_at = self.analyzer.analysis_login(subject_id, "subject", version, connector)
+    def _best_block_dynamic_window(self, df_daily_events, gap_days: int = 21, pct_of_peak: float = 0.02, floor_min: int = 10,):
+            """
+            - A ideia é ignorar "cauda longa" (acessos anos depois).
+            - 1) Agrega logs por dia (df_daily_events já vem assim).
+            - 2) Calcula pico_diario = max(events).
+            - 3) Define "dia ativo" como: events_dia >= max(floor_min, ceil(pct_of_peak * pico_diario))
+                * O pct escala com o tamanho da turma/curso
+                * O floor evita que cursos pequenos considerem 1-2 eventos como "dia ativo"
+            - 4) Considera apenas dias ativos e agrupa em blocos permitindo gaps <= gap_days.
+            - 5) Escolhe o bloco com maior soma de eventos (bloco "principal" do curso).
+            """
+            if df_daily_events is None or df_daily_events.empty:
+                return None, None
+            
+            daily = df_daily_events.copy()
 
-        if response_foruns is None or response_foruns.empty:
+            if "day" not in daily.columns or "events" not in daily.columns:
+                return None, None
+
+            daily["day"] = pd.to_datetime(daily["day"], errors="coerce").dt.normalize()
+            daily["events"] = pd.to_numeric(daily["events"], errors="coerce").fillna(0).astype(int)
+            daily = daily.dropna(subset=["day"]).sort_values("day").reset_index(drop=True)
+
+            if daily.empty or daily["events"].sum() <= 0:
+                return None, None
+
+            peak_daily = int(daily["events"].max())
+            active_min_dynamic = max(floor_min, int(math.ceil(pct_of_peak * peak_daily)))
+
+            active_days = daily[daily["events"] >= active_min_dynamic].copy()
+            if active_days.empty:
+                pos = daily[daily["events"] > 0] # se nada bater o active_min, devolve janela total (dias com evento > 0)
+                if pos.empty:
+                    return None, None
+                return pos["day"].iloc[0], pos["day"].iloc[-1]
+
+            active_days = active_days.sort_values("day").reset_index(drop=True)
+
+            # Quebra em blocos quando gap > gap_days
+            active_days["prev_day"] = active_days["day"].shift(1)
+            active_days["gap"] = (active_days["day"] - active_days["prev_day"]).dt.days
+            active_days["new_block"] = active_days["gap"].isna() | (active_days["gap"] > gap_days)
+            active_days["block_id"] = active_days["new_block"].cumsum()
+
+            agg = active_days.groupby("block_id").agg(
+                start_day=("day", "min"),
+                end_day=("day", "max"),
+                events_sum=("events", "sum"),
+                days=("day", "count"),
+            ).reset_index()
+
+            best = agg.sort_values(["events_sum", "days"], ascending=[False, False]).iloc[0]
+
+            start_at = best["start_day"]
+            end_at = best["end_day"]
+                    
+            return start_at, end_at
+    
+    def tutors_subject_analysis(self, subject_id, version, connector, engine):       
+        df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
+        start_at, end_at = self._best_block_dynamic_window(df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)
+        
+        response_foruns = self.analyzer.response_foruns(subject_id, "subject", version, connector, start_at, end_at)
+        analysis_login_df = self.analyzer.analysis_login(subject_id, "subject", version, connector, start_at, end_at)
+
+        if (response_foruns is None or response_foruns.empty) and (analysis_login_df is None or analysis_login_df.empty):
             return None
 
-        df = response_foruns.copy()
+        tutor_ids = []
+
+        if response_foruns is not None and not response_foruns.empty:
+            tutor_ids.extend(response_foruns["tutor_id"].dropna().astype(int).tolist())
+
+        if analysis_login_df is not None and not analysis_login_df.empty:
+            tutor_ids.extend(analysis_login_df["tutor_id"].dropna().astype(int).tolist())
+
+        tutor_ids = sorted(set(tutor_ids))
+
+        df = pd.DataFrame({"tutor_id": tutor_ids})
         df["institution_id"] = 1
         df["subject_id"] = subject_id
         df["version"] = version
 
-        # merge com login DF (se tiver)
+        if response_foruns is not None and not response_foruns.empty:
+            df = df.merge(
+                response_foruns,
+                on="tutor_id",
+                how="left",
+            )
+
         if analysis_login_df is not None and not analysis_login_df.empty:
             df = df.merge(
                 analysis_login_df[["tutor_id", "n_login", "label_access", "mean_weekly_course_views_window"]],
                 on="tutor_id",
                 how="left",
-                validate="m:1",
+                validate="1:1",
             )
 
         desired_cols = [

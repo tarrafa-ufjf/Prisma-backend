@@ -81,14 +81,14 @@ if __name__ == "__main__":
     create_table("subjects_status", columns_subjects_status, primary_key=primary_keys)
     
     
-    columns_subjects_tutors = {
-        "institution_id": Integer,
-        "subject_id": Integer,
-        "tutor_id": Integer,
-    }
+    # columns_subjects_tutors = {
+    #     "institution_id": Integer,
+    #     "subject_id": Integer,
+    #     "tutor_id": Integer,
+    # }
 
-    primary_keys = ["institution_id", "subject_id", "tutor_id"]
-    create_table("subjects_tutors", columns_subjects_tutors, primary_key=primary_keys)
+    # primary_keys = ["institution_id", "subject_id", "tutor_id"]
+    # create_table("subjects_tutors", columns_subjects_tutors, primary_key=primary_keys)
 
     columns_gl_local_students = {
         "institution_id": Integer,

@@ -136,6 +136,20 @@ class Analyzer:
 
         return res
     
+    def tutors_indicators_analysis(self, subject_id, type_query, version, connector):
+        from .Actors.Tutor.Subject.Indicators_Percentual.indicators_percentual import Indicators_Percentual
+        indicators_percentual = Indicators_Percentual(self.mapper)
+        res = None
+
+        if type_query == 'user':
+            pass
+        elif type_query == 'subject': 
+            res = indicators_percentual.subject_analysis(subject_id)
+            print(res)
+
+        return res
+    
+    
     # def info_graphs_analysis(self, subject_id, type_query, version, connector):
     #     from .Actors.Student.Subject.Info_Graphs.info_graphs import Info_Graphs
     #     info_graphs = Info_Graphs(self.mapper)

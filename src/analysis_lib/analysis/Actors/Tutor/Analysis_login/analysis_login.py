@@ -62,8 +62,7 @@ class Analysis_login(Indicator):
 
     def subject_analysis(self, subject_id, version, connector, start_at, end_at):
         if start_at is None or end_at is None:
-            empty = pd.DataFrame(columns=["tutor_id","n_login","label_access","mean_weekly_course_views_window"])
-            return empty, None, None
+            return pd.DataFrame(columns=["tutor_id","n_login","label_access","mean_weekly_course_views_window"])
 
         start_date = pd.to_datetime(start_at).date()
         end_date = pd.to_datetime(end_at).date()

@@ -46,13 +46,7 @@ class Rankings(Indicator):
         # rank dentro da disciplina
         out["rank_in_subject"] = (out.groupby(group_cols)["ranking_score"].rank(method="dense", ascending=False).astype(int))
 
-        cols = [
-            "institution_id", "version", "subject_id", "tutor_id",
-            "rank_in_subject", "ranking_score",
-            "login_norm", "forum_quality_norm", "volume_norm",
-            "mean_weekly_course_views_window", "score", "total_respostas_forum",
-            "label_access", "label_forums_response",
-        ]
+        cols = ["institution_id", "version", "subject_id", "tutor_id", "rank_in_subject", "ranking_score"]
         for c in cols:
             if c not in out.columns:
                 out[c] = pd.NA
@@ -99,11 +93,14 @@ class Rankings(Indicator):
         df = pd.DataFrame(rows)
 
         ranked = self.build_tutors_ranking(df)
-
+        df_names = self.mapper.fetch_tutors_names(connector, version, subject_id)
+        
+        ranked_out = ranked.merge(df_names, on="tutor_id", how="left")
+        
         if kind == "best-performance":
-            return ranked.head(limit)
+            return ranked_out[["subject_id", "tutor_id", "full_name"]].head(limit)
 
         if kind == "at-risk":
-            return ranked.sort_values("ranking_score", ascending=True).head(limit)
+            return ranked_out[["subject_id", "tutor_id", "full_name"]].sort_values("ranking_score", ascending=True).head(limit)
 
-        return ranked.head(limit)
+        return ranked_out.head(limit)

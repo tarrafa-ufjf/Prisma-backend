@@ -27,7 +27,7 @@ from pre_api.services.student.general.build_general_summary import build_general
 from pre_api.services.student.general.build_general_rankings import build_general_rankings
 
 from pre_api.services.tutors.subject.build_tutors_subject_summary import build_tutors_subject_summary
-# from pre_api.services.tutors.subject.build_tutors_subject_info_graphs import build_tutors_subject_info_graphs
+from pre_api.services.tutors.subject.build_tutors_subject_interaction_channels import build_tutors_subject_interaction_channels
 from pre_api.services.tutors.subject.build_tutors_subject_rankings import build_tutors_subject_rankings
 from pre_api.services.tutors.subject.build_tutors_subject_indicators import build_tutors_subject_indicators
 
@@ -353,15 +353,18 @@ def tutors_subject_indicators(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-# @app.route("/analysis/subject/<int:id>/info_graphs", methods=["GET"])
-# def subject_info_graphs(id):
-#     try:
-#         data = build_subject_info_graphs(id)
-#         if not data:
-#             return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
-#         return jsonify({"data": data}), 200
-#     except Exception as e:
-#         return jsonify({"error": f"internal error: {e}"}), 500
+@app.route("/analysis/tutors/subject/<int:id>/interaction_channels", methods=["GET"])
+def subject_tutors_subject_interaction_channels(id):
+    try:
+        df = build_tutors_subject_interaction_channels(id)
+
+        if df is None:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+        payload = df.where(pd.notna(df), None).to_dict(orient="records")
+
+        return jsonify({"data": payload}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
         
 @app.route("/analysis/tutors/subject/<int:id>/rankings", methods=["GET"])
 def tutors_subject_rankings(id):

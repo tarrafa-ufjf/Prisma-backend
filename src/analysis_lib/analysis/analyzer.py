@@ -149,6 +149,17 @@ class Analyzer:
 
         return res
     
+    def tutors_rankings_analysis(self, entity_id: int, scope: str, version, connector, kind: str = "best-performance", limit: int = 10):
+        from .Actors.Tutor.Subject.Rankings.rankings import Rankings  
+        rankings = Rankings(self.mapper)
+
+        if scope == 'user':
+            pass
+        elif scope == 'subject':
+            return rankings.subject_analysis(entity_id, version, connector, kind=kind, limit=limit)
+        else:
+            raise ValueError("invalid scope")
+    
     
     # def info_graphs_analysis(self, subject_id, type_query, version, connector):
     #     from .Actors.Student.Subject.Info_Graphs.info_graphs import Info_Graphs

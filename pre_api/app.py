@@ -28,7 +28,7 @@ from pre_api.services.student.general.build_general_rankings import build_genera
 
 from pre_api.services.tutors.subject.build_tutors_subject_summary import build_tutors_subject_summary
 # from pre_api.services.tutors.subject.build_tutors_subject_info_graphs import build_tutors_subject_info_graphs
-# from pre_api.services.tutors.subject.build_tutors_subject_rankings import build_tutors_subject_rankings
+from pre_api.services.tutors.subject.build_tutors_subject_rankings import build_tutors_subject_rankings
 from pre_api.services.tutors.subject.build_tutors_subject_indicators import build_tutors_subject_indicators
 
 from processor import Processor
@@ -36,6 +36,7 @@ from flasgger import Swagger
 import json
 from dotenv import load_dotenv
 from flask_cors import CORS
+import pandas as pd
 
 app = Flask(__name__)
 CORS(app)
@@ -362,27 +363,36 @@ def tutors_subject_indicators(id):
 #     except Exception as e:
 #         return jsonify({"error": f"internal error: {e}"}), 500
         
-# @app.route("/analysis/subject/<int:id>/rankings", methods=["GET"])
-# def subject_rankings(id):
-#     kind = request.args.get("type", "best-performance")
-#     limit_str = request.args.get("limit", "5")
+@app.route("/analysis/tutors/subject/<int:id>/rankings", methods=["GET"])
+def tutors_subject_rankings(id):
+    kind = request.args.get("type", "best-performance")
+    limit_str = request.args.get("limit", "5")
 
-#     if kind not in ("best-performance", "at-risk"):
-#         return jsonify({"error": "invalid 'type'. Use 'best-performance' or 'at-risk'"}), 400
+    if kind not in ("best-performance", "at-risk"):
+        return jsonify({"error": "invalid 'type'. Use 'best-performance' or 'at-risk'"}), 400
 
-#     try:
-#         limit = int(limit_str)
-#     except ValueError:
-#         limit = 5
-#     limit = max(1, min(limit, 100))  
+    try:
+        limit = int(limit_str)
+    except ValueError:
+        limit = 5
+    limit = max(1, min(limit, 100))  
 
-#     try:
-#         data = build_subject_rankings(id, kind, limit)
-#         if not data:
-#             return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
-#         return jsonify({"data": data}), 200
-#     except Exception as e:
-#         return jsonify({"error": f"internal error: {e}"}), 500
+    try:
+        data = build_tutors_subject_rankings(id, kind, limit)
+
+        if data is None:
+            return jsonify({"id": id, "ranking": [], "type": f"{kind}"}), 404
+
+        if isinstance(data, pd.DataFrame):
+            data = data.to_dict(orient="records")
+
+        if not data:  
+            return jsonify({"id": id, "ranking": [], "type": f"{kind}"}), 404
+
+        return jsonify({"data": data}), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
     
 @app.route("/analysis", methods=["PUT"])
 def analysis():

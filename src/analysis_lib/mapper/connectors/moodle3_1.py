@@ -983,3 +983,25 @@ class Moodle31(Moodle):
 
         df = pd.DataFrame(rows, columns=cols)
         return df
+    
+    def fetch_tutors_names(self, connector, subject_id):
+        conn = self.connector
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT
+                    u.id AS tutor_id,
+                    CONCAT(u.firstname, ' ', u.lastname) AS full_name
+                FROM mdl_context ctx
+                JOIN mdl_role_assignments ra ON ra.contextid = ctx.id
+                JOIN mdl_user u ON u.id = ra.userid
+                WHERE ctx.contextlevel = 50 AND ctx.instanceid = %s
+                ORDER BY full_name
+                """,
+                (subject_id,)
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        return pd.DataFrame(rows, columns=cols)

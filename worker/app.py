@@ -284,6 +284,19 @@ class Worker:
                 how="left",
                 validate="1:1",
             )
+            
+        df["label_forums_response"] = df["label_forums_response"].fillna("sem_resposta")
+
+        for col in [
+            "mean_forums_response_hours",
+            "median_forums_response_hours",
+            "num_response_fast_forum",
+            "num_response_normal_forum",
+            "num_response_late_forum",
+            "score",
+        ]:
+            if col in df.columns:
+                df[col] = df[col].fillna(0)
 
         desired_cols = [
             "institution_id", "version", "subject_id", "tutor_id",

@@ -29,7 +29,7 @@ from pre_api.services.student.general.build_general_rankings import build_genera
 from pre_api.services.tutors.subject.build_tutors_subject_summary import build_tutors_subject_summary
 # from pre_api.services.tutors.subject.build_tutors_subject_info_graphs import build_tutors_subject_info_graphs
 # from pre_api.services.tutors.subject.build_tutors_subject_rankings import build_tutors_subject_rankings
-# from pre_api.services.tutors.subject.build_tutors_subject_indicators import build_tutors_subject_indicators
+from pre_api.services.tutors.subject.build_tutors_subject_indicators import build_tutors_subject_indicators
 
 from processor import Processor
 from flasgger import Swagger
@@ -342,15 +342,15 @@ def tutors_subject_summary(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-# @app.route("/analysis/subject/<int:id>/indicators", methods=["GET"])
-# def subject_indicators(id):
-#     try:
-#         data = build_subject_indicators(id)
-#         if not data:
-#             return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
-#         return jsonify({"data": data}), 200
-#     except Exception as e:
-#         return jsonify({"error": f"internal error: {e}"}), 500
+@app.route("/analysis/tutors/subject/<int:id>/indicators", methods=["GET"])
+def tutors_subject_indicators(id):
+    try:
+        data = build_tutors_subject_indicators(id)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
     
 # @app.route("/analysis/subject/<int:id>/info_graphs", methods=["GET"])
 # def subject_info_graphs(id):

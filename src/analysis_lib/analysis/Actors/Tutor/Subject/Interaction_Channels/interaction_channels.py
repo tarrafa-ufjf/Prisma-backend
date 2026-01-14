@@ -26,7 +26,6 @@ class Interaction_Channels(Indicator):
                     and_(
                         subjects_status.c.institution_id == institution_id,
                         subjects_status.c.subject_id == subject_id,
-                        subjects_status.c.status == "D",
                     )
                 )
                 .limit(1)
@@ -39,17 +38,53 @@ class Interaction_Channels(Indicator):
     def subject_analysis(self, subject_id, version, connector):
         row = self.fetch_subject_window(institution_id=1, subject_id=subject_id)
 
-        if not row or row["start_date"] is None or row["end_date"] is None:
+        if (not row):
             return {
                 "subject": {
-                    "id": subject_id,
-                    "error": "start_date/end_date não definida ainda subjects_status, esperar o processamento"
+                    "id": int(subject_id),
+                    "channels": [],
+                    "message": "start_date/end_date não definida em subjects_status; aguarde o processamento",
                 }
             }
 
+        status = (row.get("status") or "").strip()
         start_date = row["start_date"]
         end_date = row["end_date"]
+
+        if status != "D":
+            return {
+                "subject": {
+                    "id": int(subject_id),
+                    "channels": [],
+                    "message": "ainda em processamento (status != D); aguarde",
+                }
+            }
+
+        if start_date is None or end_date is None:
+            return {
+                "subject": {
+                    "id": int(subject_id),
+                    "channels": [],
+                    "message": "processado (status=D), mas não há janela de fórum definida / sem atividade",
+                }
+            }
+            
+        df = self.mapper.fetch_forum_messages_counts(version, connector, subject_id, start_date, end_date)
         
-        df_forum_messages_counts = self.mapper.fetch_forum_messages_counts(version, connector, subject_id, start_date, end_date)
-        
-        return df_forum_messages_counts
+        if df is None or df.empty:
+            return {
+                "subject": {
+                    "id": int(subject_id),
+                    "channels": [],
+                    "message": "não há mensagens em fóruns no período",
+                }
+        }
+
+        channels = df.where(pd.notna(df), None).to_dict(orient="records")
+
+        return {
+            "subject": {
+                "id": int(subject_id),
+                "channels": channels,
+            }
+        }

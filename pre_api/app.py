@@ -356,13 +356,12 @@ def tutors_subject_indicators(id):
 @app.route("/analysis/tutors/subject/<int:id>/interaction_channels", methods=["GET"])
 def subject_tutors_subject_interaction_channels(id):
     try:
-        df = build_tutors_subject_interaction_channels(id)
+        data = build_tutors_subject_interaction_channels(id) 
 
-        if df is None:
+        if data is None:
             return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
-        payload = df.where(pd.notna(df), None).to_dict(orient="records")
 
-        return jsonify({"data": payload}), 200
+        return jsonify({"data": data}), 200
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
         

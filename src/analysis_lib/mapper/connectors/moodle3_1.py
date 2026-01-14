@@ -1005,3 +1005,76 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
 
         return pd.DataFrame(rows, columns=cols)
+    
+    def fetch_forum_messages_counts(self, connector, subject_id, start_at, end_at):
+        conn = connector
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    f.id   AS forum_id,
+                    f.name AS forum_name,
+
+                    SUM(
+                        CASE WHEN EXISTS (
+                            SELECT 1
+                            FROM mdl_role_assignments ra
+                            JOIN mdl_context c ON c.id = ra.contextid
+                            WHERE c.contextlevel = 50
+                            AND c.instanceid    = %s
+                            AND ra.userid       = p.userid
+                            AND ra.roleid       = 5
+                        ) THEN 1 ELSE 0 END
+                    ) AS mensagens_alunos,
+
+                    SUM(
+                        CASE WHEN EXISTS (
+                            SELECT 1
+                            FROM mdl_role_assignments ra
+                            JOIN mdl_context c ON c.id = ra.contextid
+                            WHERE c.contextlevel = 50
+                            AND c.instanceid    = %s
+                            AND ra.userid       = p.userid
+                            AND ra.roleid       IN (3,4,9,17)
+                        ) THEN 1 ELSE 0 END
+                    ) AS mensagens_tutores,
+                    (
+                        SUM(CASE WHEN EXISTS (
+                            SELECT 1
+                            FROM mdl_role_assignments ra
+                            JOIN mdl_context c ON c.id = ra.contextid
+                            WHERE c.contextlevel = 50
+                            AND c.instanceid    = %s
+                            AND ra.userid       = p.userid
+                            AND ra.roleid       = 5
+                        ) THEN 1 ELSE 0 END)
+                        +
+                        SUM(CASE WHEN EXISTS (
+                            SELECT 1
+                            FROM mdl_role_assignments ra
+                            JOIN mdl_context c ON c.id = ra.contextid
+                            WHERE c.contextlevel = 50
+                            AND c.instanceid    = %s
+                            AND ra.userid       = p.userid
+                            AND ra.roleid       IN (3,4,9,17)
+                        ) THEN 1 ELSE 0 END)
+                    ) AS mensagens_total
+
+                FROM mdl_forum_posts p
+                JOIN mdl_forum_discussions d ON d.id = p.discussion
+                JOIN mdl_forum f            ON f.id = d.forum
+
+                WHERE f.course = %s
+                AND p.created >= UNIX_TIMESTAMP(%s)
+                AND p.created <  UNIX_TIMESTAMP(DATE_ADD(%s, INTERVAL 1 DAY))
+
+                GROUP BY f.id, f.name
+                ORDER BY f.name;
+                """,
+                (subject_id, subject_id, subject_id, subject_id, subject_id, start_at, end_at),
+            )
+
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        return pd.DataFrame(rows, columns=cols)

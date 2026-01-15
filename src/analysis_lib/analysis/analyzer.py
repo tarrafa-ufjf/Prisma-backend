@@ -174,3 +174,6 @@ class Analyzer:
     
     def response_foruns_analysis(self, subject_id, type_query, version, connector, user_id=None, actor="tutor"):
         return self._actor(actor).response_foruns_analysis(subject_id, type_query, version, connector, user_id=user_id)
+    
+    def access_analysis(self, subject_id, type_query, version, connector, user_id=None, actor="tutor"):
+        return self._actor(actor).access_analysis(subject_id, type_query, version, connector, user_id=user_id)

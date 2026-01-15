@@ -30,7 +30,7 @@ from pre_api.services.tutors.subject.build_tutors_subject_summary import build_t
 from pre_api.services.tutors.subject.build_tutors_subject_interaction_channels import build_tutors_subject_interaction_channels
 from pre_api.services.tutors.subject.build_tutors_subject_rankings import build_tutors_subject_rankings
 from pre_api.services.tutors.subject.build_tutors_subject_indicators import build_tutors_subject_indicators
-# from services.tutors.subject.indicators.build_tutors_subject_access import build_tutors_subject_access
+from services.tutors.subject.indicators.build_tutors_subject_access import build_tutors_subject_access
 from services.tutors.subject.indicators.build_tutors_subject_response_forums import build_tutors_subject_response_forums
 
 from processor import Processor
@@ -403,6 +403,18 @@ def tutors_subject_rankings(id):
 def subject_tutors_subject_response_forums(id):
     try:
         data = build_tutors_subject_response_forums(id) 
+
+        if data is None:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/tutors/subject/<int:id>/access", methods=["GET"])
+def subject_tutors_subject_access(id):
+    try:
+        data = build_tutors_subject_access(id) 
 
         if data is None:
             return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404

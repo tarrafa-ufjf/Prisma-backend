@@ -171,3 +171,6 @@ class Analyzer:
             res = interaction_channels.subject_analysis(subject_id, version, connector)
 
         return res
+    
+    def response_foruns_analysis(self, subject_id, type_query, version, connector, user_id=None, actor="tutor"):
+        return self._actor(actor).response_foruns_analysis(subject_id, type_query, version, connector, user_id=user_id)

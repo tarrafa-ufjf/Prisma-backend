@@ -3,7 +3,7 @@ from typing import Any, Dict
 from database import DatabaseAdmin, Database  
 from src.analysis_lib.analysis.analyzer import Analyzer  
 
-def build_subject_tutors_tutor_indicators(subject_id: int, student_id: int):
+def build_tutors_subject_tutor_summary(subject_id: int, student_id: int):
     processor_db = DatabaseAdmin()
     analyzer = Analyzer()
 
@@ -11,7 +11,7 @@ def build_subject_tutors_tutor_indicators(subject_id: int, student_id: int):
     connector = processor_db.get_connection_with_config(db_config)
     try:
         version = analyzer.get_moodle_version(connector)
-        data = analyzer.tutor_indicators_analysis(subject_id, 'user', version, connector, student_id)
+        data = analyzer.get_tutors_subject_tutor_summary(subject_id, student_id, version, connector)
         return data
     finally:
         try:

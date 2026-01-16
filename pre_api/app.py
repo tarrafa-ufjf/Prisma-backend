@@ -32,9 +32,8 @@ from pre_api.services.tutors.subject.build_tutors_subject_rankings import build_
 from pre_api.services.tutors.subject.build_tutors_subject_indicators import build_tutors_subject_indicators
 from services.tutors.subject.indicators.build_tutors_subject_access import build_tutors_subject_access
 from services.tutors.subject.indicators.build_tutors_subject_response_forums import build_tutors_subject_response_forums
-from services.tutors.tutor.build_subject_tutors_tutor_summary import build_subject_tutors_tutor_summary
-from services.tutors.tutor.build_subject_tutors_tutor_indicators import build_subject_tutors_tutor_indicators
-
+from services.tutors.tutor.build_tutors_subject_tutor_summary import build_tutors_subject_tutor_summary
+from services.tutors.tutor.build_tutors_subject_tutor_indicators import build_tutors_subject_tutor_indicators
 
 from processor import Processor
 from flasgger import Swagger
@@ -428,9 +427,9 @@ def subject_tutors_subject_access(id):
     
 ## Página de Tutor na Disciplina
 @app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/summary", methods=["GET"])
-def subject_tutors_tutor_summary(subject_id, tutor_id):
+def subject_tutors_subject__tutor_summary(subject_id, tutor_id):
     try:
-        data = build_subject_tutors_tutor_summary(subject_id, tutor_id)
+        data = build_tutors_subject_tutor_summary(subject_id, tutor_id)
         if not data:
             return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
         return jsonify({"data": data}), 200
@@ -438,9 +437,9 @@ def subject_tutors_tutor_summary(subject_id, tutor_id):
         return jsonify({"error": f"internal error: {e}"}), 500
     
 @app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/indicators", methods=["GET"])
-def subject_tutors_tutor_indicators(subject_id, tutor_id):
+def subject_tutors_subject_tutor_indicators(subject_id, tutor_id):
     try:
-        data = build_subject_tutors_tutor_indicators(subject_id, tutor_id)
+        data = build_tutors_subject_tutor_indicators(subject_id, tutor_id)
         if not data:
             return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
         return jsonify({"data": data}), 200

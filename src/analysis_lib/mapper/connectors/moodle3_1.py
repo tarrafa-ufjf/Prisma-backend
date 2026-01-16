@@ -1135,3 +1135,48 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
 
         return pd.DataFrame(rows, columns=cols)
+    
+    def fetch_institution_info_tutors(self, connector):
+        conn = connector
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    (SELECT COUNT(DISTINCT u.id)
+                        FROM mdl_role r
+                        JOIN mdl_role_assignments ra ON ra.roleid = r.id
+                        JOIN mdl_user u ON u.id = ra.userid
+                        JOIN mdl_context c ON c.id = ra.contextid
+                        WHERE c.contextlevel = 50
+                            AND r.id IN (9,17)) AS total_tutors,
+
+                    (SELECT AVG(num_tutors)
+                        FROM (
+                            SELECT
+                                cc2.id AS degree_program_id,
+                                COUNT(DISTINCT ra.userid) AS num_tutors
+                            FROM mdl_course_categories cc1
+                            JOIN mdl_course_categories cc2 ON cc2.parent = cc1.id
+                            JOIN mdl_course_categories cc3 ON cc3.parent = cc2.id
+                            JOIN mdl_course c ON c.category = cc3.id
+                            LEFT JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+                            LEFT JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.roleid IN (9,17)
+                            GROUP BY cc2.id
+                        ) AS tutor_counts) AS mean_tutors_per_degree_program,
+
+                    (SELECT AVG(t.total_tutors)
+                    FROM (
+                        SELECT 
+                            ctx.instanceid AS course_id,
+                            COUNT(DISTINCT ra.userid) AS total_tutors
+                        FROM mdl_role_assignments ra
+                        JOIN mdl_context ctx ON ctx.id = ra.contextid
+                        WHERE ctx.contextlevel = 50
+                        AND ra.roleid IN (9, 17)
+                        GROUP BY ctx.instanceid
+                    ) AS t) AS mean_tutors_per_subject
+            """)
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        df = pd.DataFrame(rows, columns=cols)
+        return df   

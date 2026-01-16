@@ -38,7 +38,7 @@ from services.tutors.tutor.build_tutors_subject_tutor_access import build_tutors
 from services.tutors.tutor.build_tutors_subject_tutor_response_forums import build_tutors_subject_tutor_response_forums
 from services.tutors.tutor.build_tutors_subject_tutor_graphs import build_tutors_subject_tutor_graphs
 from pre_api.services.tutors.general.build_tutors_general_indicators import build_tutors_general_indicators
-# from pre_api.services.tutors.general.build_tutors_general_summary import build_tutors_general_summary 
+from pre_api.services.tutors.general.build_tutors_general_summary import build_tutors_general_summary 
 # from pre_api.services.tutors.general.build_tutors_general_rankings import build_tutors_general_rankings
 
 
@@ -495,18 +495,18 @@ def tutors_general_indicators():
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-# @app.route("/analysis/general/summary", methods=["GET"])
-# def general_summary():
-#     try:
-#         data = build_general_summary()
-#         if not data:
-#             return jsonify({"data": {}, "error": f"error /analysis/general/summary"}), 404
-#         return jsonify({"data": data}), 200
-#     except Exception as e:
-#         return jsonify({"error": f"internal error: {e}"}), 500
+@app.route("/analysis/tutors/general/summary", methods=["GET"])
+def tutors_general_summary():
+    try:
+        data = build_tutors_general_summary()
+        if not data:
+            return jsonify({"data": {}, "error": f"error /analysis/general/summary"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
     
 # @app.route("/analysis/general/rankings", methods=["GET"])
-# def general_rankings():
+# def tutors_general_rankings():
 #     kind = request.args.get("type", "best-performance")
 #     limit_str = request.args.get("limit", "5")
 

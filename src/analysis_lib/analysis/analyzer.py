@@ -194,3 +194,9 @@ class Analyzer:
 
         general = General_summary(self.mapper)
         return general.general_summary(version, connector)
+    
+    def tutors_rankings_general_analysis(self, version, connector, kind: str = "best-performance", limit: int = 10):
+        from .Actors.Tutor.Subject.Rankings.rankings import Rankings  
+        rankings = Rankings(self.mapper)
+
+        return rankings.general_analysis(version, connector, kind=kind, limit=limit)

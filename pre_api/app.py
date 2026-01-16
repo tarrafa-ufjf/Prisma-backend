@@ -37,6 +37,11 @@ from services.tutors.tutor.build_tutors_subject_tutor_indicators import build_tu
 from services.tutors.tutor.build_tutors_subject_tutor_access import build_tutors_subject_tutor_access
 from services.tutors.tutor.build_tutors_subject_tutor_response_forums import build_tutors_subject_tutor_response_forums
 from services.tutors.tutor.build_tutors_subject_tutor_graphs import build_tutors_subject_tutor_graphs
+from pre_api.services.tutors.general.build_tutors_general_indicators import build_tutors_general_indicators
+# from pre_api.services.tutors.general.build_tutors_general_summary import build_tutors_general_summary 
+# from pre_api.services.tutors.general.build_tutors_general_rankings import build_tutors_general_rankings
+
+
 
 from processor import Processor
 from flasgger import Swagger
@@ -478,6 +483,50 @@ def subject_tutors_subject_tutor_graphs(subject_id, tutor_id):
         return jsonify({"data": data}), 200
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
+    
+# Página Global de Tutores
+@app.route("/analysis/tutors/general/indicators", methods=["GET"])
+def tutors_general_indicators():
+    try:
+        data = build_tutors_general_indicators()
+        if not data:
+            return jsonify({"data": {}, "error": f"error /analysis/general/indicators"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+# @app.route("/analysis/general/summary", methods=["GET"])
+# def general_summary():
+#     try:
+#         data = build_general_summary()
+#         if not data:
+#             return jsonify({"data": {}, "error": f"error /analysis/general/summary"}), 404
+#         return jsonify({"data": data}), 200
+#     except Exception as e:
+#         return jsonify({"error": f"internal error: {e}"}), 500
+    
+# @app.route("/analysis/general/rankings", methods=["GET"])
+# def general_rankings():
+#     kind = request.args.get("type", "best-performance")
+#     limit_str = request.args.get("limit", "5")
+
+#     if kind not in ("best-performance", "at-risk"):
+#         return jsonify({"error": "invalid 'type'. Use 'best-performance' or 'at-risk'"}), 400
+
+#     try:
+#         limit = int(limit_str)
+#     except ValueError:
+#         limit = 5
+#     limit = max(1, min(limit, 100))  
+
+#     try:
+#         data = build_general_rankings(kind, limit)
+#         if not data:
+#             return jsonify({"data": {}, "error": f"error /analysis/general/rankings"}), 404
+#         return jsonify({"data": data}), 200
+#     except Exception as e:
+#         return jsonify({"error": f"internal error: {e}"}), 500
+
 
 @app.route("/analysis", methods=["PUT"])
 def analysis():

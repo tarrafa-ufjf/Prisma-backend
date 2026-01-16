@@ -182,3 +182,9 @@ class Analyzer:
         graph = Graph(self.mapper)
 
         return graph.subject_analysis(subject_id, tutor_id, version, connector)
+    
+    def tutors_general_indicators(self, version, connector):
+        from .Actors.Tutor.General.tutor_general_indicators import General_indicators
+
+        general = General_indicators(self.mapper)
+        return general.general_indicators(version, connector)

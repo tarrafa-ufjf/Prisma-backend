@@ -176,3 +176,9 @@ class Analyzer:
     
     def tutor_indicators_analysis(self, subject_id, type_query, route, version, connector, user_id=None, actor="tutor"):
         return self._actor(actor).indicators_analysis(subject_id, type_query, route, version, connector, user_id=user_id)
+    
+    def get_tutors_subject_tutor_graphs(self, subject_id, tutor_id, version, connector):
+        from .Actors.Tutor.Tutor.Graphs.graph import Graph
+        graph = Graph(self.mapper)
+
+        return graph.subject_analysis(subject_id, tutor_id, version, connector)

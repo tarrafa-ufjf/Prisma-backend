@@ -41,8 +41,11 @@ class Response_Forums(Indicator):
         if route == 'indicators':
             df_access = self.get_label_response(subject_id, tutor_id, version, institution_id)
             return df_access
+        if route == "response_forums":
+            df_access = self.get_response_foruns_metrics(subject_id, version, institution_id, tutor_id)
+            return df_access
         
-    def get_response_foruns_metrics(self, subject_id, version, institution_id: int = 1):
+    def get_response_foruns_metrics(self, subject_id, version, institution_id: int = 1, tutor_id=None):
         engine = self.db_admin.get_connector()
         metadata = MetaData()
         t = Table("local_indicators_tutors", metadata, autoload_with=engine)
@@ -63,13 +66,20 @@ class Response_Forums(Indicator):
                 .where(t.c.institution_id == institution_id)
                 .where(t.c.subject_id == int(subject_id))
             )
+            if tutor_id is not None:
+                query = query.where(t.c.tutor_id == int(tutor_id))
 
             if version is not None and hasattr(t.c, "version"):
                 query = query.where(t.c.version == str(version))
 
-            rows = conn.execute(query).mappings().all()
+            if tutor_id is not None:
+                row = conn.execute(query).mappings().first()
+                if not row:
+                    return None
+                return {k: (None if pd.isna(v) else v) for k, v in row.items()}
 
-        return pd.DataFrame(rows)
+            rows = conn.execute(query).mappings().all()
+            return pd.DataFrame(rows)
 
     def subject_analysis(self, subject_id, version, connector):
         df_response_foruns = self.get_response_foruns_metrics(subject_id, version)

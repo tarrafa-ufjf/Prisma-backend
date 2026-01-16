@@ -136,8 +136,8 @@ class Analyzer:
 
         return res
     
-    def tutors_indicators_analysis(self, subject_id, type_query, version, connector, user_id=None, actor="tutor"):
-        return self._actor(actor).indicators_analysis(subject_id, type_query, version, connector, user_id=user_id)
+    def tutors_indicators_analysis(self, subject_id, type_query, route, version, connector, user_id=None, actor="tutor"):
+        return self._actor(actor).indicators_analysis(subject_id, type_query, route, version, connector, user_id=user_id)
     
     def tutors_rankings_analysis(self, entity_id: int, scope: str, version, connector, kind: str = "best-performance", limit: int = 10):
         from .Actors.Tutor.Subject.Rankings.rankings import Rankings  
@@ -162,8 +162,8 @@ class Analyzer:
 
         return res
     
-    def response_foruns_analysis(self, subject_id, type_query, version, connector, user_id=None, actor="tutor"):
-        return self._actor(actor).response_foruns_analysis(subject_id, type_query, version, connector, user_id=user_id)
+    def response_foruns_analysis(self, subject_id, type_query, route, version, connector, user_id=None, actor="tutor"):
+        return self._actor(actor).response_foruns_analysis(subject_id, type_query, route, version, connector, user_id=user_id)
     
     def access_analysis(self, subject_id, type_query, route, version, connector, user_id=None, actor="tutor"):
         return self._actor(actor).access_analysis(subject_id, type_query, route, version, connector, user_id=user_id)

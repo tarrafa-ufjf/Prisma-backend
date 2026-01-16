@@ -25,26 +25,26 @@ class TutorAnalyzer:
             return forums_response.subject_analysis(subject_id, version, connector, start_at, end_at)
         raise ValueError("invalid type_query")
     
-    def response_foruns_analysis(self, subject_id, type_query, version, connector, user_id=None):
+    def response_foruns_analysis(self, subject_id, type_query, route, version, connector, user_id=None):
         response_foruns = Response_Forums(self.mapper)
         if type_query == "user":
-            return response_foruns.student_analysis(subject_id, user_id, version, connector)
+            return response_foruns.tutors_analysis(subject_id, user_id, version, connector, route)
         if type_query == "subject":
             return response_foruns.subject_analysis(subject_id, version, connector)
         raise ValueError("invalid type_query")
     
-    def access_analysis(self, subject_id, type_query, version, connector, user_id=None):
+    def access_analysis(self, subject_id, type_query, route, version, connector, user_id=None):
         access = Access(self.mapper)
         if type_query == "user":
-            return access.student_analysis(subject_id, user_id, version, connector)
+            return access.tutors_analysis(subject_id, user_id, version, connector, route)
         if type_query == "subject":
             return access.subject_analysis(subject_id, version, connector)
         raise ValueError("invalid type_query")
     
-    def indicators_analysis(self, subject_id, type_query, version, connector, user_id=None):
+    def indicators_analysis(self, subject_id, type_query, route, version, connector, user_id=None):
         if type_query == "user":
-            res = self.response_foruns_analysis(subject_id, "user", version, connector, user_id) or {}
-            access = self.access_analysis(subject_id, "user", version, connector, user_id) or {}
+            res = self.response_foruns_analysis(subject_id, "user", route, version, connector, user_id) or {}
+            access = self.access_analysis(subject_id, "user", route, version, connector, user_id) or {}
 
             return {
                 "subject_id": subject_id,

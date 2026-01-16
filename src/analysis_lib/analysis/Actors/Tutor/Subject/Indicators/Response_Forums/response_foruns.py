@@ -7,8 +7,8 @@ class Response_Forums(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
         self.db_admin = DatabaseAdmin()
-    
-    def student_analysis(self, subject_id, tutor_id, version, connector, institution_id: int = 1):
+        
+    def get_label_response(self, subject_id, tutor_id, version, institution_id):
         engine = self.db_admin.get_connector()
         metadata = MetaData()
         t = Table("local_indicators_tutors", metadata, autoload_with=engine)
@@ -36,6 +36,11 @@ class Response_Forums(Indicator):
 
             row = {k: (None if pd.isna(v) else v) for k, v in row.items()}
             return row
+    
+    def tutors_analysis(self, subject_id, tutor_id, version, connector, route, institution_id: int = 1):
+        if route == 'indicators':
+            df_access = self.get_label_response(subject_id, tutor_id, version, institution_id)
+            return df_access
         
     def get_response_foruns_metrics(self, subject_id, version, institution_id: int = 1):
         engine = self.db_admin.get_connector()

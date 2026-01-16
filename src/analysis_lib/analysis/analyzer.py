@@ -188,3 +188,9 @@ class Analyzer:
 
         general = General_indicators(self.mapper)
         return general.general_indicators(version, connector)
+    
+    def tutors_general_summary(self, version, connector):
+        from .Actors.Tutor.General.tutor_general_summary import General_summary
+
+        general = General_summary(self.mapper)
+        return general.general_summary(version, connector)

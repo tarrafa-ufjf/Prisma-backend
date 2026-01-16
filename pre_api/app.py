@@ -34,6 +34,8 @@ from services.tutors.subject.indicators.build_tutors_subject_access import build
 from services.tutors.subject.indicators.build_tutors_subject_response_forums import build_tutors_subject_response_forums
 from services.tutors.tutor.build_tutors_subject_tutor_summary import build_tutors_subject_tutor_summary
 from services.tutors.tutor.build_tutors_subject_tutor_indicators import build_tutors_subject_tutor_indicators
+from services.tutors.tutor.build_tutors_subject_tutor_access import build_tutors_subject_tutor_access
+
 
 from processor import Processor
 from flasgger import Swagger
@@ -440,6 +442,16 @@ def subject_tutors_subject__tutor_summary(subject_id, tutor_id):
 def subject_tutors_subject_tutor_indicators(subject_id, tutor_id):
     try:
         data = build_tutors_subject_tutor_indicators(subject_id, tutor_id)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/access", methods=["GET"])
+def subject_tutors_subject_tutor_access(subject_id, tutor_id):
+    try:
+        data = build_tutors_subject_tutor_access(subject_id, tutor_id)
         if not data:
             return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
         return jsonify({"data": data}), 200

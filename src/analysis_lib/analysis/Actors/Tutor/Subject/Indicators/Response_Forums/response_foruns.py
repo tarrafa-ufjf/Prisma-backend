@@ -7,10 +7,36 @@ class Response_Forums(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
         self.db_admin = DatabaseAdmin()
+    
+    def student_analysis(self, subject_id, tutor_id, version, connector, institution_id: int = 1):
+        engine = self.db_admin.get_connector()
+        metadata = MetaData()
+        t = Table("local_indicators_tutors", metadata, autoload_with=engine)
 
-    def student_analysis(self, subject_id, student_id, version, connector):
-        return None
 
+        with engine.connect() as conn:
+            query = (
+                select(
+                    t.c.institution_id,
+                    t.c.subject_id,
+                    t.c.tutor_id,
+                    t.c.label_forums_response,
+                )
+                .where(t.c.institution_id == institution_id)
+                .where(t.c.subject_id == int(subject_id))
+                .where(t.c.tutor_id == int(tutor_id))
+            )
+
+            if version is not None and hasattr(t.c, "version"):
+                query = query.where(t.c.version == str(version))
+
+            row = conn.execute(query).mappings().first()
+            if not row:
+                return None
+
+            row = {k: (None if pd.isna(v) else v) for k, v in row.items()}
+            return row
+        
     def get_response_foruns_metrics(self, subject_id, version, institution_id: int = 1):
         engine = self.db_admin.get_connector()
         metadata = MetaData()

@@ -136,18 +136,8 @@ class Analyzer:
 
         return res
     
-    def tutors_indicators_analysis(self, subject_id, type_query, version, connector):
-        from .Actors.Tutor.Subject.Indicators_Percentual.indicators_percentual import Indicators_Percentual
-        indicators_percentual = Indicators_Percentual(self.mapper)
-        res = None
-
-        if type_query == 'user':
-            pass
-        elif type_query == 'subject': 
-            res = indicators_percentual.subject_analysis(subject_id)
-            print(res)
-
-        return res
+    def tutors_indicators_analysis(self, subject_id, type_query, version, connector, user_id=None, actor="tutor"):
+        return self._actor(actor).indicators_analysis(subject_id, type_query, version, connector, user_id=user_id)
     
     def tutors_rankings_analysis(self, entity_id: int, scope: str, version, connector, kind: str = "best-performance", limit: int = 10):
         from .Actors.Tutor.Subject.Rankings.rankings import Rankings  
@@ -183,3 +173,6 @@ class Analyzer:
         tutor_summary = Tutor_Summary(self.mapper)
 
         return tutor_summary.subject_analysis(subject_id, tutor_id, version, connector)
+    
+    def tutor_indicators_analysis(self, subject_id, type_query, version, connector, user_id=None, actor="tutor"):
+        return self._actor(actor).indicators_analysis(subject_id, type_query, version, connector, user_id=user_id)

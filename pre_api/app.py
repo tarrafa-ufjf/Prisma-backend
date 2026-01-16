@@ -33,7 +33,7 @@ from pre_api.services.tutors.subject.build_tutors_subject_indicators import buil
 from services.tutors.subject.indicators.build_tutors_subject_access import build_tutors_subject_access
 from services.tutors.subject.indicators.build_tutors_subject_response_forums import build_tutors_subject_response_forums
 from services.tutors.tutor.build_subject_tutors_tutor_summary import build_subject_tutors_tutor_summary
-
+from services.tutors.tutor.build_subject_tutors_tutor_indicators import build_subject_tutors_tutor_indicators
 
 
 from processor import Processor
@@ -431,6 +431,16 @@ def subject_tutors_subject_access(id):
 def subject_tutors_tutor_summary(subject_id, tutor_id):
     try:
         data = build_subject_tutors_tutor_summary(subject_id, tutor_id)
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+    
+@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/indicators", methods=["GET"])
+def subject_tutors_tutor_indicators(subject_id, tutor_id):
+    try:
+        data = build_subject_tutors_tutor_indicators(subject_id, tutor_id)
         if not data:
             return jsonify({"data": {}, "error": f"there is no subject with id {subject_id}"}), 404
         return jsonify({"data": data}), 200

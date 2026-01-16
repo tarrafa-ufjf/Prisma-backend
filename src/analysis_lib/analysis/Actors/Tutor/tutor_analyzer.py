@@ -40,3 +40,24 @@ class TutorAnalyzer:
         if type_query == "subject":
             return access.subject_analysis(subject_id, version, connector)
         raise ValueError("invalid type_query")
+    
+    def indicators_analysis(self, subject_id, type_query, version, connector, user_id=None):
+        if type_query == "user":
+            res = self.response_foruns_analysis(subject_id, "user", version, connector, user_id) or {}
+            access = self.access_analysis(subject_id, "user", version, connector, user_id) or {}
+
+            return {
+                "subject_id": subject_id,
+                "student_id": user_id,  
+                "indicators": {
+                    "response_foruns": res.get("label_forums_response"),
+                    "access": access.get("label_access"),
+                },
+            }
+
+        if type_query == "subject":
+            from ...Actors.Tutor.Subject.Indicators_Percentual.indicators_percentual import Indicators_Percentual
+            indicators_percentual = Indicators_Percentual(self.mapper)
+            return indicators_percentual.subject_analysis(subject_id)
+        
+        raise ValueError("invalid type_query")

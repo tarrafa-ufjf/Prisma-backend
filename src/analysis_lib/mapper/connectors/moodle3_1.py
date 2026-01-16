@@ -1078,3 +1078,60 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
 
         return pd.DataFrame(rows, columns=cols)
+    
+    def fetch_tutor_summary(self, subject_id, tutor_id):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    u.id AS tutor_id,
+                    CONCAT(u.firstname, ' ', u.lastname) AS full_name,
+                    u.email AS email,
+
+                    cc2.name AS degree_program,
+                    r.name AS role,
+                    g.name AS tutor_group,
+
+                    FROM_UNIXTIME(ula.timeaccess) AS last_access,
+
+                    (
+                        SELECT FROM_UNIXTIME(MIN(ls.timecreated))
+                        FROM mdl_logstore_standard_log ls
+                        JOIN mdl_role_assignments ra2 ON ra2.userid = ls.relateduserid
+                        JOIN mdl_role r2 ON r2.id = ra2.roleid
+                        JOIN mdl_context ctx2 ON ctx2.id = ra2.contextid
+                        WHERE ls.relateduserid = u.id
+                        AND ls.courseid = c.id
+                        AND r2.id IN (9,17)
+                        AND ls.action = 'assigned'
+                    ) AS tutor_since
+
+                FROM mdl_course_categories cc1
+                JOIN mdl_course_categories cc2 ON cc2.parent = cc1.id
+                JOIN mdl_course_categories cc3 ON cc3.parent = cc2.id
+                JOIN mdl_course c ON c.category = cc3.id
+
+                JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+                JOIN mdl_role_assignments ra ON ra.contextid = ctx.id
+                JOIN mdl_role r ON r.id = ra.roleid
+                JOIN mdl_user u ON u.id = ra.userid
+
+                LEFT JOIN mdl_groups_members gm ON gm.userid = u.id
+                LEFT JOIN mdl_groups g ON g.id = gm.groupid AND g.courseid = c.id
+
+                LEFT JOIN mdl_user_lastaccess ula ON ula.userid = u.id AND ula.courseid = c.id
+
+                WHERE u.id = %s
+                AND c.id = %s
+                AND r.id IN (9,17)
+
+                ORDER BY ula.timeaccess DESC
+                LIMIT 1;
+                """,
+                (tutor_id, subject_id),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        return pd.DataFrame(rows, columns=cols)

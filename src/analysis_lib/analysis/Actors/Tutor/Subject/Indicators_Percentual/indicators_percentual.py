@@ -88,7 +88,7 @@ class Indicators_Percentual(Indicator):
         return counts
 
     def _fetch_forums_response_counts(self, subject_id, institution_id: int = 1):
-        expected = {"sem_resposta", "lento", "normal", "rapido"}
+        expected = {"sem_resposta", "baixo", "normal", "alto"}
         return self._fetch_label_counts(
             table_name="local_indicators_tutors",        
             label_column_name="label_forums_response",   

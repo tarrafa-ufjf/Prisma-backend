@@ -116,16 +116,14 @@ class Forums_Response(Indicator):
             if pd.isna(score):
                 return "sem_resposta"
             if score < 2:
-                return "lento"
+                return "baixo"
             if score <= 2.5:
                 return "normal"
-            return "rapido"
+            return "alto"
         
         forum_count["label_forums_response"] = forum_count["score"].apply(label_from_score)
 
         forum_count["score"] = forum_count["score"].fillna(0)
-        
-        forum_count.to_csv("AA.csv")
 
         return forum_count[["tutor_id", "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
                             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum", "score"]]

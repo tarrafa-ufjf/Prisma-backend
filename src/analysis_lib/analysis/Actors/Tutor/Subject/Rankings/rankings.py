@@ -145,8 +145,6 @@ class Rankings(Indicator):
         # 1) calcula ranking por (subject_id, tutor_id)
         ranked = self.build_tutors_ranking(df)  
         
-        ranked.to_csv("teste.csv")
-
         if ranked is None or ranked.empty:
             return {"id": institution_id, "type": kind, "ranking": []}
 

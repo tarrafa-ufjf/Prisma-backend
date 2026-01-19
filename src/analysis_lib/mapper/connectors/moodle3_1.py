@@ -866,12 +866,10 @@ class Moodle31(Moodle):
                     DATE(FROM_UNIXTIME(l.timecreated)) AS day,
                     COUNT(*) AS events
                 FROM mdl_context ctx
-                JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.roleid IN (9,17)
+                JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.roleid IN (3,4,9,17)
                 JOIN mdl_logstore_standard_log l ON l.courseid = ctx.instanceid AND l.userid = ra.userid
-                WHERE ctx.contextlevel = 50
-                AND ctx.instanceid = %s
-                GROUP BY DATE(FROM_UNIXTIME(l.timecreated))
-                ORDER BY day;
+                WHERE ctx.contextlevel = 50 AND ctx.instanceid = %s
+                GROUP BY DATE(FROM_UNIXTIME(l.timecreated));
             ''', (subject_id, ))
 
             rows = cur.fetchall()
@@ -897,7 +895,7 @@ class Moodle31(Moodle):
                         AND l_t.courseid = c_t.instanceid
                         WHERE c_t.contextlevel = 50
                         AND c_t.instanceid = %s
-                        AND ra_t.roleid IN (9,17)
+                        AND ra_t.roleid IN (3,4,9,17)
                         AND FROM_UNIXTIME(l_t.timecreated) >= %s
                         AND FROM_UNIXTIME(l_t.timecreated) <  DATE_ADD(%s, INTERVAL 1 DAY)
                     ) AS total_tutors,
@@ -922,7 +920,7 @@ class Moodle31(Moodle):
                                 AND l_t.courseid = c_t.instanceid
                                 WHERE c_t.contextlevel = 50
                                 AND c_t.instanceid = %s
-                                AND ra_t.roleid IN (9,17)
+                                AND ra_t.roleid IN (3,4,9,17)
                                 AND FROM_UNIXTIME(l_t.timecreated) >= %s
                                 AND FROM_UNIXTIME(l_t.timecreated) <  DATE_ADD(%s, INTERVAL 1 DAY)
                             ),
@@ -958,7 +956,7 @@ class Moodle31(Moodle):
                             ) + 1 AS days_per_tutor
                         FROM mdl_course c
                         JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
-                        JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.roleid IN (9,17)
+                        JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.roleid IN (3,4,9,17)
                         JOIN mdl_logstore_standard_log l ON l.userid = ra.userid AND l.courseid = c.id
                         WHERE c.id = %s
                         AND FROM_UNIXTIME(l.timecreated) >= %s
@@ -1103,7 +1101,7 @@ class Moodle31(Moodle):
                         JOIN mdl_context ctx2 ON ctx2.id = ra2.contextid
                         WHERE ls.relateduserid = u.id
                         AND ls.courseid = c.id
-                        AND r2.id IN (9,17)
+                        AND r2.id IN (3,4,9,17)
                         AND ls.action = 'assigned'
                     ) AS tutor_since
 
@@ -1124,7 +1122,7 @@ class Moodle31(Moodle):
 
                 WHERE u.id = %s
                 AND c.id = %s
-                AND r.id IN (9,17)
+                AND r.id IN (3,4,9,17)
 
                 ORDER BY ula.timeaccess DESC
                 LIMIT 1;
@@ -1147,7 +1145,7 @@ class Moodle31(Moodle):
                         JOIN mdl_user u ON u.id = ra.userid
                         JOIN mdl_context c ON c.id = ra.contextid
                         WHERE c.contextlevel = 50
-                            AND r.id IN (9,17)) AS total_tutors,
+                            AND r.id IN (3,4,9,17)) AS total_tutors,
 
                     (SELECT AVG(num_tutors)
                         FROM (
@@ -1159,7 +1157,7 @@ class Moodle31(Moodle):
                             JOIN mdl_course_categories cc3 ON cc3.parent = cc2.id
                             JOIN mdl_course c ON c.category = cc3.id
                             LEFT JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
-                            LEFT JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.roleid IN (9,17)
+                            LEFT JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.roleid IN (3,4,9,17)
                             GROUP BY cc2.id
                         ) AS tutor_counts) AS mean_tutors_per_degree_program,
 

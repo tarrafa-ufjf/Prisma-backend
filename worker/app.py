@@ -307,12 +307,14 @@ class Worker:
                 validate="1:1",
             )
             
-        df["label_forums_response"] = df["label_forums_response"].fillna("sem_resposta")
+        df["label_forums_response"] = df["label_forums_response"].fillna("Muito baixo")
 
         for col in [
-            "n_login", "n_access_subject", "n_login_weekly", 
-            "mean_forums_response_hours", "median_forums_response_hours",
-            "num_response_fast_forum", "num_response_normal_forum", "num_response_late_forum", "score",
+            "n_login", "n_access_subject", "n_login_weekly",
+            
+            "total_respostas_forum", "median_forums_response_hours", "mean_forums_response_hours", "score",
+            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum",
+            
             "total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
         ]:
             if col in df.columns:
@@ -320,9 +322,13 @@ class Worker:
 
         desired_cols = [
             "institution_id", "version", "subject_id", "tutor_id",
-            "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
-            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum", "score",
+            
+            "total_respostas_forum", "median_forums_response_hours", "mean_forums_response_hours", "score",
+            "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_label",
+            "label_forums_response", "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum",
+            
             "n_login", "n_access_subject", "n_login_weekly", "n_login_label", "n_login_weekly_label", "label_access",
+            
             "total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
             "total_correcoes_label", "correcoes_com_feedback_label", "percentual_feedback_label",
             "feedback_textual_label", "feedback_pdf_label", "label_final_feedback"

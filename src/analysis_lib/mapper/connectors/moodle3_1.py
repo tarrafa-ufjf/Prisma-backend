@@ -773,7 +773,7 @@ class Moodle31(Moodle):
                     AND c.contextlevel = 50
                     AND c.instanceid = %s
                     ) AS t
-                JOIN
+                LEFT JOIN
                     (
                     SELECT 
                         p.id AS resposta_id,

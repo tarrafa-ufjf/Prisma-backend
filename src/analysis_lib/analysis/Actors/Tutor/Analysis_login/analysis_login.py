@@ -98,10 +98,8 @@ class Analysis_login(Indicator):
         start_date = pd.to_datetime(start_at).date()
         end_date = pd.to_datetime(end_at).date()
 
-        print("AS")
-
         df_course_views = self.mapper.fetch_tutors_login_subject(connector, version, subject_id, start_date, end_date)
-        
+
         for col in ["first_login", "last_login", "first_course_access", "last_course_access"]:
             df_course_views[col] = pd.to_datetime(df_course_views[col])
 
@@ -129,11 +127,8 @@ class Analysis_login(Indicator):
             })
 
         df_metrics = pd.DataFrame(metrics)
-        
+                
         df_metrics = self.run_discretization(df_metrics)
-        
-        df_metrics.to_csv(f'aa_{subject_id}.csv')
-
 
         return df_metrics[["tutor_id", "n_login", "n_access_subject", "n_login_weekly", "n_login_label", 
                             "n_login_weekly_label", "label_access"]].copy()

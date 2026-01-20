@@ -252,6 +252,7 @@ class Worker:
         print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
         df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
         start_at, end_at = self._best_block_dynamic_window(df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)
+        print(start_at, " ", end_at)
         print("AAAA")
         response_foruns = self.analyzer.response_foruns(subject_id, "subject", version, connector, start_at, end_at)
         print("1")
@@ -289,7 +290,8 @@ class Worker:
 
         if analysis_login_df is not None and not analysis_login_df.empty:
             df = df.merge(
-                analysis_login_df[["tutor_id", "n_login", "label_access", "mean_weekly_course_views_window"]],
+                analysis_login_df[["tutor_id", "n_login", "n_access_subject", "n_login_weekly", "n_login_label", 
+                                    "n_login_weekly_label", "label_access"]],
                 on="tutor_id",
                 how="left",
                 validate="1:1",
@@ -308,6 +310,7 @@ class Worker:
         df["label_forums_response"] = df["label_forums_response"].fillna("sem_resposta")
 
         for col in [
+            "n_login", "n_access_subject", "n_login_weekly", 
             "mean_forums_response_hours", "median_forums_response_hours",
             "num_response_fast_forum", "num_response_normal_forum", "num_response_late_forum", "score",
             "total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
@@ -319,7 +322,7 @@ class Worker:
             "institution_id", "version", "subject_id", "tutor_id",
             "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum", "score",
-            "n_login", "label_access", "mean_weekly_course_views_window",
+            "n_login", "n_access_subject", "n_login_weekly", "n_login_label", "n_login_weekly_label", "label_access",
             "total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
             "total_correcoes_label", "correcoes_com_feedback_label", "percentual_feedback_label",
             "feedback_textual_label", "feedback_pdf_label", "label_final_feedback"
@@ -576,8 +579,9 @@ class Worker:
 
         global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(
                 mean_score=("score", "mean"),
-                mean_access=("mean_weekly_course_views_window", "mean"),
             )
+        
+        global_subject_df['mean_access'] = 0
 
         # ------------------------------------------------------------------
         # Labels globais ainda não calculados -> NA

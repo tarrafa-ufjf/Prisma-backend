@@ -167,8 +167,11 @@ if __name__ == "__main__":
         "score": Float,
 
         "n_login": Integer,
+        "n_access_subject": Integer,
+        "n_login_weekly": Integer,
+        "n_login_label": String(32),
+        "n_login_weekly_label": String(32),
         "label_access": String(32),
-        "mean_weekly_course_views_window": Float,
         
         "total_correcoes": Integer,
         "correcoes_com_feedback": Integer,

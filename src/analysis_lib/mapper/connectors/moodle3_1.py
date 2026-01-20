@@ -830,29 +830,55 @@ class Moodle31(Moodle):
             cur.execute(
                 """
                 SELECT 
-                    l.userid AS tutor_id,
-                    FROM_UNIXTIME(l.timecreated) AS data_acesso_curso
-                FROM mdl_logstore_standard_log l
-                JOIN mdl_role_assignments ra 
-                    ON ra.userid = l.userid
-                JOIN mdl_context ctx 
-                    ON ctx.id = ra.contextid
-                JOIN mdl_course c 
-                    ON c.id = ctx.instanceid
-                JOIN mdl_role r 
-                    ON r.id = ra.roleid
-                WHERE
-                    c.id = %s
-                    AND r.id IN (3, 4, 9, 17)
-                    AND l.action = 'viewed'
-                    AND l.target = 'course'
+                    u.id AS tutor_id,
+                    u.firstname,
+                    u.lastname,
+                    r.shortname AS papel,
+                    FROM_UNIXTIME(MIN(
+                        CASE WHEN l.action = 'loggedin'
+                            THEN l.timecreated END
+                    )) AS first_login,
+                    FROM_UNIXTIME(MAX(
+                        CASE WHEN l.action = 'loggedin'
+                            THEN l.timecreated END
+                    )) AS last_login,
+                    FROM_UNIXTIME(MIN(
+                        CASE WHEN l.target = 'course' 
+                            AND l.action IN ('viewed','entered')
+                            THEN l.timecreated END
+                    )) AS first_course_access,
+                    FROM_UNIXTIME(MAX(
+                        CASE WHEN l.target = 'course' 
+                            AND l.action IN ('viewed','entered')
+                            THEN l.timecreated END
+                    )) AS last_course_access,
+                    SUM(CASE WHEN l.action = 'loggedin' THEN 1 ELSE 0 END) AS n_login,
+                    SUM(CASE WHEN l.target = 'course' 
+                            AND l.action IN ('viewed','entered')
+                            THEN 1 ELSE 0 END
+                    ) AS n_access_subject
+                FROM mdl_user u
+                JOIN mdl_role_assignments ra ON ra.userid = u.id
+                JOIN mdl_role r ON r.id = ra.roleid
+                JOIN mdl_context ctx ON ctx.id = ra.contextid
+
+                LEFT JOIN mdl_logstore_standard_log l
+                    ON l.userid = u.id
                     AND l.component = 'core'
-                    AND l.courseid = c.id
-                    AND l.timecreated >= UNIX_TIMESTAMP(%s)
-                    AND l.timecreated <  UNIX_TIMESTAMP(DATE_ADD(%s, INTERVAL 1 DAY))
-                ORDER BY l.userid, l.timecreated
+                    AND l.courseid = %s
+                    AND (
+                            l.action = 'loggedin'
+                            OR (l.target = 'course' AND l.action IN ('viewed','entered'))
+                    )
+                    AND l.timecreated BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
+                WHERE 
+                    ctx.contextlevel = 50
+                    AND ctx.instanceid = %s
+                    AND r.id IN (3,4,9,17)
+                GROUP BY u.id, u.firstname, u.lastname, r.shortname
+                ORDER BY u.id;
                 """,
-                (subject_id, start_date, end_date),
+                (subject_id, start_date, end_date, subject_id),
             )
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]

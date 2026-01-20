@@ -56,15 +56,16 @@ class Worker:
         connector = conn.get_connection_with_config(body.get("db_inst_config"))
         engine = self.db_admin.get_connector()
 
-        subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
+        # subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
         subject_df_tutor = self.tutors_subject_analysis(subject_id, version, connector, engine)
         
-        self.save_subject_global_indicators_students(subject_df_student, engine)
+        # self.save_subject_global_indicators_students(subject_df_student, engine)
         self.save_subject_global_indicators_tutors(subject_df_tutor, engine)
 
         self.db_admin.update_subject_analysis_status(1, subject_id, "D")
     
     def students_subject_analysis(self, subject_id, version, connector, engine):
+        print("A")
         eng = self.analyzer.engagement_analysis(subject_id, 'subject', version, connector)
         per = self.analyzer.performance_analysis(subject_id, 'subject', version, connector)
         mot = self.analyzer.motivation_analysis(subject_id, 'subject', version, connector)
@@ -185,6 +186,8 @@ class Worker:
 
         subject_df.to_sql("local_indicators_students", engine, if_exists="append", index=False)
         
+        print("B")
+        
         return subject_df
     
     def _best_block_dynamic_window(self, df_daily_events, gap_days: int = 21, pct_of_peak: float = 0.02, floor_min: int = 10,):
@@ -246,11 +249,18 @@ class Worker:
             return start_at, end_at
     
     def tutors_subject_analysis(self, subject_id, version, connector, engine):       
+        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
         df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
         start_at, end_at = self._best_block_dynamic_window(df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)
-        
+        print("AAAA")
         response_foruns = self.analyzer.response_foruns(subject_id, "subject", version, connector, start_at, end_at)
+        print("1")
         analysis_login_df = self.analyzer.analysis_login(subject_id, "subject", version, connector, start_at, end_at)
+        print("2")
+        analysis_feedback_df = self.analyzer.analysis_feedback(subject_id, "subject", version, connector, start_at, end_at)
+        print("3")
+        
+        print(analysis_feedback_df)
 
         if (response_foruns is None or response_foruns.empty) and (analysis_login_df is None or analysis_login_df.empty):
             return None
@@ -285,15 +295,22 @@ class Worker:
                 validate="1:1",
             )
             
+        if analysis_feedback_df is not None and not analysis_feedback_df.empty:
+            df = df.merge(
+                analysis_feedback_df[["tutor_id","total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
+                                            "total_correcoes_label", "correcoes_com_feedback_label", "percentual_feedback_label",
+                                            "feedback_textual_label", "feedback_pdf_label", "label_final_feedback"]],
+                on="tutor_id",
+                how="left",
+                validate="1:1",
+            )
+            
         df["label_forums_response"] = df["label_forums_response"].fillna("sem_resposta")
 
         for col in [
-            "mean_forums_response_hours",
-            "median_forums_response_hours",
-            "num_response_fast_forum",
-            "num_response_normal_forum",
-            "num_response_late_forum",
-            "score",
+            "mean_forums_response_hours", "median_forums_response_hours",
+            "num_response_fast_forum", "num_response_normal_forum", "num_response_late_forum", "score",
+            "total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
         ]:
             if col in df.columns:
                 df[col] = df[col].fillna(0)
@@ -303,6 +320,9 @@ class Worker:
             "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum", "score",
             "n_login", "label_access", "mean_weekly_course_views_window",
+            "total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
+            "total_correcoes_label", "correcoes_com_feedback_label", "percentual_feedback_label",
+            "feedback_textual_label", "feedback_pdf_label", "label_final_feedback"
         ]
 
         for c in desired_cols:

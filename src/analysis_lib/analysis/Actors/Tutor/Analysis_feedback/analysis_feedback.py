@@ -107,8 +107,6 @@ class Analysis_Feedback(Indicator):
         df_feedback_tutors["percentual_feedback"] = df_feedback_tutors["percentual_feedback"].fillna(0)
 
         df_feedback_tutors_labeled = self.run_discretization(subject_id, df_feedback_tutors)
-        
-        print(df_feedback_tutors_labeled.columns)
 
         return df_feedback_tutors_labeled[["tutor_id","total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
                             "total_correcoes_label", "correcoes_com_feedback_label", "percentual_feedback_label",

@@ -168,7 +168,22 @@ if __name__ == "__main__":
 
         "n_login": Integer,
         "label_access": String(32),
-        "mean_weekly_course_views_window": Float
+        "mean_weekly_course_views_window": Float,
+        
+        "total_correcoes": Integer,
+        "correcoes_com_feedback": Integer,
+        "percentual_feedback": Float,
+        "feedback_textual": Integer,
+        "feedback_pdf": Integer,
+
+        "total_correcoes_label": String(32),
+        "correcoes_com_feedback_label": String(32),
+        "percentual_feedback_label": String(32),
+        "feedback_textual_label": String(32),
+        "feedback_pdf_label": String(32),
+
+        "label_final_feedback": String(32),
+        
     }
     create_table(
         "local_indicators_tutors",

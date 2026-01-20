@@ -1,5 +1,6 @@
 from .Forums_Response.forums_response import Forums_Response
 from .Analysis_login.analysis_login import Analysis_login
+from .Analysis_feedback.analysis_feedback import Analysis_Feedback
 from .Subject.Indicators.Response_Forums.response_foruns import Response_Forums
 from .Subject.Indicators.Access.access import Access
 class TutorAnalyzer:
@@ -19,6 +20,14 @@ class TutorAnalyzer:
     
     def analysis_login(self, subject_id, type_query, version, connector, start_at, end_at, user_id=None):
         forums_response = Analysis_login(self.mapper)
+        if type_query == "user":
+            return forums_response.tutors_analysis(subject_id, user_id, version, connector)
+        if type_query == "subject":
+            return forums_response.subject_analysis(subject_id, version, connector, start_at, end_at)
+        raise ValueError("invalid type_query")
+    
+    def analysis_feedback(self, subject_id, type_query, version, connector, start_at, end_at, user_id=None):
+        forums_response = Analysis_Feedback(self.mapper)
         if type_query == "user":
             return forums_response.tutors_analysis(subject_id, user_id, version, connector)
         if type_query == "subject":

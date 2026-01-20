@@ -46,6 +46,9 @@ class Analyzer:
     def analysis_login(self, subject_id, type_query, version, connector,start_at, end_at, user_id=None, actor="tutor"):
         return self._actor(actor).analysis_login(subject_id, type_query, version, connector, start_at, end_at, user_id=user_id)
     
+    def analysis_feedback(self, subject_id, type_query, version, connector,start_at, end_at, user_id=None, actor="tutor"):
+        return self._actor(actor).analysis_feedback(subject_id, type_query, version, connector, start_at, end_at, user_id=user_id)
+    
     def get_all_subjects(self, version, connector):
         from .Actors.Student.General.subjects import Subjects
         subjects = Subjects(self.mapper)

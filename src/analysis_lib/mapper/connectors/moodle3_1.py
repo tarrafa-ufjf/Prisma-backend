@@ -863,13 +863,17 @@ class Moodle31(Moodle):
         with conn.cursor() as cur:
             cur.execute('''
                 SELECT
-                    DATE(FROM_UNIXTIME(l.timecreated)) AS day,
+                    DATE(FROM_UNIXTIME(timecreated)) AS day,
                     COUNT(*) AS events
-                FROM mdl_context ctx
-                JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.roleid IN (3,4,9,17)
-                JOIN mdl_logstore_standard_log l ON l.courseid = ctx.instanceid AND l.userid = ra.userid
-                WHERE ctx.contextlevel = 50 AND ctx.instanceid = %s
-                GROUP BY DATE(FROM_UNIXTIME(l.timecreated));
+                FROM mdl_logstore_standard_log
+                WHERE courseid = %s AND action <> 'loggedin'
+                        AND userid IS NOT NULL AND userid <> 0
+                        AND (
+                            target IN ('course','course_module')
+                            OR component LIKE 'mod\\_%%'
+                        )
+                GROUP BY day
+                ORDER BY day;
             ''', (subject_id, ))
 
             rows = cur.fetchall()
@@ -1178,3 +1182,106 @@ class Moodle31(Moodle):
 
         df = pd.DataFrame(rows, columns=cols)
         return df   
+    
+    def fetch_tutors_feedback_subject(self, connector, subject_id, start_date, end_date):
+        conn = self.connector
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    t.tutor_id,
+                    CONCAT(t.firstname, ' ', t.lastname) AS tutor_nome,
+                    t.papel,
+
+                    COUNT(a.gradeid)    AS total_correcoes,
+                    SUM(a.tem_feedback) AS correcoes_com_feedback,
+
+                    SUM(a.feedback_textual) AS feedback_textual,
+                    SUM(a.feedback_pdf)     AS feedback_pdf,
+
+                    CASE
+                        WHEN COUNT(a.gradeid) > 0
+                        THEN ROUND(SUM(a.tem_feedback) / COUNT(a.gradeid), 2)
+                        ELSE 0
+                    END AS percentual_feedback
+
+                FROM (
+                    SELECT DISTINCT
+                        u.id        AS tutor_id,
+                        u.firstname,
+                        u.lastname,
+                        r.shortname AS papel
+                    FROM mdl_user u
+                    JOIN mdl_role_assignments ra ON ra.userid = u.id
+                    JOIN mdl_role r              ON r.id = ra.roleid
+                    JOIN mdl_context ctx         ON ctx.id = ra.contextid
+                    WHERE ctx.contextlevel = 50
+                    AND ctx.instanceid = %s
+                    AND r.id IN (3, 4, 9, 17)
+                ) t
+
+                LEFT JOIN (
+                    SELECT
+                        g.id     AS gradeid,
+                        g.grader AS tutor_id,
+
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM mdl_assignfeedback_comments c
+                                WHERE c.grade = g.id
+                                AND c.commenttext IS NOT NULL
+                                AND LENGTH(c.commenttext) > 0
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM mdl_assignfeedback_editpdf_cmnt p
+                                WHERE p.gradeid = g.id
+                                AND p.rawtext IS NOT NULL
+                                AND LENGTH(p.rawtext) > 0
+                                AND p.draft = 0
+                            )
+                            THEN 1 ELSE 0
+                        END AS tem_feedback,
+
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM mdl_assignfeedback_comments c
+                                WHERE c.grade = g.id
+                                AND c.commenttext IS NOT NULL
+                                AND LENGTH(c.commenttext) > 0
+                            )
+                            THEN 1 ELSE 0
+                        END AS feedback_textual,
+
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM mdl_assignfeedback_editpdf_cmnt p
+                                WHERE p.gradeid = g.id
+                                AND p.rawtext IS NOT NULL
+                                AND LENGTH(p.rawtext) > 0
+                                AND p.draft = 0
+                            )
+                            THEN 1 ELSE 0
+                        END AS feedback_pdf
+
+                    FROM mdl_assign_grades g
+                    WHERE g.timemodified BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
+                ) a
+                    ON a.tutor_id = t.tutor_id
+
+                GROUP BY
+                    t.tutor_id,
+                    t.firstname,
+                    t.lastname,
+                    t.papel
+                ORDER BY percentual_feedback DESC;
+                """,
+                (subject_id, start_date, end_date),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        return pd.DataFrame(rows, columns=cols)

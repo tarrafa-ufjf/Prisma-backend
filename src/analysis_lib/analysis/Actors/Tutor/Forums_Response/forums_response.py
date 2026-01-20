@@ -6,26 +6,104 @@ class Forums_Response(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
 
-    def tutors_analysis(self, subject_id, student_id, version, connector):
+    def tutors_analysis(self, subject_id, tutors_id, version, connector):
         print("Chegou student")
         return None
     
+    def discretize_value_quartis(self, x, lim_inf, q1, q3, lim_sup):
+        if pd.isna(x):
+            return np.nan
+        if x <= lim_inf:
+            return "Muito baixo"
+        elif x <= q1:
+            return "Baixo"
+        elif x <= q3:
+            return "Médio"
+        elif x <= lim_sup:
+            return "Alto"
+        else:
+            return "Muito alto"
+        
+    def label_from_score(self, score):
+        if pd.isna(score):
+            return "Muito baixo"
+        if score < 1.5:
+            return "Baixo"
+        if score <= 2.5:
+            return "Normal"
+        if score <= 2.5:
+            return "Alto"
+        return "Muito Alto"
+
+    def label_to_numeric(self, label):
+        mapping = {
+            "Muito baixo": 0,
+            "Baixo": 1,
+            "Médio": 2,
+            "Alto": 3,
+            "Muito alto": 4,       
+        }
+        return mapping.get(label, np.nan)
+
+    def numeric_to_label(self, num):
+        if pd.isna(num):
+            return np.nan
+        elif num < 0.5:
+            return "Muito baixo"
+        elif num < 1.5:
+            return "Baixo"
+        elif num < 2.5:
+            return "Médio"
+        elif num < 3.5:
+            return "Alto"
+        else:
+            return "Muito alto"
+        
+    def run_discretization(self, df):
+        metrics = {
+            "total_respostas_forum": "Qtd de respostas",
+            "mean_forums_response_hours": "Tempo médio de resposta (h)",
+            "median_forums_response_hours": "Tempo mediano de resposta (h)",
+            "score": "Regra matemática que prioriza tutores rápidos"
+        }
+        
+        for col, _ in metrics.items():
+            if col not in df.columns:
+                continue
+
+            if col == "score":
+                df["score_label"] = df["score"].apply(self.label_from_score)
+                continue
+
+            lim_inf = df[col].min()
+            q1 = df[col].quantile(0.25)
+            q3 = df[col].quantile(0.75)
+            lim_sup = df[col].max()
+
+            df[f"{col}_label"] = df[col].apply(
+                lambda x: self.discretize_value_quartis(x, lim_inf, q1, q3, lim_sup)
+            )
+
+        class_cols = [f"{col}_label" for col in metrics.keys() if f"{col}_label" in df.columns]
+
+        for c in class_cols:
+            df[f"{c}_num"] = df[c].apply(self.label_to_numeric)
+
+        df["mean_label_num"] = df[[f"{c}_num" for c in class_cols]].mean(axis=1)
+        df["label_forums_response"] = df["mean_label_num"].apply(self.numeric_to_label)
+
+        return df
+
     def subject_analysis(self, subject_id, version, connector, start_at, end_at):
         df_responses_forums = self.mapper.fetch_responses_forums(connector, version, subject_id, start_at, end_at)
         
         df_tutores = df_responses_forums[['tutor_id', 'tutor_completo']].drop_duplicates()
         df_forum = df_responses_forums.dropna(subset=['resposta_id']).copy()
         
-        # ===============================
-        # num_response_normal_forumizações
-        # ===============================
         df_forum["autor_resposta_completo"] = df_forum.get("autor_resposta_completo", pd.Series())
         df_forum["resposta_enviada_em"] = pd.to_datetime(df_forum["resposta_enviada_em"], errors='coerce')
         df_forum["post_criado_em"] = pd.to_datetime(df_forum["post_criado_em"], errors='coerce')
         
-        # ===============================
-        # Primeira resposta por post
-        # ===============================
         if not df_forum.empty:
             df_forum_first_response = (
                 df_forum.sort_values("resposta_enviada_em")
@@ -35,9 +113,6 @@ class Forums_Response(Indicator):
         else:
             df_forum_first_response = pd.DataFrame(columns=df_forum.columns)
 
-        # ===============================
-        # Calcular tempo de resposta (horas)
-        # ===============================
         if not df_forum_first_response.empty:
             valid_dates = df_forum_first_response["resposta_enviada_em"].notna() & df_forum_first_response["post_criado_em"].notna()
             if valid_dates.any():
@@ -59,9 +134,6 @@ class Forums_Response(Indicator):
 
         df_forum_first_response["classificacao"] = df_forum_first_response["horas"].apply(classificar_resposta)
 
-        # ===============================
-        # Contagens por tutor
-        # ===============================
         if not df_forum_first_response.empty:
             forum_count = df_forum_first_response.groupby(["autor_resposta_id", "autor_resposta_completo"])["resposta_id"].count().reset_index()
             forum_count.columns = ["tutor_id", "tutor_completo", "total_respostas_forum"]
@@ -87,10 +159,7 @@ class Forums_Response(Indicator):
                 "tutor_id", "tutor_completo", "total_respostas_forum",
                 "mean_forums_response_hours", "median_forums_response_hours"
             ])
-
-        # ===============================
-        # Integração com todos os tutores
-        # ===============================
+            
         forum_count = df_tutores.merge(forum_count, on=["tutor_id", "tutor_completo"], how="left")
 
         forum_count["total_respostas_forum"] = forum_count["total_respostas_forum"].fillna(0).astype(int)
@@ -111,19 +180,10 @@ class Forums_Response(Indicator):
             + forum_count["num_response_late_forum"]*1) / total,
             np.nan 
         )
-    
-        def label_from_score(score):
-            if pd.isna(score):
-                return "sem_resposta"
-            if score < 2:
-                return "baixo"
-            if score <= 2.5:
-                return "normal"
-            return "alto"
-        
-        forum_count["label_forums_response"] = forum_count["score"].apply(label_from_score)
 
-        forum_count["score"] = forum_count["score"].fillna(0)
+        forum_count = self.run_discretization(forum_count)
 
-        return forum_count[["tutor_id", "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
-                            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum", "score"]]
+        return forum_count[["tutor_id", "total_respostas_forum", "median_forums_response_hours", "mean_forums_response_hours", "score",
+                            "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_label",
+                            "label_forums_response",
+                            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]]

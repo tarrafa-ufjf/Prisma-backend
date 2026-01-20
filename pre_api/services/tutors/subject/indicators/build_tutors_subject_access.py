@@ -17,14 +17,14 @@ def build_tutors_subject_access(subject_id: int):
         if df is None:
             return []
 
-        missing = [c for c in ["tutor_id", "full_name", "n_login", "label_access",
-                                "mean_weekly_course_views_window"] if c not in df.columns]
+        missing = [c for c in ["tutor_id", "n_login", "n_access_subject", "n_login_weekly", "n_login_label", 
+                           "n_login_weekly_label", "label_access"] if c not in df.columns]
         if missing:
             raise KeyError(f"missing columns in engagement_analysis output: {missing}")
 
 
-        out = df.loc[:, ["tutor_id", "full_name", "n_login", "label_access", 
-                                "mean_weekly_course_views_window"]].copy()
+        out = df.loc[:, ["tutor_id", "n_login", "n_access_subject", "n_login_weekly", "n_login_label", 
+                           "n_login_weekly_label", "label_access"]].copy()
 
         return out.to_dict(orient="records")
     

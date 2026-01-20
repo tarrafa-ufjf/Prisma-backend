@@ -7,8 +7,8 @@ class Analysis_login(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
 
-    def tutors_analysis(self, subject_id, student_id, version, connector):
-        print("Chegou student")
+    def tutors_analysis(self, subject_id, tutor_id, version, connector):
+        print("Chegou tutor")
         return None
     
     def discretize_value_quartis(self, x, lim_inf, q1, q3, lim_sup):
@@ -50,10 +50,6 @@ class Analysis_login(Indicator):
             return "Muito alto"
     
     def run_discretization(self, df):       
-        # ======================================================
-        # Discretização dos indicadores principais
-        # ======================================================
-
         metrics = {
             "n_login": "Total de logins",
             "n_access_subject": "Total de acessos ao curso",
@@ -74,10 +70,6 @@ class Analysis_login(Indicator):
                 df[f"{col}_label"] = df[col].apply(
                     lambda x: self.discretize_value_quartis(x, lim_inf, q1, q3, lim_sup)
                 )
-
-        # ======================================================
-        # Cálculo da média das classificações
-        # ======================================================
 
         class_cols = [f"{col}_label" for col in metrics.keys() if f"{col}_label" in df.columns]
 
@@ -103,7 +95,6 @@ class Analysis_login(Indicator):
         for col in ["first_login", "last_login", "first_course_access", "last_course_access"]:
             df_course_views[col] = pd.to_datetime(df_course_views[col])
 
-        # Cálculo de métricas temporais
         metrics = []
 
         for _, row in df_course_views.iterrows():
@@ -114,10 +105,14 @@ class Analysis_login(Indicator):
             
             if pd.notna(row["first_login"]) and pd.notna(row["last_login"]):
                 duracao = (row["last_login"] - row["first_login"]).days + 1
-                semanas = max(duracao / 7, 1)
+
+                semanas = max(duracao / 7.0, 1.0)   
+                semanas = round(semanas, 2)
+
+                n_login = float(row["n_login"]) if pd.notna(row["n_login"]) else 0.0
                 n_login_weekly = n_login / semanas
             else:
-                n_login_weekly = 0
+                n_login_weekly = 0.0
 
             metrics.append({
                 "tutor_id": tutor_id,

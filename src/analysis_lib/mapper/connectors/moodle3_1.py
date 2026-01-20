@@ -863,14 +863,14 @@ class Moodle31(Moodle):
                 JOIN mdl_context ctx ON ctx.id = ra.contextid
 
                 LEFT JOIN mdl_logstore_standard_log l
-                    ON l.userid = u.id
-                    AND l.component = 'core'
-                    AND l.courseid = %s
-                    AND (
-                            l.action = 'loggedin'
-                            OR (l.target = 'course' AND l.action IN ('viewed','entered'))
-                    )
-                    AND l.timecreated BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
+                ON l.userid = u.id
+                AND l.component = 'core'
+                AND l.timecreated BETWEEN UNIX_TIMESTAMP(%s)
+                                    AND UNIX_TIMESTAMP(%s)
+                AND (
+                    (l.action = 'loggedin')  
+                OR (l.courseid = %s AND l.target = 'course' AND l.action IN ('viewed','entered'))
+                )
                 WHERE 
                     ctx.contextlevel = 50
                     AND ctx.instanceid = %s
@@ -878,7 +878,7 @@ class Moodle31(Moodle):
                 GROUP BY u.id, u.firstname, u.lastname, r.shortname
                 ORDER BY u.id;
                 """,
-                (subject_id, start_date, end_date, subject_id),
+                (start_date, end_date, subject_id, subject_id),
             )
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]

@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
-from ....indicator import Indicator
+from .....indicator import Indicator
 
-class Forums_Response(Indicator):
+class Analysis_Forums_Response(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
 

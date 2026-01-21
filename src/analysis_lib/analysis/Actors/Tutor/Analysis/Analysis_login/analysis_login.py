@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 import math
-from ....indicator import Indicator
+from .....indicator import Indicator
 
-class Analysis_login(Indicator):
+class Analysis_Login(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
 

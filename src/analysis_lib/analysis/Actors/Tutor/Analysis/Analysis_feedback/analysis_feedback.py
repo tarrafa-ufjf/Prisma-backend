@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import math
-from ....indicator import Indicator
+from .....indicator import Indicator
 import os
 
 class Analysis_Feedback(Indicator):

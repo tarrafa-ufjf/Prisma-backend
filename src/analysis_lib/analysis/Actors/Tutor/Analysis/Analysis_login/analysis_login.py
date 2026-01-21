@@ -162,6 +162,21 @@ class Analysis_Login(Indicator):
             })
 
         df_metrics = pd.DataFrame(metrics)
+        
+        expected_cols = [
+            "tutor_id",
+            "n_login",
+            "n_login_subject",
+            "n_login_weekly",
+            "n_login_label",
+            "n_login_weekly_label",
+            "maximum_inactivity_days",
+            "maximum_inactivity_days_label",
+            "label_access",
+        ]
+
+        if df_metrics.empty:
+            return pd.DataFrame(columns=expected_cols)
                 
         df_metrics = self.run_discretization(df_metrics)
 

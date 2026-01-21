@@ -52,11 +52,11 @@ class Analysis_Feedback(Indicator):
         
     def run_discretization(self, subject_id, df):
         metrics = {
-            "total_correcoes": "Total de correções",
-            "correcoes_com_feedback": "Correções com feedback",
-            "percentual_feedback": "Percentual de feedback",
-            "feedback_textual": "Feedback textual",
-            "feedback_pdf": "Feedback em PDF",
+            "n_corrections": "Total de correções",
+            "n_corrections_with_feedback": "Correções com feedback",
+            "percentage_feedback": "Percentual de feedback",
+            "n_textual_feedback": "Feedback textual",
+            "n_feedback_pdf": "Feedback em PDF",
         }
 
         for col in metrics.keys():
@@ -92,22 +92,22 @@ class Analysis_Feedback(Indicator):
 
     def subject_analysis(self, subject_id, version, connector, start_at, end_at):
         if start_at is None or end_at is None:
-            return pd.DataFrame(columns=["tutor_id","total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
-                                            "total_correcoes_label", "correcoes_com_feedback_label", "percentual_feedback_label",
-                                            "feedback_textual_label", "feedback_pdf_label", "label_final_feedback"])
+            return pd.DataFrame(columns=["tutor_id","n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
+                                            "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
+                                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback"])
 
         start_date = pd.to_datetime(start_at).date()
         end_date = pd.to_datetime(end_at).date()
 
         df_feedback_tutors = self.mapper.fetch_tutors_feedback_subject(connector, version, subject_id, start_date, end_date)
 
-        for col in ["total_correcoes", "correcoes_com_feedback", "feedback_textual", "feedback_pdf"]:
+        for col in ["n_corrections", "n_corrections_with_feedback", "n_textual_feedback", "n_feedback_pdf"]:
             df_feedback_tutors[col] = df_feedback_tutors[col].fillna(0).astype(int)
 
-        df_feedback_tutors["percentual_feedback"] = df_feedback_tutors["percentual_feedback"].fillna(0)
+        df_feedback_tutors["percentage_feedback"] = df_feedback_tutors["percentage_feedback"].fillna(0)
 
         df_feedback_tutors_labeled = self.run_discretization(subject_id, df_feedback_tutors)
 
-        return df_feedback_tutors_labeled[["tutor_id","total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
-                            "total_correcoes_label", "correcoes_com_feedback_label", "percentual_feedback_label",
-                            "feedback_textual_label", "feedback_pdf_label", "label_final_feedback"]].copy()
+        return df_feedback_tutors_labeled[["tutor_id","n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
+                            "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
+                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback"]].copy()

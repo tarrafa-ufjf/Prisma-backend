@@ -856,7 +856,7 @@ class Moodle31(Moodle):
                     SUM(CASE WHEN l.target = 'course' 
                             AND l.action IN ('viewed','entered')
                             THEN 1 ELSE 0 END
-                    ) AS n_access_subject
+                    ) AS n_login_subject
                 FROM mdl_user u
                 JOIN mdl_role_assignments ra ON ra.userid = u.id
                 JOIN mdl_role r ON r.id = ra.roleid
@@ -1306,6 +1306,39 @@ class Moodle31(Moodle):
                 ORDER BY percentual_feedback DESC;
                 """,
                 (subject_id, start_date, end_date),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        return pd.DataFrame(rows, columns=cols)
+    
+    def fetch_tutors_access_days(self, connector, subject_id: int, start_date, end_date):
+        with connector.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    u.id AS tutor_id,
+                    DATE(FROM_UNIXTIME(l.timecreated)) AS access_day
+                FROM mdl_user u
+                JOIN mdl_role_assignments ra ON ra.userid = u.id
+                JOIN mdl_role r ON r.id = ra.roleid
+                JOIN mdl_context ctx ON ctx.id = ra.contextid
+                JOIN mdl_logstore_standard_log l
+                ON l.userid = u.id
+                AND l.component = 'core'
+                AND l.timecreated BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
+                AND (
+                    (l.action = 'loggedin')
+                OR (l.courseid = %s AND l.target = 'course' AND l.action IN ('viewed','entered'))
+                )
+                WHERE
+                    ctx.contextlevel = 50
+                    AND ctx.instanceid = %s
+                    AND r.id IN (3,4,9,17)
+                GROUP BY u.id, access_day
+                ORDER BY u.id, access_day;
+                """,
+                (start_date, end_date, subject_id, subject_id),
             )
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]

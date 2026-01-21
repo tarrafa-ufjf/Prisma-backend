@@ -52,8 +52,9 @@ class Analysis_Login(Indicator):
     def run_discretization(self, df):       
         metrics = {
             "n_login": "Total de logins",
-            "n_access_subject": "Total de acessos ao curso",
-            "n_login_weekly": "Logins semanais"        
+            "n_login_subject": "Total de acessos ao curso",
+            "n_login_weekly": "Logins semanais",
+            "maximum_inactivity_days": "Máx. inatividade (dias)"        
         }
 
         for col in metrics.keys():
@@ -81,11 +82,33 @@ class Analysis_Login(Indicator):
         df["label_access"] = df["media_label_num"].apply(self.numeric_to_label)
         
         return df
+    
+    def _max_inactivity_days_for_tutor(self, active_days, start_date, end_date):
+        start_date = pd.to_datetime(start_date).date()
+        end_date = pd.to_datetime(end_date).date()
+
+        window_len = (end_date - start_date).days + 1
+
+        if not active_days:
+            return window_len  
+
+        days = sorted({pd.to_datetime(d).date() for d in active_days})
+
+        start_gap = (days[0] - start_date).days
+        end_gap = (end_date - days[-1]).days
+
+        max_internal = 0
+        for i in range(1, len(days)):
+            gap = (days[i] - days[i - 1]).days - 1  
+            if gap > max_internal:
+                max_internal = gap
+
+        return max(0, start_gap, end_gap, max_internal)
 
     def subject_analysis(self, subject_id, version, connector, start_at, end_at):
         if start_at is None or end_at is None:
-            return pd.DataFrame(columns=["tutor_id", "n_login", "n_access_subject", "n_login_weekly", "n_login_label", 
-                                            "n_login_weekly_label", "label_access"])
+            return pd.DataFrame(columns=["tutor_id", "n_login", "n_login_subject", "n_login_weekly", "n_login_label", 
+                                            "n_login_weekly_label", "label_access", "maximum_inactivity_days", "maximum_inactivity_days_label"])
 
         start_date = pd.to_datetime(start_at).date()
         end_date = pd.to_datetime(end_at).date()
@@ -94,12 +117,28 @@ class Analysis_Login(Indicator):
 
         for col in ["first_login", "last_login", "first_course_access", "last_course_access"]:
             df_course_views[col] = pd.to_datetime(df_course_views[col])
+        
+        df_access_days = self.mapper.fetch_tutors_access_days(connector, version, subject_id, start_date, end_date)
+        
+        if df_access_days is None or df_access_days.empty:
+            access_days_by_tutor = {}
+        else:
+            df_access_days["access_day"] = pd.to_datetime(df_access_days["access_day"], errors="coerce").dt.date
+            access_days_by_tutor = (
+                df_access_days.dropna(subset=["tutor_id", "access_day"])
+                            .groupby("tutor_id")["access_day"]
+                            .apply(list)
+                            .to_dict()
+            )
 
         metrics = []
 
         for _, row in df_course_views.iterrows():
 
             tutor_id = row["tutor_id"]
+            
+            active_days = access_days_by_tutor.get(tutor_id, [])
+            max_inact = self._max_inactivity_days_for_tutor(active_days, start_date, end_date)
 
             n_login = row["n_login"]
             
@@ -117,13 +156,14 @@ class Analysis_Login(Indicator):
             metrics.append({
                 "tutor_id": tutor_id,
                 "n_login": n_login,
-                "n_access_subject": row["n_access_subject"],
+                "n_login_subject": row["n_login_subject"],
                 "n_login_weekly": round(n_login_weekly, 2) if n_login_weekly else 0,
+                "maximum_inactivity_days": int(max_inact),
             })
 
         df_metrics = pd.DataFrame(metrics)
                 
         df_metrics = self.run_discretization(df_metrics)
 
-        return df_metrics[["tutor_id", "n_login", "n_access_subject", "n_login_weekly", "n_login_label", 
-                            "n_login_weekly_label", "label_access"]].copy()
+        return df_metrics[["tutor_id", "n_login", "n_login_subject", "n_login_weekly", "n_login_label", 
+                            "n_login_weekly_label", "label_access", "maximum_inactivity_days", "maximum_inactivity_days_label"]].copy()

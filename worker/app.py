@@ -376,7 +376,7 @@ class Worker:
         return df
     
     # ------------------------------------------------------------------
-    # Calcula as médias da disciplina e salva em global_indicators_student
+    # Calcula as médias da disciplina e salva em global_indicators_students
     # ------------------------------------------------------------------
     def save_subject_global_indicators_students(self, subject_df, engine):
         if subject_df is None or subject_df.empty:
@@ -473,7 +473,7 @@ class Worker:
         ]
 
         global_subject_df.to_sql(
-            "global_indicators_student",
+            "global_indicators_students",
             engine,
             if_exists="append",  
             index=False,
@@ -483,7 +483,7 @@ class Worker:
         engine = self.db_admin.get_connector()
         version = self.db_admin.get_version_in_database(institution_id)
 
-        df = pd.read_sql_table("global_indicators_student", engine)
+        df = pd.read_sql_table("global_indicators_students", engine)
 
         if df.empty:
             return
@@ -541,7 +541,7 @@ class Worker:
                     return value
 
         # ------------------------------------------------------------------
-        # Atualiza a tabela global_indicators_student no banco
+        # Atualiza a tabela global_indicators_students no banco
         # PK: (institution_id, version, subject_id)
         # ------------------------------------------------------------------
         with engine.begin() as conn:
@@ -561,7 +561,7 @@ class Worker:
                 conn.execute(
                     text(
                         """
-                        UPDATE global_indicators_student
+                        UPDATE global_indicators_students
                         SET
                             label_engagement = :label_engagement,
                             label_motivation = :label_motivation,
@@ -590,148 +590,170 @@ class Worker:
 
         df = subject_df.copy()
         
+        required_keys = ["institution_id", "version", "subject_id", "tutor_id"]
+        for k in required_keys:
+            if k not in df.columns:
+                raise ValueError(f"subject_df precisa ter a coluna '{k}'")
+            
+        numeric_cols = [
+            # Fórum
+            "median_forums_response_hours",
+            "mean_forums_response_hours",
+            "total_response_forum",
+            # Acessos
+            "n_login",
+            "n_login_subject",
+            "n_login_weekly",
+            "maximum_inactivity_days",
+            # Feedback
+            "n_corrections",
+            "n_corrections_with_feedback",
+            "n_textual_feedback",
+            "n_feedback_pdf",
+            "percentage_feedback",
+        ]
+        for c in numeric_cols:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")
+        
+        for c in [
+            "total_response_forum",
+            "n_login", "n_login_subject", "n_login_weekly", "maximum_inactivity_days",
+            "n_corrections", "n_corrections_with_feedback", "n_textual_feedback", "n_feedback_pdf",
+        ]:
+            if c in df.columns:
+                df[c] = df[c].fillna(0)
+                
         ## Fóruns
-        df["response_norm"] = normalize_metric(df["total_response_forum"])
-        df["time_norm"] = 1 - normalize_metric(df["mean_forums_response_hours"])
-        df["participation_norm"] = 1 - normalize_metric(df["median_forums_response_hours"])
+        df["response_norm"] = normalize_metric(df.get("total_response_forum", 0))
+        df["time_norm"] = 1 - normalize_metric(df.get("mean_forums_response_hours", 0))
+        df["participation_norm"] = 1 - normalize_metric(df.get("median_forums_response_hours", 0))
 
         df["score_global_forum"] = (df["response_norm"] * 0.5 +df["time_norm"] * 0.3 +df["participation_norm"] * 0.2)
         
         ## Acessos
-        df["logins_norm"] = normalize_metric(df["n_login"])
-        df["logins_subject_norm"] = normalize_metric(df["n_login_subject"])
+        df["logins_norm"] = normalize_metric(df.get("n_login", 0))
+        df["logins_subject_norm"] = normalize_metric(df.get("n_login_subject", 0))
         df["inatividade_norm"] = 1 - normalize_metric(df["maximum_inactivity_days"])
 
         df["score_global_access"] = (df["logins_norm"] * 0.2 +df["logins_subject_norm"] * 0.6 +df["inatividade_norm"] * 0.2)
         
         ## Feedback
-        df["n_corrections_norm"] = normalize_metric(df["n_corrections"])
-        df["n_corrections_with_feedback_norm"] = normalize_metric(df["n_corrections_with_feedback"])
-        df["n_textual_feedback_norm"] = normalize_metric(df["n_textual_feedback"])
-        df["n_feedback_pdf_norm"] = normalize_metric(df["n_feedback_pdf"])
+        df["n_corrections_norm"] = normalize_metric(df.get("n_corrections", 0))
+        df["n_corrections_with_feedback_norm"] = normalize_metric(df.get("n_corrections_with_feedback", 0))
+        df["n_textual_feedback_norm"] = normalize_metric(df.get("n_textual_feedback", 0))
+        df["n_feedback_pdf_norm"] = normalize_metric(df.get("n_feedback_pdf", 0))
 
         df["score_global_feedback"] = (df["n_corrections_norm"] * 0.4 +df["n_corrections_with_feedback_norm"] * 0.4 +df["n_textual_feedback_norm"] * 0.1+df["n_feedback_pdf_norm"] * 0.1)
 
+        institution_id = int(df["institution_id"].iloc[0])
+        version = str(df["version"].iloc[0])
+        subject_id = int(df["subject_id"].iloc[0])
 
-        # global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(
-        #         mean_score=("score_access", "mean"),
-        #     )
-        
-        # global_subject_df['mean_access'] = 0
+        row_global = {
+            "institution_id": institution_id,
+            "version": version,
+            "subject_id": subject_id,
+            "score_global_forum": float(df["score_global_forum"].mean(skipna=True)),
+            "label_global_forum": pd.NA,    
+            "score_global_access": float(df["score_global_access"].mean(skipna=True)),
+            "label_global_access": pd.NA,
+            "score_global_feedback": float(df["score_global_feedback"].mean(skipna=True)),
+            "label_global_feedback": pd.NA,
+        }
 
-        # # ------------------------------------------------------------------
-        # # Labels globais ainda não calculados -> NA
-        # # ------------------------------------------------------------------
-        # for col in [
-        #     "label_forum_response",
-        #     "label_access",
-        # ]:
-        #     global_subject_df[col] = pd.NA
+        out = pd.DataFrame([row_global])
 
-        # global_subject_df = global_subject_df[
-        #     [
-        #         "institution_id",
-        #         "version",
-        #         "subject_id",
-        #         "mean_score",
-        #         "label_forum_response",
-        #         "mean_access",
-        #         "label_access",
-        #     ]
-        # ]
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    DELETE FROM global_indicators_tutors
+                    WHERE institution_id = :institution_id
+                    AND version = :version
+                    AND subject_id = :subject_id
+                """),
+                {"institution_id": institution_id, "version": version, "subject_id": subject_id},
+            )
 
-        # global_subject_df.to_sql(
-        #     "global_indicators_tutors",
-        #     engine,
-        #     if_exists="append",  
-        #     index=False,
-        # )
+        out.to_sql(
+            "global_indicators_tutors",
+            engine,
+            if_exists="append",
+            index=False,
+        )
 
     def discretize_global_indicators_tutors(self, institution_id: int = 1):
         engine = self.db_admin.get_connector()
-        version = self.db_admin.get_version_in_database(institution_id)
+        version = str(self.db_admin.get_version_in_database(institution_id))
 
         df = pd.read_sql_table("global_indicators_tutors", engine)
-
         if df.empty:
             return
 
-        mask = (df["institution_id"] == institution_id) & (df["version"] == str(version))
+        mask = (df["institution_id"] == institution_id) & (df["version"] == version)
         df_sub = df.loc[mask].copy()
-
         if df_sub.empty:
             return
 
-        def discretize_metric(series: pd.Series) -> pd.Series:
-            if series.isna().all():
-                return pd.Series([pd.NA] * len(series), index=series.index)
+        def discretize_quartiles(values: pd.Series) -> pd.Series:
+            s = pd.to_numeric(values, errors="coerce")
 
-            values = series.astype(float)
+            if s.isna().all():
+                return pd.Series([pd.NA] * len(s), index=s.index)
 
-            q1 = values.quantile(0.25)
-            q3 = values.quantile(0.75)
-            iqr = q3 - q1
+            if s.max() == s.min():
+                return pd.Series(["Médio"] * len(s), index=s.index)
 
-            lower = q1 - 1.5 * iqr
-            upper = q3 + 1.5 * iqr
+            q1 = s.quantile(0.25)
+            q3 = s.quantile(0.75)
+            lim_inf = s.min()
+            lim_sup = s.max()
 
-            labels = pd.Series(index=values.index, dtype="object")
+            def lab(x):
+                if pd.isna(x):
+                    return pd.NA
+                if x <= lim_inf:
+                    return "Muito baixo"
+                elif x <= q1:
+                    return "Baixo"
+                elif x <= q3:
+                    return "Médio"
+                elif x <= lim_sup:
+                    return "Alto"
+                else:
+                    return "Muito alto"
 
-            labels[values < lower] = "muito_baixo"
-            labels[(values >= lower) & (values < q1)] = "baixo"
-            labels[(values >= q1) & (values <= q3)] = "medio"
-            labels[(values > q3) & (values <= upper)] = "alto"
-            labels[values > upper] = "muito_alto"
+            return s.apply(lab)
 
-            labels[values.isna()] = pd.NA
+        df_sub["label_global_forum"] = discretize_quartiles(df_sub["score_global_forum"])
+        df_sub["label_global_access"] = discretize_quartiles(df_sub["score_global_access"])
+        df_sub["label_global_feedback"] = discretize_quartiles(df_sub["score_global_feedback"])
 
-            return labels
+        def clean_na(v):
+            return None if pd.isna(v) else v
 
-        metric_to_label_col = {
-            "mean_score": "label_forum_response",
-            "mean_access": "label_access",
-        }
-
-        for metric_col, label_col in metric_to_label_col.items():
-            if metric_col in df_sub.columns:
-                df_sub[label_col] = discretize_metric(df_sub[metric_col])
-            else:
-                df_sub[label_col] = pd.NA
-                
-        
-        def clean_na(value):
-                    if pd.isna(value):
-                        return None
-                    return value
-
-        # ------------------------------------------------------------------
-        # Atualiza a tabela global_indicators_tutors no banco
-        # PK: (institution_id, version, subject_id)
-        # ------------------------------------------------------------------
         with engine.begin() as conn:
             for _, row in df_sub.iterrows():
-                params = {
-                    "institution_id": int(row["institution_id"]),
-                    "version": str(row["version"]),
-                    "subject_id": int(row["subject_id"]),
-                    "label_forum_response": clean_na(row.get("label_forum_response")),
-                    "label_access": clean_na(row.get("label_access")),
-                }
-                
                 conn.execute(
-                    text(
-                        """
+                    text("""
                         UPDATE global_indicators_tutors
                         SET
-                            label_forum_response = :label_forum_response,
-                            label_access = :label_access
+                            label_global_forum = :label_global_forum,
+                            label_global_access = :label_global_access,
+                            label_global_feedback = :label_global_feedback
                         WHERE
                             institution_id = :institution_id
                             AND version = :version
                             AND subject_id = :subject_id
-                        """
-                    ),
-                    params,
+                    """),
+                    {
+                        "institution_id": int(row["institution_id"]),
+                        "version": str(row["version"]),
+                        "subject_id": int(row["subject_id"]),
+                        "label_global_forum": clean_na(row["label_global_forum"]),
+                        "label_global_access": clean_na(row["label_global_access"]),
+                        "label_global_feedback": clean_na(row["label_global_feedback"]),
+                    },
                 )
 
 def continuously_listen():

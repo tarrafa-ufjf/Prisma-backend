@@ -198,21 +198,38 @@ if __name__ == "__main__":
         columns_gl_local_tutors,
         primary_key=["institution_id", "version", "subject_id", "tutor_id"]
     )
-
-    columns_gl_global = {
+    
+    columns_global_indicators_tutors = {
         "institution_id": Integer,
         "version": String(40),
-        "tutor_id": Integer,
-
-        "median_messages_response_hours": Float,
-        "mean_messages_response_hours": Float,
-        "label_messages_response": String(32),
+        "subject_id": Integer,
+        "score_global_forum": Float,
+        "label_global_forum": String(32),
+        "score_global_access": Float,                
+        "label_global_access": String(32),
+        "score_global_feedback": Float,
+        "label_global_feedback": String(32),
     }
     create_table(
-        "messages_tutors",
-        columns_gl_global,
-        primary_key=["institution_id", "version", "tutor_id"]
+        "global_indicators_tutors",
+        columns_global_indicators_tutors,
+        primary_key=["institution_id", "version", "subject_id"],
     )
+
+    # columns_gl_global = {
+    #     "institution_id": Integer,
+    #     "version": String(40),
+    #     "tutor_id": Integer,
+
+    #     "median_messages_response_hours": Float,
+    #     "mean_messages_response_hours": Float,
+    #     "label_messages_response": String(32),
+    # }
+    # create_table(
+    #     "messages_tutors",
+    #     columns_gl_global,
+    #     primary_key=["institution_id", "version", "tutor_id"]
+    # )
 
     channel.queue_declare(
         queue="tasks_to_process",

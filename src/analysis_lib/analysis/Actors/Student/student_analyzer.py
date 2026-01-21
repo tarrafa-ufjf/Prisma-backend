@@ -80,7 +80,7 @@ class StudentAnalyzer:
             }
 
         if type_query == "subject":
-            from analysis_lib.analysis.Actors.Student.Subject.Indicators_Percentual import Indicators_Percentual
+            from src.analysis_lib.analysis.Actors.Student.Subject.Indicators_Percentual.indicators_percentual import Indicators_Percentual
             return Indicators_Percentual(self.mapper).subject_analysis(subject_id)
 
         raise ValueError("invalid type_query")

@@ -299,9 +299,9 @@ class Worker:
             
         if analysis_feedback_df is not None and not analysis_feedback_df.empty:
             df = df.merge(
-                analysis_feedback_df[["tutor_id","total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
-                                            "total_correcoes_label", "correcoes_com_feedback_label", "percentual_feedback_label",
-                                            "feedback_textual_label", "feedback_pdf_label", "label_final_feedback"]],
+                analysis_feedback_df[["tutor_id","n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
+                                            "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
+                                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback"]],
                 on="tutor_id",
                 how="left",
                 validate="1:1",
@@ -315,7 +315,7 @@ class Worker:
             "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum",
             
-            "total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
+            "n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
         ]:
             if col in df.columns:
                 df[col] = df[col].fillna(0)
@@ -324,15 +324,15 @@ class Worker:
             "institution_id", "version", "subject_id", "tutor_id",
             
             "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
-            "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_label",
+            "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_access_label",
             "label_forums_response", "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum",
             
             "n_login", "n_login_subject", "n_login_weekly", "n_login_label", "n_login_weekly_label", "label_access", 
             "maximum_inactivity_days", "maximum_inactivity_days_label",
             
-            "total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
-            "total_correcoes_label", "correcoes_com_feedback_label", "percentual_feedback_label",
-            "feedback_textual_label", "feedback_pdf_label", "label_final_feedback"
+            "n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
+            "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
+            "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback"
         ]
 
         for c in desired_cols:
@@ -579,10 +579,10 @@ class Worker:
                 )
     
     def save_subject_global_indicators_tutors(self, subject_df, engine):
-        # def normalize_metric(col):
-        #     if col.max() == col.min():
-        #         return 0
-        #     return (col - col.min()) / (col.max() - col.min())
+        def normalize_metric(col):
+            if col.max() == col.min():
+                return 0
+            return (col - col.min()) / (col.max() - col.min())
 
 
         if subject_df is None or subject_df.empty:
@@ -590,26 +590,27 @@ class Worker:
 
         df = subject_df.copy()
         
-        # ## Fóruns
-        # df["response_norm"] = normalize_metric(df["total_response_forum"])
-        # df["time_norm"] = 1 - normalize_metric(df["mean_forums_response_hours"])
-        # df["participation_norm"] = 1 - normalize_metric(df["median_forums_response_hours"])
+        ## Fóruns
+        df["response_norm"] = normalize_metric(df["total_response_forum"])
+        df["time_norm"] = 1 - normalize_metric(df["mean_forums_response_hours"])
+        df["participation_norm"] = 1 - normalize_metric(df["median_forums_response_hours"])
 
-        # df["score_global_forum"] = (df["response_norm"] * 0.5 +df["time_norm"] * 0.3 +df["participation_norm"] * 0.2)
+        df["score_global_forum"] = (df["response_norm"] * 0.5 +df["time_norm"] * 0.3 +df["participation_norm"] * 0.2)
         
-        # ## Acessos
-        # df["logins_norm"] = normalize_metric(df["n_login"])
-        # df["logins_subject_norm"] = normalize_metric(df["n_login_subject"])
-        # df["inatividade_norm"] = 1 - normalize_metric(df["maximum_inactivity_days"])
+        ## Acessos
+        df["logins_norm"] = normalize_metric(df["n_login"])
+        df["logins_subject_norm"] = normalize_metric(df["n_login_subject"])
+        df["inatividade_norm"] = 1 - normalize_metric(df["maximum_inactivity_days"])
 
-        # df["score_global_access"] = (df["logins_norm"] * 0.2 +df["logins_subject_norm"] * 0.6 +df["inatividade_norm"] * 0.2)
+        df["score_global_access"] = (df["logins_norm"] * 0.2 +df["logins_subject_norm"] * 0.6 +df["inatividade_norm"] * 0.2)
         
-        # ## Feedback
-        # df["logins_norm"] = normalize_metric(df["n_login"])
-        # df["logins_subject_norm"] = normalize_metric(df["n_login_subject"])
-        # df["inatividade_norm"] = 1 - normalize_metric(df["maximum_inactivity_days"])
+        ## Feedback
+        df["n_corrections_norm"] = normalize_metric(df["n_corrections"])
+        df["n_corrections_with_feedback_norm"] = normalize_metric(df["n_corrections_with_feedback"])
+        df["n_textual_feedback_norm"] = normalize_metric(df["n_textual_feedback"])
+        df["n_feedback_pdf_norm"] = normalize_metric(df["n_feedback_pdf"])
 
-        # df["score_global_access"] = (df["logins_norm"] * 0.2 +df["logins_subject_norm"] * 0.6 +df["inatividade_norm"] * 0.2)
+        df["score_global_feedback"] = (df["n_corrections_norm"] * 0.4 +df["n_corrections_with_feedback_norm"] * 0.4 +df["n_textual_feedback_norm"] * 0.1+df["n_feedback_pdf_norm"] * 0.1)
 
 
         # global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(

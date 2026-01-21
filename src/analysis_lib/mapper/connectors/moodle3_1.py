@@ -1219,17 +1219,17 @@ class Moodle31(Moodle):
                     CONCAT(t.firstname, ' ', t.lastname) AS tutor_nome,
                     t.papel,
 
-                    COUNT(a.gradeid)    AS total_correcoes,
-                    SUM(a.tem_feedback) AS correcoes_com_feedback,
+                    COUNT(a.gradeid)    AS n_corrections,
+                    SUM(a.tem_feedback) AS n_corrections_with_feedback,
 
-                    SUM(a.feedback_textual) AS feedback_textual,
-                    SUM(a.feedback_pdf)     AS feedback_pdf,
+                    SUM(a.n_textual_feedback) AS n_textual_feedback,
+                    SUM(a.n_feedback_pdf)     AS n_feedback_pdf,
 
                     CASE
                         WHEN COUNT(a.gradeid) > 0
                         THEN ROUND(SUM(a.tem_feedback) / COUNT(a.gradeid), 2)
                         ELSE 0
-                    END AS percentual_feedback
+                    END AS percentage_feedback
 
                 FROM (
                     SELECT DISTINCT
@@ -1279,7 +1279,7 @@ class Moodle31(Moodle):
                                 AND LENGTH(c.commenttext) > 0
                             )
                             THEN 1 ELSE 0
-                        END AS feedback_textual,
+                        END AS n_textual_feedback,
 
                         CASE
                             WHEN EXISTS (
@@ -1291,7 +1291,7 @@ class Moodle31(Moodle):
                                 AND p.draft = 0
                             )
                             THEN 1 ELSE 0
-                        END AS feedback_pdf
+                        END AS n_feedback_pdf
 
                     FROM mdl_assign_grades g
                     WHERE g.timemodified BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
@@ -1303,7 +1303,7 @@ class Moodle31(Moodle):
                     t.firstname,
                     t.lastname,
                     t.papel
-                ORDER BY percentual_feedback DESC;
+                ORDER BY percentage_feedback DESC;
                 """,
                 (subject_id, start_date, end_date),
             )

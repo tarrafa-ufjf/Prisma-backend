@@ -72,7 +72,7 @@ class Analysis_Forums_Response(Indicator):
                 continue
 
             if col == "score_access":
-                df["score_label"] = df["score_access"].apply(self.label_from_score)
+                df["score_access_label"] = df["score_access"].apply(self.label_from_score)
                 continue
 
             lim_inf = df[col].min()
@@ -184,6 +184,6 @@ class Analysis_Forums_Response(Indicator):
         forum_count = self.run_discretization(forum_count)
 
         return forum_count[["tutor_id", "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
-                            "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_label",
+                            "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_access_label",
                             "label_forums_response",
                             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]]

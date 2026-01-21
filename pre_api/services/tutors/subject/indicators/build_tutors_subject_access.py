@@ -12,7 +12,7 @@ def build_tutors_subject_access(subject_id: int):
 
     try:
         version = analyzer.get_moodle_version(connector)
-        df = analyzer.access_analysis(subject_id, 'subject', version, connector)
+        df = analyzer.access_analysis(subject_id, 'subject', 'subject', version, connector)
         
         if df is None:
             return []

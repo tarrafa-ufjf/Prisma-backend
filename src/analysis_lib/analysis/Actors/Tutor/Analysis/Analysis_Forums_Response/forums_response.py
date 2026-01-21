@@ -24,14 +24,14 @@ class Analysis_Forums_Response(Indicator):
         else:
             return "Muito alto"
         
-    def label_from_score(self, score):
-        if pd.isna(score):
+    def label_from_score(self, score_access):
+        if pd.isna(score_access):
             return "Muito baixo"
-        if score < 1.5:
+        if score_access < 1.5:
             return "Baixo"
-        if score <= 2.5:
+        if score_access <= 2.5:
             return "Normal"
-        if score <= 2.5:
+        if score_access <= 2.5:
             return "Alto"
         return "Muito Alto"
 
@@ -61,18 +61,18 @@ class Analysis_Forums_Response(Indicator):
         
     def run_discretization(self, df):
         metrics = {
-            "total_respostas_forum": "Qtd de respostas",
+            "total_response_forum": "Qtd de respostas",
             "mean_forums_response_hours": "Tempo médio de resposta (h)",
             "median_forums_response_hours": "Tempo mediano de resposta (h)",
-            "score": "Regra matemática que prioriza tutores rápidos"
+            "score_access": "Regra matemática que prioriza tutores rápidos"
         }
         
         for col, _ in metrics.items():
             if col not in df.columns:
                 continue
 
-            if col == "score":
-                df["score_label"] = df["score"].apply(self.label_from_score)
+            if col == "score_access":
+                df["score_label"] = df["score_access"].apply(self.label_from_score)
                 continue
 
             lim_inf = df[col].min()
@@ -136,7 +136,7 @@ class Analysis_Forums_Response(Indicator):
 
         if not df_forum_first_response.empty:
             forum_count = df_forum_first_response.groupby(["autor_resposta_id", "autor_resposta_completo"])["resposta_id"].count().reset_index()
-            forum_count.columns = ["tutor_id", "tutor_completo", "total_respostas_forum"]
+            forum_count.columns = ["tutor_id", "tutor_completo", "total_response_forum"]
 
             class_count = df_forum_first_response.groupby(["autor_resposta_id", "classificacao"])["resposta_id"].count().unstack(fill_value=0).reset_index()
             class_count = class_count.rename(columns={"autor_resposta_id": "tutor_id"})
@@ -156,13 +156,13 @@ class Analysis_Forums_Response(Indicator):
             forum_count = forum_count.merge(class_count, on="tutor_id", how="left")
         else:
             forum_count = pd.DataFrame(columns=[
-                "tutor_id", "tutor_completo", "total_respostas_forum",
+                "tutor_id", "tutor_completo", "total_response_forum",
                 "mean_forums_response_hours", "median_forums_response_hours"
             ])
             
         forum_count = df_tutores.merge(forum_count, on=["tutor_id", "tutor_completo"], how="left")
 
-        forum_count["total_respostas_forum"] = forum_count["total_respostas_forum"].fillna(0).astype(int)
+        forum_count["total_response_forum"] = forum_count["total_response_forum"].fillna(0).astype(int)
         forum_count["mean_forums_response_hours"] = forum_count["mean_forums_response_hours"].fillna(0)
         forum_count["median_forums_response_hours"] = forum_count["median_forums_response_hours"].fillna(0)
 
@@ -171,9 +171,9 @@ class Analysis_Forums_Response(Indicator):
                 forum_count[col] = 0
             forum_count[col] = forum_count[col].fillna(0).astype(int)
         
-        total = forum_count["total_respostas_forum"]
+        total = forum_count["total_response_forum"]
 
-        forum_count["score"] = np.where(
+        forum_count["score_access"] = np.where(
             total > 0,
             (forum_count["num_response_fast_forum"]*3
             + forum_count["num_response_normal_forum"]*2
@@ -183,7 +183,7 @@ class Analysis_Forums_Response(Indicator):
 
         forum_count = self.run_discretization(forum_count)
 
-        return forum_count[["tutor_id", "total_respostas_forum", "median_forums_response_hours", "mean_forums_response_hours", "score",
+        return forum_count[["tutor_id", "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
                             "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_label",
                             "label_forums_response",
                             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]]

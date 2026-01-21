@@ -33,7 +33,7 @@ class Graph(Indicator):
             query = (
                 select(
                     t.c.tutor_id,
-                    t.c.score,
+                    t.c.score_access,
                     t.c.mean_forums_response_hours,
                 )
                 .where(t.c.institution_id == int(institution_id))
@@ -75,7 +75,7 @@ class Graph(Indicator):
             ]
             return {"points": points, "mean": mean, "median": median}
 
-        interactions = build_metric(df, "score", clamp_0_100=True)
+        interactions = build_metric(df, "score_access", clamp_0_100=True)
 
         response_time = build_metric(df, "mean_forums_response_hours", clamp_0_100=False)
 

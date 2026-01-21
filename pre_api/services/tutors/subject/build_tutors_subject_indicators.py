@@ -11,7 +11,7 @@ def build_tutors_subject_indicators(subject_id: int):
     connector = processor_db.get_connection_with_config(db_config)
     try:
         version = analyzer.get_moodle_version(connector)
-        data = analyzer.tutors_indicators_analysis(subject_id, 'subject', 'indicators', version, connector)
+        data = analyzer.tutors_indicators_analysis(subject_id, 'subject', 'subject', version, connector)
         return data
     finally:
         try:

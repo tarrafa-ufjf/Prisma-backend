@@ -13,13 +13,19 @@ class Indicators_Percentual(Indicator):
         counts_forums = self._fetch_forums_response_counts(subject_id, institution_id=1)
         perc_good_forums = self._calc_percentage_by_good_labels(
             counts_forums,
-            good_labels={"normal", "rapido"},
+            good_labels={"alto", "muito alto"},
         )
 
         counts_access = self._fetch_access_counts(subject_id, institution_id=1)
         perc_good_access = self._calc_percentage_by_good_labels(
             counts_access,
-            good_labels={"bom", "otimo"},
+            good_labels={"alto", "muito alto"},
+        )
+        
+        counts_feedback = self._fetch_feedback_counts(subject_id, institution_id=1)
+        perc_good_feedback = self._calc_percentage_by_good_labels(
+            counts_feedback,
+            good_labels={"alto", "muito alto"},
         )
 
         return {
@@ -27,6 +33,7 @@ class Indicators_Percentual(Indicator):
                 "id": int(subject_id),
                 "good_percentage_response_foruns": perc_good_forums,
                 "good_percentage_access": perc_good_access,
+                "good_percentage_feedback": perc_good_feedback,
             }
         }
 
@@ -88,7 +95,7 @@ class Indicators_Percentual(Indicator):
         return counts
 
     def _fetch_forums_response_counts(self, subject_id, institution_id: int = 1):
-        expected = {"sem_resposta", "baixo", "normal", "alto"}
+        expected = {"muito baixo", "baixo", "medio", "alto", "muito alto"}
         return self._fetch_label_counts(
             table_name="local_indicators_tutors",        
             label_column_name="label_forums_response",   
@@ -99,10 +106,21 @@ class Indicators_Percentual(Indicator):
         )
 
     def _fetch_access_counts(self, subject_id, institution_id: int = 1):
-        expected = {"ruim", "medio", "bom", "otimo", "sem_dado"}
+        expected = {"muito baixo", "baixo", "medio", "alto", "muito alto"}
         return self._fetch_label_counts(
             table_name="local_indicators_tutors",
             label_column_name="label_access",      
+            subject_id=subject_id,
+            institution_id=institution_id,
+            expected_labels=expected,
+            null_fallback_label="sem_dado", 
+        )
+        
+    def _fetch_feedback_counts(self, subject_id, institution_id: int = 1):
+        expected = {"muito baixo", "baixo", "medio", "alto", "muito alto"}
+        return self._fetch_label_counts(
+            table_name="local_indicators_tutors",
+            label_column_name="label_final_feedback",      
             subject_id=subject_id,
             institution_id=institution_id,
             expected_labels=expected,

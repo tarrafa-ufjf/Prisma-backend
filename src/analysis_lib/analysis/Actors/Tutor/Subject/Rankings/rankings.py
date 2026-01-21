@@ -22,23 +22,23 @@ class Rankings(Indicator):
     
         out = df.copy()
 
-        out["total_respostas_forum"] = (
+        out["total_response_forum"] = (
             out["num_response_fast_forum"].fillna(0).astype(int)
             + out["num_response_normal_forum"].fillna(0).astype(int)
             + out["num_response_late_forum"].fillna(0).astype(int)
         )
-        out["volume"] = np.log1p(out["total_respostas_forum"].clip(lower=0))
+        out["volume"] = np.log1p(out["total_response_forum"].clip(lower=0))
 
         out["mean_weekly_course_views_window"] = pd.to_numeric(
             out["mean_weekly_course_views_window"], errors="coerce"
         ).fillna(0.0)
 
-        out["score"] = pd.to_numeric(out["score"], errors="coerce").fillna(0.0)
+        out["score_access"] = pd.to_numeric(out["score_access"], errors="coerce").fillna(0.0)
 
         group_cols = ["institution_id", "version", "subject_id"]
 
         out["login_norm"] = out.groupby(group_cols)["mean_weekly_course_views_window"].transform(minmax_group)
-        out["forum_quality_norm"] = out.groupby(group_cols)["score"].transform(minmax_group)
+        out["forum_quality_norm"] = out.groupby(group_cols)["score_access"].transform(minmax_group)
         out["volume_norm"] = out.groupby(group_cols)["volume"].transform(minmax_group)
 
         out["ranking_score"] = (0.45 * out["login_norm"] + 0.35 * out["forum_quality_norm"] + 0.20 * out["volume_norm"])
@@ -72,7 +72,7 @@ class Rankings(Indicator):
                 t.c.subject_id,
                 t.c.tutor_id,
                 t.c.mean_weekly_course_views_window,
-                t.c.score,
+                t.c.score_access,
                 t.c.num_response_fast_forum,
                 t.c.num_response_normal_forum,
                 t.c.num_response_late_forum,
@@ -122,7 +122,7 @@ class Rankings(Indicator):
                     t.c.subject_id,
                     t.c.tutor_id,
                     t.c.mean_weekly_course_views_window,
-                    t.c.score,
+                    t.c.score_access,
                     t.c.num_response_fast_forum,
                     t.c.num_response_normal_forum,
                     t.c.num_response_late_forum,

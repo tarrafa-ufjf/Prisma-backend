@@ -40,8 +40,8 @@ class Analyzer:
     def indicators_analysis(self, subject_id, type_query, version, connector, user_id=None, actor="student"):
         return self._actor(actor).indicators_analysis(subject_id, type_query, version, connector, user_id=user_id)
     
-    def response_foruns(self, subject_id, type_query, version, connector, start_at, end_at, user_id=None, actor="tutor"):
-        return self._actor(actor).response_foruns(subject_id, type_query, version, connector, start_at, end_at, user_id=user_id)
+    def analysis_response_foruns(self, subject_id, type_query, version, connector, start_at, end_at, user_id=None, actor="tutor"):
+        return self._actor(actor).analysis_response_foruns(subject_id, type_query, version, connector, start_at, end_at, user_id=user_id)
     
     def analysis_login(self, subject_id, type_query, version, connector,start_at, end_at, user_id=None, actor="tutor"):
         return self._actor(actor).analysis_login(subject_id, type_query, version, connector, start_at, end_at, user_id=user_id)

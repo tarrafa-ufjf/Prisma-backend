@@ -254,7 +254,7 @@ class Worker:
         start_at, end_at = self._best_block_dynamic_window(df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)
         print(start_at, " ", end_at)
         print("AAAA")
-        response_foruns = self.analyzer.response_foruns(subject_id, "subject", version, connector, start_at, end_at)
+        analysis_response_foruns = self.analyzer.analysis_response_foruns(subject_id, "subject", version, connector, start_at, end_at)
         print("1")
         analysis_login_df = self.analyzer.analysis_login(subject_id, "subject", version, connector, start_at, end_at)
         print("2")
@@ -263,13 +263,13 @@ class Worker:
         
         print(analysis_feedback_df)
 
-        if (response_foruns is None or response_foruns.empty) and (analysis_login_df is None or analysis_login_df.empty):
+        if (analysis_response_foruns is None or analysis_response_foruns.empty) and (analysis_login_df is None or analysis_login_df.empty):
             return None
 
         tutor_ids = []
 
-        if response_foruns is not None and not response_foruns.empty:
-            tutor_ids.extend(response_foruns["tutor_id"].dropna().astype(int).tolist())
+        if analysis_response_foruns is not None and not analysis_response_foruns.empty:
+            tutor_ids.extend(analysis_response_foruns["tutor_id"].dropna().astype(int).tolist())
 
         if analysis_login_df is not None and not analysis_login_df.empty:
             tutor_ids.extend(analysis_login_df["tutor_id"].dropna().astype(int).tolist())
@@ -281,9 +281,9 @@ class Worker:
         df["subject_id"] = subject_id
         df["version"] = version
 
-        if response_foruns is not None and not response_foruns.empty:
+        if analysis_response_foruns is not None and not analysis_response_foruns.empty:
             df = df.merge(
-                response_foruns,
+                analysis_response_foruns,
                 on="tutor_id",
                 how="left",
             )

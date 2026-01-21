@@ -159,8 +159,8 @@ if __name__ == "__main__":
 
         "median_forums_response_hours": Float,
         "mean_forums_response_hours": Float,
-        "total_respostas_forum": Integer,
-        "score": Float,
+        "total_response_forum": Integer,
+        "score_access": Float,
         "mean_forums_response_hours_label": String(32),
         "median_forums_response_hours_label": String(32),
         "score_label": String(32),
@@ -170,11 +170,13 @@ if __name__ == "__main__":
         "num_response_normal_forum": Integer,
 
         "n_login": Integer,
-        "n_access_subject": Integer,
+        "n_login_subject": Integer,
         "n_login_weekly": Integer,
         "n_login_label": String(32),
+        "maximum_inactivity_days": Integer,
         "n_login_weekly_label": String(32),
         "label_access": String(32),
+        "maximum_inactivity_days_label": String(32),
         
         "total_correcoes": Integer,
         "correcoes_com_feedback": Integer,

@@ -290,8 +290,8 @@ class Worker:
 
         if analysis_login_df is not None and not analysis_login_df.empty:
             df = df.merge(
-                analysis_login_df[["tutor_id", "n_login", "n_access_subject", "n_login_weekly", "n_login_label", 
-                                    "n_login_weekly_label", "label_access"]],
+                analysis_login_df[["tutor_id", "n_login", "n_login_subject", "n_login_weekly", "n_login_label", 
+                                    "n_login_weekly_label", "label_access","maximum_inactivity_days", "maximum_inactivity_days_label"]],
                 on="tutor_id",
                 how="left",
                 validate="1:1",
@@ -310,9 +310,9 @@ class Worker:
         df["label_forums_response"] = df["label_forums_response"].fillna("Muito baixo")
 
         for col in [
-            "n_login", "n_access_subject", "n_login_weekly",
+            "n_login", "n_login_subject", "n_login_weekly",
             
-            "total_respostas_forum", "median_forums_response_hours", "mean_forums_response_hours", "score",
+            "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum",
             
             "total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
@@ -323,11 +323,12 @@ class Worker:
         desired_cols = [
             "institution_id", "version", "subject_id", "tutor_id",
             
-            "total_respostas_forum", "median_forums_response_hours", "mean_forums_response_hours", "score",
+            "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
             "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_label",
             "label_forums_response", "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum",
             
-            "n_login", "n_access_subject", "n_login_weekly", "n_login_label", "n_login_weekly_label", "label_access",
+            "n_login", "n_login_subject", "n_login_weekly", "n_login_label", "n_login_weekly_label", "label_access", 
+            "maximum_inactivity_days", "maximum_inactivity_days_label",
             
             "total_correcoes","correcoes_com_feedback","percentual_feedback","feedback_textual","feedback_pdf",
             "total_correcoes_label", "correcoes_com_feedback_label", "percentual_feedback_label",
@@ -578,44 +579,72 @@ class Worker:
                 )
     
     def save_subject_global_indicators_tutors(self, subject_df, engine):
+        # def normalize_metric(col):
+        #     if col.max() == col.min():
+        #         return 0
+        #     return (col - col.min()) / (col.max() - col.min())
+
+
         if subject_df is None or subject_df.empty:
             return
 
         df = subject_df.copy()
-
-        global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(
-                mean_score=("score", "mean"),
-            )
         
-        global_subject_df['mean_access'] = 0
+        # ## Fóruns
+        # df["response_norm"] = normalize_metric(df["total_response_forum"])
+        # df["time_norm"] = 1 - normalize_metric(df["mean_forums_response_hours"])
+        # df["participation_norm"] = 1 - normalize_metric(df["median_forums_response_hours"])
 
-        # ------------------------------------------------------------------
-        # Labels globais ainda não calculados -> NA
-        # ------------------------------------------------------------------
-        for col in [
-            "label_forum_response",
-            "label_access",
-        ]:
-            global_subject_df[col] = pd.NA
+        # df["score_global_forum"] = (df["response_norm"] * 0.5 +df["time_norm"] * 0.3 +df["participation_norm"] * 0.2)
+        
+        # ## Acessos
+        # df["logins_norm"] = normalize_metric(df["n_login"])
+        # df["logins_subject_norm"] = normalize_metric(df["n_login_subject"])
+        # df["inatividade_norm"] = 1 - normalize_metric(df["maximum_inactivity_days"])
 
-        global_subject_df = global_subject_df[
-            [
-                "institution_id",
-                "version",
-                "subject_id",
-                "mean_score",
-                "label_forum_response",
-                "mean_access",
-                "label_access",
-            ]
-        ]
+        # df["score_global_access"] = (df["logins_norm"] * 0.2 +df["logins_subject_norm"] * 0.6 +df["inatividade_norm"] * 0.2)
+        
+        # ## Feedback
+        # df["logins_norm"] = normalize_metric(df["n_login"])
+        # df["logins_subject_norm"] = normalize_metric(df["n_login_subject"])
+        # df["inatividade_norm"] = 1 - normalize_metric(df["maximum_inactivity_days"])
 
-        global_subject_df.to_sql(
-            "global_indicators_tutors",
-            engine,
-            if_exists="append",  
-            index=False,
-        )
+        # df["score_global_access"] = (df["logins_norm"] * 0.2 +df["logins_subject_norm"] * 0.6 +df["inatividade_norm"] * 0.2)
+
+
+        # global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(
+        #         mean_score=("score_access", "mean"),
+        #     )
+        
+        # global_subject_df['mean_access'] = 0
+
+        # # ------------------------------------------------------------------
+        # # Labels globais ainda não calculados -> NA
+        # # ------------------------------------------------------------------
+        # for col in [
+        #     "label_forum_response",
+        #     "label_access",
+        # ]:
+        #     global_subject_df[col] = pd.NA
+
+        # global_subject_df = global_subject_df[
+        #     [
+        #         "institution_id",
+        #         "version",
+        #         "subject_id",
+        #         "mean_score",
+        #         "label_forum_response",
+        #         "mean_access",
+        #         "label_access",
+        #     ]
+        # ]
+
+        # global_subject_df.to_sql(
+        #     "global_indicators_tutors",
+        #     engine,
+        #     if_exists="append",  
+        #     index=False,
+        # )
 
     def discretize_global_indicators_tutors(self, institution_id: int = 1):
         engine = self.db_admin.get_connector()

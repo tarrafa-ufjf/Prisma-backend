@@ -176,3 +176,7 @@ class Mapper:
     def fetch_tutors_feedback_subject(self, connector, version, subject_id, start_date, end_date):
         moodle = self.get_moodle(connector, version)
         return moodle.fetch_tutors_feedback_subject(connector, subject_id, start_date, end_date)
+    
+    def fetch_tutors_access_days(self, connector, version, subject_id, start_date, end_date):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_tutors_access_days(connector, subject_id, start_date, end_date)

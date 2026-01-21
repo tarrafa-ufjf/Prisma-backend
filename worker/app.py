@@ -56,16 +56,15 @@ class Worker:
         connector = conn.get_connection_with_config(body.get("db_inst_config"))
         engine = self.db_admin.get_connector()
 
-        # subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
+        subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
         subject_df_tutor = self.tutors_subject_analysis(subject_id, version, connector, engine)
         
-        # self.save_subject_global_indicators_students(subject_df_student, engine)
+        self.save_subject_global_indicators_students(subject_df_student, engine)
         self.save_subject_global_indicators_tutors(subject_df_tutor, engine)
 
         self.db_admin.update_subject_analysis_status(1, subject_id, "D")
     
     def students_subject_analysis(self, subject_id, version, connector, engine):
-        print("A")
         eng = self.analyzer.engagement_analysis(subject_id, 'subject', version, connector)
         per = self.analyzer.performance_analysis(subject_id, 'subject', version, connector)
         mot = self.analyzer.motivation_analysis(subject_id, 'subject', version, connector)
@@ -185,9 +184,7 @@ class Worker:
         )
 
         subject_df.to_sql("local_indicators_students", engine, if_exists="append", index=False)
-        
-        print("B")
-        
+                
         return subject_df
     
     def _best_block_dynamic_window(self, df_daily_events, gap_days: int = 21, pct_of_peak: float = 0.02, floor_min: int = 10,):
@@ -247,22 +244,28 @@ class Worker:
             end_at = best["end_day"]
                     
             return start_at, end_at
+        
+    def _ensure_one_row_per_tutor(self, df_in, cols):
+        df_out = df_in.copy()
+
+        keep = [c for c in cols if c in df_out.columns]
+        df_out = df_out[keep].copy()
+
+        df_out["tutor_id"] = pd.to_numeric(df_out["tutor_id"], errors="coerce")
+        df_out = df_out.dropna(subset=["tutor_id"])
+        df_out["tutor_id"] = df_out["tutor_id"].astype(int)
+
+        df_out = df_out.sort_values("tutor_id").groupby("tutor_id", as_index=False).first()
+
+        return df_out
     
     def tutors_subject_analysis(self, subject_id, version, connector, engine):       
-        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
         df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
         start_at, end_at = self._best_block_dynamic_window(df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)
-        print(start_at, " ", end_at)
-        print("AAAA")
         analysis_response_foruns = self.analyzer.analysis_response_foruns(subject_id, "subject", version, connector, start_at, end_at)
-        print("1")
         analysis_login_df = self.analyzer.analysis_login(subject_id, "subject", version, connector, start_at, end_at)
-        print("2")
         analysis_feedback_df = self.analyzer.analysis_feedback(subject_id, "subject", version, connector, start_at, end_at)
-        print("3")
-        
-        print(analysis_feedback_df)
-
+    
         if (analysis_response_foruns is None or analysis_response_foruns.empty) and (analysis_login_df is None or analysis_login_df.empty):
             return None
 
@@ -282,30 +285,31 @@ class Worker:
         df["version"] = version
 
         if analysis_response_foruns is not None and not analysis_response_foruns.empty:
-            df = df.merge(
-                analysis_response_foruns,
-                on="tutor_id",
-                how="left",
-            )
+            forum_cols = list(analysis_response_foruns.columns)  # ou uma lista explícita
+            forum_1 = self._ensure_one_row_per_tutor(analysis_response_foruns, forum_cols)
+
+            df = df.merge(forum_1, on="tutor_id", how="left", validate="1:1")
 
         if analysis_login_df is not None and not analysis_login_df.empty:
-            df = df.merge(
-                analysis_login_df[["tutor_id", "n_login", "n_login_subject", "n_login_weekly", "n_login_label", 
-                                    "n_login_weekly_label", "label_access","maximum_inactivity_days", "maximum_inactivity_days_label"]],
-                on="tutor_id",
-                how="left",
-                validate="1:1",
-            )
+            login_cols = [
+                "tutor_id", "n_login", "n_login_subject", "n_login_weekly",
+                "n_login_label", "n_login_weekly_label", "label_access",
+                "maximum_inactivity_days", "maximum_inactivity_days_label",
+            ]
+            login_1 = self._ensure_one_row_per_tutor(analysis_login_df, login_cols)
+
+            df = df.merge(login_1, on="tutor_id", how="left", validate="1:1")
             
         if analysis_feedback_df is not None and not analysis_feedback_df.empty:
-            df = df.merge(
-                analysis_feedback_df[["tutor_id","n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
-                                            "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
-                                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback"]],
-                on="tutor_id",
-                how="left",
-                validate="1:1",
-            )
+            feedback_cols = [
+                "tutor_id", "n_corrections", "n_corrections_with_feedback", "percentage_feedback",
+                "n_textual_feedback", "n_feedback_pdf",
+                "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
+                "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback",
+            ]
+            feedback_1 = self._ensure_one_row_per_tutor(analysis_feedback_df, feedback_cols)
+
+            df = df.merge(feedback_1, on="tutor_id", how="left", validate="1:1")
             
         df["label_forums_response"] = df["label_forums_response"].fillna("Muito baixo")
 

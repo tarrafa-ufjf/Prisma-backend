@@ -95,16 +95,16 @@ class Rankings(Indicator):
     def general_analysis(self, version, connector, institution_id: int = 1, kind: str = "best-performance", limit: int = 10):
         engine = self.db_admin.get_connector()
         metadata = MetaData()
-        global_indicators_student = Table("global_indicators_student", metadata, autoload_with=engine)
+        global_indicators_students = Table("global_indicators_students", metadata, autoload_with=engine)
 
         with engine.connect() as conn:
             query = (
                 select(
-                    global_indicators_student.c.subject_id,
-                    global_indicators_student.c.mean_grade_performance.label("grade_mean"),
+                    global_indicators_students.c.subject_id,
+                    global_indicators_students.c.mean_grade_performance.label("grade_mean"),
                 )
-                .where(global_indicators_student.c.institution_id == institution_id)
-                .where(global_indicators_student.c.mean_grade_performance.isnot(None))
+                .where(global_indicators_students.c.institution_id == institution_id)
+                .where(global_indicators_students.c.mean_grade_performance.isnot(None))
             )
             rows = conn.execute(query).mappings().all()
 

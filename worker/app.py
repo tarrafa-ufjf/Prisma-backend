@@ -66,7 +66,6 @@ class Worker:
     
     def students_subject_analysis(self, subject_id, version, connector, engine):
         print(f'students_subject_analysis_{subject_id}')
-        
         eng = self.analyzer.engagement_analysis(subject_id, 'subject', version, connector)
         per = self.analyzer.performance_analysis(subject_id, 'subject', version, connector)
         mot = self.analyzer.motivation_analysis(subject_id, 'subject', version, connector)
@@ -261,7 +260,7 @@ class Worker:
 
         return df_out
     
-    def tutors_subject_analysis(self, subject_id, version, connector, engine):      
+    def tutors_subject_analysis(self, subject_id, version, connector, engine):       
         print(f'tutors_subject_analysis_{subject_id}')
         df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
         start_at, end_at = self._best_block_dynamic_window(df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)

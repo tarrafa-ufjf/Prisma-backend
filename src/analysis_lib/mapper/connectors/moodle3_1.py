@@ -1012,23 +1012,44 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def fetch_tutors_names(self, connector, subject_id):
-        conn = self.connector
+    def fetch_tutors_names(self, connector=None, subject_id=None, user_id=None):
+        """
+        Mode A (by subject): subject_id -> retorna tutor_id + full_name (tutores do subject)
+        Mode B (by user):    user_id    -> retorna tutor_id + full_name (apenas esse usuário)
+        """
+        if (subject_id is None and user_id is None) or (subject_id is not None and user_id is not None):
+            raise ValueError("Passe exatamente um parâmetro: subject_id OU user_id.")
+
+        conn = connector or self.connector
 
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT DISTINCT
-                    u.id AS tutor_id,
-                    CONCAT(u.firstname, ' ', u.lastname) AS full_name
-                FROM mdl_context ctx
-                JOIN mdl_role_assignments ra ON ra.contextid = ctx.id
-                JOIN mdl_user u ON u.id = ra.userid
-                WHERE ctx.contextlevel = 50 AND ctx.instanceid = %s
-                ORDER BY full_name
-                """,
-                (subject_id,)
-            )
+            if subject_id is not None:
+                cur.execute(
+                    """
+                    SELECT DISTINCT
+                        u.id AS tutor_id,
+                        CONCAT(u.firstname, ' ', u.lastname) AS full_name
+                    FROM mdl_context ctx
+                    JOIN mdl_role_assignments ra ON ra.contextid = ctx.id
+                    JOIN mdl_user u ON u.id = ra.userid
+                    WHERE ctx.contextlevel = 50
+                    AND ctx.instanceid = %s
+                    ORDER BY full_name
+                    """,
+                    (subject_id,)
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT
+                        u.id AS tutor_id,
+                        CONCAT(u.firstname, ' ', u.lastname) AS full_name
+                    FROM mdl_user u
+                    WHERE u.id = %s
+                    """,
+                    (user_id,)
+                )
+
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
 

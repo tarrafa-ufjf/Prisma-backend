@@ -57,8 +57,13 @@ class Access(Indicator):
                     t.c.subject_id,
                     t.c.tutor_id,
                     t.c.n_login,
+                    t.c.n_login_subject,
+                    t.c.n_login_weekly,
+                    t.c.n_login_label,
+                    t.c.n_login_weekly_label,
                     t.c.label_access,
-                    t.c.mean_weekly_course_views_window,
+                    t.c.maximum_inactivity_days,
+                    t.c.maximum_inactivity_days_label,
                 )
                 .where(t.c.institution_id == institution_id)
                 .where(t.c.subject_id == int(subject_id))

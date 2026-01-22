@@ -3,6 +3,7 @@ from .Analysis.Analysis_login.analysis_login import Analysis_Login
 from .Analysis.Analysis_feedback.analysis_feedback import Analysis_Feedback
 from .Subject.Indicators.Response_Forums.response_foruns import Response_Forums
 from .Subject.Indicators.Access.access import Access
+from .Subject.Indicators.Feedback.feedback import Feedback
 class TutorAnalyzer:
     def __init__(self, mapper):
         self.mapper = mapper
@@ -44,6 +45,14 @@ class TutorAnalyzer:
     
     def access_analysis(self, subject_id, type_query, route, version, connector, user_id=None):
         access = Access(self.mapper)
+        if type_query == "user":
+            return access.tutors_analysis(subject_id, user_id, version, connector, route)
+        if type_query == "subject":
+            return access.subject_analysis(subject_id, version, connector)
+        raise ValueError("invalid type_query")
+    
+    def feedback_analysis(self, subject_id, type_query, route, version, connector, user_id=None):
+        access = Feedback(self.mapper)
         if type_query == "user":
             return access.tutors_analysis(subject_id, user_id, version, connector, route)
         if type_query == "subject":

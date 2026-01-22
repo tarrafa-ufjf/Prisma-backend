@@ -31,6 +31,7 @@ from pre_api.services.tutors.subject.build_tutors_subject_interaction_channels i
 from pre_api.services.tutors.subject.build_tutors_subject_rankings import build_tutors_subject_rankings
 from pre_api.services.tutors.subject.build_tutors_subject_indicators import build_tutors_subject_indicators
 from services.tutors.subject.indicators.build_tutors_subject_access import build_tutors_subject_access
+from services.tutors.subject.indicators.build_tutors_subject_feedback import build_tutors_subject_feedback
 from services.tutors.subject.indicators.build_tutors_subject_response_forums import build_tutors_subject_response_forums
 from services.tutors.tutor.build_tutors_subject_tutor_summary import build_tutors_subject_tutor_summary
 from services.tutors.tutor.build_tutors_subject_tutor_indicators import build_tutors_subject_tutor_indicators
@@ -425,6 +426,18 @@ def subject_tutors_subject_response_forums(id):
 def subject_tutors_subject_access(id):
     try:
         data = build_tutors_subject_access(id) 
+
+        if data is None:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
+
+@app.route("/analysis/tutors/subject/<int:id>/feedback", methods=["GET"])
+def subject_tutors_subject_feedback(id):
+    try:
+        data = build_tutors_subject_feedback(id) 
 
         if data is None:
             return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404

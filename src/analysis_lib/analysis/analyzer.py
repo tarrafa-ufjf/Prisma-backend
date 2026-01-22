@@ -171,6 +171,9 @@ class Analyzer:
     def access_analysis(self, subject_id, type_query, route, version, connector, user_id=None, actor="tutor"):
         return self._actor(actor).access_analysis(subject_id, type_query, route, version, connector, user_id=user_id)
     
+    def feedback_analysis(self, subject_id, type_query, route, version, connector, user_id=None, actor="tutor"):
+        return self._actor(actor).feedback_analysis(subject_id, type_query, route, version, connector, user_id=user_id)
+
     def get_tutors_subject_tutor_summary(self, subject_id, tutor_id, version, connector):
         from .Actors.Tutor.Tutor.Summary.summary import Tutor_Summary
         tutor_summary = Tutor_Summary(self.mapper)

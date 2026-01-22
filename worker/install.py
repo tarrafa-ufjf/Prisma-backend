@@ -190,7 +190,7 @@ if __name__ == "__main__":
         "n_textual_feedback_label": String(32),
         "n_feedback_pdf_label": String(32),
 
-        "label_final_feedback": String(32),
+        "label_feedback": String(32),
         
     }
     create_table(

@@ -65,6 +65,8 @@ class Worker:
         self.db_admin.update_subject_analysis_status(1, subject_id, "D")
     
     def students_subject_analysis(self, subject_id, version, connector, engine):
+        print(f'students_subject_analysis_{subject_id}')
+        
         eng = self.analyzer.engagement_analysis(subject_id, 'subject', version, connector)
         per = self.analyzer.performance_analysis(subject_id, 'subject', version, connector)
         mot = self.analyzer.motivation_analysis(subject_id, 'subject', version, connector)
@@ -259,7 +261,8 @@ class Worker:
 
         return df_out
     
-    def tutors_subject_analysis(self, subject_id, version, connector, engine):       
+    def tutors_subject_analysis(self, subject_id, version, connector, engine):      
+        print(f'tutors_subject_analysis_{subject_id}')
         df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
         start_at, end_at = self._best_block_dynamic_window(df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)
         analysis_response_foruns = self.analyzer.analysis_response_foruns(subject_id, "subject", version, connector, start_at, end_at)
@@ -305,7 +308,7 @@ class Worker:
                 "tutor_id", "n_corrections", "n_corrections_with_feedback", "percentage_feedback",
                 "n_textual_feedback", "n_feedback_pdf",
                 "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
-                "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback",
+                "n_textual_feedback_label", "n_feedback_pdf_label", "label_feedback",
             ]
             feedback_1 = self._ensure_one_row_per_tutor(analysis_feedback_df, feedback_cols)
 
@@ -336,7 +339,7 @@ class Worker:
             
             "n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
             "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
-            "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback"
+            "n_textual_feedback_label", "n_feedback_pdf_label", "label_feedback"
         ]
 
         for c in desired_cols:

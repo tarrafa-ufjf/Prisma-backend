@@ -20,7 +20,7 @@ class Feedback(Indicator):
                     t.c.institution_id,
                     t.c.subject_id,
                     t.c.tutor_id,
-                    t.c.label_final_feedback,
+                    t.c.label_feedback,
                 )
                 .where(t.c.institution_id == institution_id)
                 .where(t.c.subject_id == int(subject_id))
@@ -66,7 +66,7 @@ class Feedback(Indicator):
                     t.c.percentage_feedback_label,
                     t.c.n_textual_feedback_label,
                     t.c.n_feedback_pdf_label,
-                    t.c.label_final_feedback,
+                    t.c.label_feedback,
                 )
                 .where(t.c.institution_id == institution_id)
                 .where(t.c.subject_id == int(subject_id))

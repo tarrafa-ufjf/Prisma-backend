@@ -36,6 +36,7 @@ class Response_Forums(Indicator):
 
             row = {k: (None if pd.isna(v) else v) for k, v in row.items()}
             return row
+
     
     def tutors_analysis(self, subject_id, tutor_id, version, connector, route, institution_id: int = 1):
         if route == 'indicators':
@@ -56,8 +57,13 @@ class Response_Forums(Indicator):
                     t.c.institution_id,
                     t.c.subject_id,
                     t.c.tutor_id,
+                    t.c.total_response_forum,
                     t.c.median_forums_response_hours,
+                    t.c.median_forums_response_hours_label,
                     t.c.mean_forums_response_hours,
+                    t.c.mean_forums_response_hours_label,
+                    t.c.score_access,
+                    t.c.score_access_label,
                     t.c.label_forums_response,
                     t.c.num_response_fast_forum,
                     t.c.num_response_late_forum,

@@ -157,9 +157,10 @@ class Mapper:
         return moodle.fetch_subject_info_tutors(subject_id, start_date, end_date)
     
 
-    def fetch_tutors_names(self, connector, version, subject_id):
+    def fetch_tutors_names(self, connector, version, subject_id=None, user_id=None):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_tutors_names(connector, subject_id)
+        return moodle.fetch_tutors_names(connector=connector, subject_id=subject_id, user_id=user_id)
+
     
     def fetch_forum_messages_counts(self, version, connector, subject_id, start_at, end_at):
         moodle = self.get_moodle(connector, version)

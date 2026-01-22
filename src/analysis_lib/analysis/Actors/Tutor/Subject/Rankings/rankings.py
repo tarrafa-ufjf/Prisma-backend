@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Any
+from sqlalchemy import MetaData, Table, select
 from .....indicator import Indicator
 from database import DatabaseAdmin
-from sqlalchemy import MetaData, Table, select, func
+
 
 class Rankings(Indicator):
     def __init__(self, mapper):
@@ -11,75 +11,162 @@ class Rankings(Indicator):
         self.db_admin = DatabaseAdmin()
 
     @staticmethod
-    def build_tutors_ranking(df):
-        def minmax_group(s):
-            s = pd.to_numeric(s, errors="coerce").fillna(0.0)
-            mn = s.min()
-            mx = s.max()
-            if pd.isna(mn) or pd.isna(mx) or mx == mn:
-                return pd.Series(0.0, index=s.index)
-            return (s - mn) / (mx - mn)
+    def _minmax_norm(series: pd.Series, higher_is_better: bool = True) -> pd.Series:
+        """
+        Normaliza por min-max dentro de um grupo.
+        - higher_is_better=True: maior vira melhor (0..1)
+        - higher_is_better=False: menor vira melhor (0..1)
+        """
+        s = pd.to_numeric(series, errors="coerce")
+        mn = s.min()
+        mx = s.max()
+
+        if pd.isna(mn) or pd.isna(mx) or mx == mn:
+            return pd.Series(0.0, index=series.index)
+
+        norm = (s - mn) / (mx - mn)
+        if not higher_is_better:
+            norm = 1.0 - norm
+
+        return norm.fillna(0.0).astype(float)
+
     
+    def build_local_ranking(self, df, group_cols=("institution_id", "version", "subject_id")):
+        if df is None or df.empty:
+            return pd.DataFrame()
+
         out = df.copy()
-
-        out["total_response_forum"] = (
-            out["num_response_fast_forum"].fillna(0).astype(int)
-            + out["num_response_normal_forum"].fillna(0).astype(int)
-            + out["num_response_late_forum"].fillna(0).astype(int)
-        )
-        out["volume"] = np.log1p(out["total_response_forum"].clip(lower=0))
-
-        out["mean_weekly_course_views_window"] = pd.to_numeric(
-            out["mean_weekly_course_views_window"], errors="coerce"
-        ).fillna(0.0)
-
-        out["score_access"] = pd.to_numeric(out["score_access"], errors="coerce").fillna(0.0)
-
-        group_cols = ["institution_id", "version", "subject_id"]
-
-        out["login_norm"] = out.groupby(group_cols)["mean_weekly_course_views_window"].transform(minmax_group)
-        out["forum_quality_norm"] = out.groupby(group_cols)["score_access"].transform(minmax_group)
-        out["volume_norm"] = out.groupby(group_cols)["volume"].transform(minmax_group)
-
-        out["ranking_score"] = (0.45 * out["login_norm"] + 0.35 * out["forum_quality_norm"] + 0.20 * out["volume_norm"])
-
-        # rank dentro da disciplina
-        out["rank_in_subject"] = (out.groupby(group_cols)["ranking_score"].rank(method="dense", ascending=False).astype(int))
-
-        cols = ["institution_id", "version", "subject_id", "tutor_id", "rank_in_subject", "ranking_score"]
-        for c in cols:
-            if c not in out.columns:
-                out[c] = pd.NA
-
-        return out[cols].sort_values(
-            ["institution_id", "version", "subject_id", "rank_in_subject", "tutor_id"]
-        )
         
+        out = out.drop_duplicates()
+
+        if "tutor_id" not in out.columns:
+            raise ValueError("Coluna 'tutor_id' não existe no DataFrame.")
+
+        out = out.dropna(subset=["tutor_id"])
+        out["tutor_id"] = pd.to_numeric(out["tutor_id"], errors="coerce").dropna().astype(int)
+
+        for c in group_cols:
+            if c not in out.columns:
+                raise ValueError(f"Coluna obrigatória '{c}' não existe no DataFrame.")
+
+        indicadores = []
+
+        forum_cols_exist = any(col in out.columns for col in [
+            "median_forums_response_hours",
+            "mean_forums_response_hours",
+            "total_response_forum",
+            "num_response_fast_forum",
+            "num_response_normal_forum",
+            "num_response_late_forum",
+        ])
+
+        if forum_cols_exist:
+            response_col = None
+            if "median_forums_response_hours" in out.columns:
+                response_col = "median_forums_response_hours"
+            elif "mean_forums_response_hours" in out.columns:
+                response_col = "mean_forums_response_hours"
+
+            if "total_response_forum" in out.columns:
+                out["total_response_forum"] = pd.to_numeric(out["total_response_forum"], errors="coerce").fillna(0).clip(lower=0)
+            else:
+                out["total_response_forum"] = (
+                    pd.to_numeric(out.get("num_response_fast_forum", 0), errors="coerce").fillna(0)
+                    + pd.to_numeric(out.get("num_response_normal_forum", 0), errors="coerce").fillna(0)
+                    + pd.to_numeric(out.get("num_response_late_forum", 0), errors="coerce").fillna(0)
+                ).clip(lower=0)
+
+            out["forum_volume"] = np.log1p(out["total_response_forum"])
+
+            out["forum_volume_norm"] = out.groupby(list(group_cols))["forum_volume"].transform(
+                lambda s: self._minmax_norm(s, higher_is_better=True)
+            )
+
+            if response_col is not None:
+                out[response_col] = pd.to_numeric(out[response_col], errors="coerce")
+                out["forum_speed_norm"] = out.groupby(list(group_cols))[response_col].transform(
+                    lambda s: self._minmax_norm(s, higher_is_better=False)  
+                )
+                out["forum_score"] = out[["forum_speed_norm", "forum_volume_norm"]].mean(axis=1)
+            else:
+                out["forum_score"] = out["forum_volume_norm"]
+
+            indicadores.append("forum_score")
+
+        access_cols_exist = any(col in out.columns for col in ["n_login_weekly", "score_access"])
+
+        if access_cols_exist:
+            if "n_login_weekly" in out.columns:
+                out["n_login_weekly"] = pd.to_numeric(out["n_login_weekly"], errors="coerce").fillna(0).clip(lower=0)
+                out["n_login_weekly_norm"] = out.groupby(list(group_cols))["n_login_weekly"].transform(
+                    lambda s: self._minmax_norm(s, higher_is_better=True)
+                )
+            else:
+                out["n_login_weekly_norm"] = np.nan
+
+            if "score_access" in out.columns:
+                out["score_access"] = pd.to_numeric(out["score_access"], errors="coerce")
+                out["score_access_norm"] = out.groupby(list(group_cols))["score_access"].transform(
+                    lambda s: self._minmax_norm(s, higher_is_better=True)
+                )
+            else:
+                out["score_access_norm"] = np.nan
+
+            out["access_score"] = out[["n_login_weekly_norm", "score_access_norm"]].mean(axis=1)
+            indicadores.append("access_score")
+
+        feedback_cols_exist = any(col in out.columns for col in ["percentage_feedback", "n_corrections_with_feedback"])
+
+        if feedback_cols_exist:
+            if "percentage_feedback" in out.columns:
+                out["percentage_feedback"] = pd.to_numeric(out["percentage_feedback"], errors="coerce")
+                out["percentage_feedback_norm"] = out.groupby(list(group_cols))["percentage_feedback"].transform(
+                    lambda s: self._minmax_norm(s, higher_is_better=True)
+                )
+            else:
+                out["percentage_feedback_norm"] = np.nan
+
+            if "n_corrections_with_feedback" in out.columns:
+                out["n_corrections_with_feedback"] = pd.to_numeric(out["n_corrections_with_feedback"], errors="coerce").fillna(0).clip(lower=0)
+                out["n_corrections_with_feedback_norm"] = out.groupby(list(group_cols))["n_corrections_with_feedback"].transform(
+                    lambda s: self._minmax_norm(s, higher_is_better=True)
+                )
+            else:
+                out["n_corrections_with_feedback_norm"] = np.nan
+
+            out["feedback_score"] = out[["percentage_feedback_norm", "n_corrections_with_feedback_norm"]].mean(axis=1)
+            indicadores.append("feedback_score")
+
+        if not indicadores:
+            raise ValueError(
+                "Não encontrei colunas suficientes para montar indicadores (forum/access/feedback) nesse DataFrame."
+            )
+
+        out["score_final"] = out[indicadores].mean(axis=1)
+
+        out = out.sort_values(by="score_final", ascending=False)
+        out.insert(0, "ranking", range(1, len(out) + 1))
+
+        return out
+
     def subject_analysis(self, subject_id: int, version, connector, kind: str = "best-performance", limit: int = 10, institution_id: int = 1):
-        """
-        Monta rankings por disciplina (subject).
-        kind: 'best-performance' | 'at-risk'
-        """
         engine = self.db_admin.get_connector()
         metadata = MetaData()
         t = Table("local_indicators_tutors", metadata, autoload_with=engine)
 
+        wanted = [
+            "institution_id", "version", "subject_id", "tutor_id",
+            "median_forums_response_hours", "mean_forums_response_hours",
+            "total_response_forum", "num_response_fast_forum", "num_response_normal_forum", "num_response_late_forum",
+            "score_access", "n_login_weekly",
+            "percentage_feedback", "n_corrections_with_feedback",
+        ]
+        cols = [getattr(t.c, c) for c in wanted if hasattr(t.c, c)]
+
         with engine.connect() as conn:
             query = (
-                select(
-                t.c.institution_id,
-                t.c.version,
-                t.c.subject_id,
-                t.c.tutor_id,
-                t.c.mean_weekly_course_views_window,
-                t.c.score_access,
-                t.c.num_response_fast_forum,
-                t.c.num_response_normal_forum,
-                t.c.num_response_late_forum,
-                t.c.label_access,
-                t.c.label_forums_response,       
-                )
-                .where(t.c.institution_id == institution_id)
+                select(*cols)
+                .where(t.c.institution_id == int(institution_id))
                 .where(t.c.subject_id == int(subject_id))
             )
             if version is not None and hasattr(t.c, "version"):
@@ -92,46 +179,34 @@ class Rankings(Indicator):
 
         df = pd.DataFrame(rows)
 
-        ranked = self.build_tutors_ranking(df)
-        df_names = self.mapper.fetch_tutors_names(connector, version, subject_id)
-        
-        ranked_out = ranked.merge(df_names, on="tutor_id", how="left")
-        
+        ranked_df = self.build_local_ranking(df)
+
+        df_names = self.mapper.fetch_tutors_names(connector, version, subject_id=subject_id)
+        if isinstance(df_names, pd.DataFrame) and not df_names.empty:
+            ranked_df = ranked_df.merge(df_names, on="tutor_id", how="left")
+
         if kind == "best-performance":
-            return ranked_out[["subject_id", "tutor_id", "full_name"]].head(limit)
+            return (ranked_df.sort_values("score_final", ascending=False).head(limit)[["full_name", "subject_id", "tutor_id"]])
 
         if kind == "at-risk":
-            return ranked_out[["subject_id", "tutor_id", "full_name"]].sort_values("ranking_score", ascending=True).head(limit)
+            return (ranked_df.sort_values("score_final", ascending=True).head(limit)[["full_name", "subject_id", "tutor_id"]])
 
-        return ranked_out.head(limit)
-    
     def general_analysis(self, version, connector, institution_id: int = 1, kind: str = "best-performance", limit: int = 10):
-        """
-        Ranking geral de tutores na instituição.
-        kind: 'best-performance' | 'at-risk'
-        """
         engine = self.db_admin.get_connector()
         metadata = MetaData()
         t = Table("local_indicators_tutors", metadata, autoload_with=engine)
 
-        with engine.connect() as conn:
-            query = (
-                select(
-                    t.c.institution_id,
-                    t.c.version,
-                    t.c.subject_id,
-                    t.c.tutor_id,
-                    t.c.mean_weekly_course_views_window,
-                    t.c.score_access,
-                    t.c.num_response_fast_forum,
-                    t.c.num_response_normal_forum,
-                    t.c.num_response_late_forum,
-                    t.c.label_access,
-                    t.c.label_forums_response,
-                )
-                .where(t.c.institution_id == int(institution_id))
-            )
+        wanted = [
+            "institution_id", "version", "subject_id", "tutor_id",
+            "median_forums_response_hours", "mean_forums_response_hours",
+            "total_response_forum", "num_response_fast_forum", "num_response_normal_forum", "num_response_late_forum",
+            "score_access", "n_login_weekly",
+            "percentage_feedback", "n_corrections_with_feedback",
+        ]
+        cols = [getattr(t.c, c) for c in wanted if hasattr(t.c, c)]
 
+        with engine.connect() as conn:
+            query = select(*cols).where(t.c.institution_id == int(institution_id))
             if version is not None and hasattr(t.c, "version"):
                 query = query.where(t.c.version == str(version))
 
@@ -142,53 +217,35 @@ class Rankings(Indicator):
 
         df = pd.DataFrame(rows)
 
-        # 1) calcula ranking por (subject_id, tutor_id)
-        ranked = self.build_tutors_ranking(df)  
-        
-        if ranked is None or ranked.empty:
-            return {"id": institution_id, "type": kind, "ranking": []}
+        ranked_local = self.build_local_ranking(df)
 
-        # 2) agrega por tutor (global)
         agg = (
-            ranked.groupby("tutor_id", as_index=False)
+            ranked_local.groupby("tutor_id", as_index=False)
             .agg(
-                ranking_score=("ranking_score", "mean"),
+                score_final=("score_final", "mean"),
                 n_subjects=("subject_id", "nunique"),
                 subjects=("subject_id", lambda s: list(pd.unique(s))),
             )
         )
 
         ascending = (kind == "at-risk")
-        agg = agg.sort_values("ranking_score", ascending=ascending, na_position="last").head(limit)
+        agg = agg.sort_values("score_final", ascending=ascending, na_position="last").head(limit)
+        
+        tutor_ids = agg["tutor_id"].dropna().astype(int).tolist()
 
-        # 3) busca nomes dos tutores 
-        tutor_ids = set(agg["tutor_id"].astype(int).tolist())
-        subject_ids = ranked.loc[ranked["tutor_id"].astype(int).isin(tutor_ids), "subject_id"].dropna().unique().tolist()
-
-        df_names_list = []
-        for sid in subject_ids:
-            df_n = self.mapper.fetch_tutors_names(connector, version, int(sid))
-            if df_n is None:
-                continue
-            if not isinstance(df_n, pd.DataFrame):
-                df_n = pd.DataFrame(df_n)
-            if not df_n.empty:
-                df_names_list.append(df_n[["tutor_id", "full_name"]])
-
-        if df_names_list:
-            df_names = pd.concat(df_names_list, ignore_index=True)
-            df_names["tutor_id"] = df_names["tutor_id"].astype(int)
-            df_names = df_names.dropna(subset=["tutor_id"]).drop_duplicates(subset=["tutor_id"], keep="first")
-            agg["tutor_id"] = agg["tutor_id"].astype(int)
-            agg = agg.merge(df_names, on="tutor_id", how="left")
-        else:
-            agg["full_name"] = None
+        names_by_id = {}
+        for tid in tutor_ids:
+            df_name = self.fetch_tutors_names(connector, version, user_id=tid)  
+            if not df_name.empty:
+                names_by_id[tid] = df_name.iloc[0]["full_name"]
+            else:
+                names_by_id[tid] = None
 
         ranking = [
             {
                 "tutor_id": int(r.tutor_id),
-                "full_name": str(r.full_name) if r.full_name is not None else None,
-                "ranking_score": float(r.ranking_score) if r.ranking_score is not None else None,
+                "full_name": names_by_id.get(int(r.tutor_id)),
+                "score_final": float(r.score_final) if r.score_final is not None else None,
                 "n_subjects": int(r.n_subjects) if r.n_subjects is not None else 0,
                 "subjects": [int(x) for x in (r.subjects or [])],
             }

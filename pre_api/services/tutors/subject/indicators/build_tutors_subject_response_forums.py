@@ -17,14 +17,18 @@ def build_tutors_subject_response_forums(subject_id: int):
         if df is None:
             return []
 
-        missing = [c for c in ["tutor_id", "full_name", "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
-                                "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"] if c not in df.columns]
+        missing = [c for c in ["tutor_id", "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
+                            "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_access_label",
+                            "label_forums_response",
+                            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"] if c not in df.columns]
         if missing:
             raise KeyError(f"missing columns in engagement_analysis output: {missing}")
 
 
-        out = df.loc[:, ["tutor_id", "full_name", "median_forums_response_hours", "mean_forums_response_hours", "label_forums_response",
-                                "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]].copy()
+        out = df.loc[:, ["tutor_id", "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
+                            "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_access_label",
+                            "label_forums_response",
+                            "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]].copy()
 
         return out.to_dict(orient="records")
     

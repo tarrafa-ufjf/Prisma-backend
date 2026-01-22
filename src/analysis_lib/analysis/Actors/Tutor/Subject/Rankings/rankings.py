@@ -235,7 +235,7 @@ class Rankings(Indicator):
 
         names_by_id = {}
         for tid in tutor_ids:
-            df_name = self.fetch_tutors_names(connector, version, user_id=tid)  
+            df_name = self.mapper.fetch_tutors_names(connector, version, user_id=tid)  
             if not df_name.empty:
                 names_by_id[tid] = df_name.iloc[0]["full_name"]
             else:

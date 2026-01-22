@@ -86,7 +86,7 @@ class Analysis_Feedback(Indicator):
             df[f"{c}_num"] = df[c].apply(self.label_to_numeric)
 
         df["media_classificacao_num"] = df[[f"{c}_num" for c in class_cols]].mean(axis=1)
-        df["label_final_feedback"] = df["media_classificacao_num"].apply(self.numeric_to_label)
+        df["label_feedback"] = df["media_classificacao_num"].apply(self.numeric_to_label)
 
         return df
 
@@ -94,7 +94,7 @@ class Analysis_Feedback(Indicator):
         if start_at is None or end_at is None:
             return pd.DataFrame(columns=["tutor_id","n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
                                             "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
-                                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback"])
+                                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_feedback"])
 
         start_date = pd.to_datetime(start_at).date()
         end_date = pd.to_datetime(end_at).date()
@@ -110,4 +110,4 @@ class Analysis_Feedback(Indicator):
 
         return df_feedback_tutors_labeled[["tutor_id","n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
                             "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
-                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback"]].copy()
+                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_feedback"]].copy()

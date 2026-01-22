@@ -63,6 +63,7 @@ class TutorAnalyzer:
         if type_query == "user":
             res = self.response_foruns_analysis(subject_id, "user", route, version, connector, user_id) or {}
             access = self.access_analysis(subject_id, "user", route, version, connector, user_id) or {}
+            feedback = self.feedback_analysis(subject_id, "user", route, version, connector, user_id) or {}
 
             return {
                 "subject_id": subject_id,
@@ -70,6 +71,7 @@ class TutorAnalyzer:
                 "indicators": {
                     "response_foruns": res.get("label_forums_response"),
                     "access": access.get("label_access"),
+                    "feedback": feedback.get("label_feedback"),
                 },
             }
 

@@ -19,14 +19,14 @@ def build_tutors_subject_feedback(subject_id: int):
 
         missing = [c for c in ["tutor_id","n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
                             "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
-                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback"] if c not in df.columns]
+                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_feedback"] if c not in df.columns]
         if missing:
             raise KeyError(f"missing columns in engagement_analysis output: {missing}")
 
 
         out = df.loc[:, ["tutor_id","n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
                             "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
-                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_final_feedback"]].copy()
+                            "n_textual_feedback_label", "n_feedback_pdf_label", "label_feedback"]].copy()
 
         return out.to_dict(orient="records")
     

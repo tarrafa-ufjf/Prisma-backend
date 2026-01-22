@@ -120,7 +120,7 @@ class Indicators_Percentual(Indicator):
         expected = {"muito baixo", "baixo", "medio", "alto", "muito alto"}
         return self._fetch_label_counts(
             table_name="local_indicators_tutors",
-            label_column_name="label_final_feedback",      
+            label_column_name="label_feedback",      
             subject_id=subject_id,
             institution_id=institution_id,
             expected_labels=expected,

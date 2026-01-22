@@ -16,6 +16,7 @@ class General_indicators:
             return {
                 "forum_response": {"good_percentage": 0},
                 "access": {"good_percentage": 0},
+                "feedback": {"good_percentage": 0},
             }
 
         df = pd.DataFrame(rows)
@@ -35,8 +36,9 @@ class General_indicators:
             }
 
         return {
-            "forum_response": compute_good("label_forum_response"),
-            "access": compute_good("label_access"),
+            "forum_response": compute_good("label_global_forum"),
+            "access": compute_good("label_global_access"),
+            "feedback": compute_good("label_global_feedback"),
         }
 
     def _fetch_flags_general(self, institution_id: int = 1):
@@ -48,8 +50,9 @@ class General_indicators:
             query = (
                 select(
                     global_indicators_tutors.c.subject_id,
-                    global_indicators_tutors.c.label_forum_response,
-                    global_indicators_tutors.c.label_access,
+                    global_indicators_tutors.c.label_global_forum,
+                    global_indicators_tutors.c.label_global_access,
+                    global_indicators_tutors.c.label_global_feedback,
                 )
                 .where(global_indicators_tutors.c.institution_id == institution_id)
             )

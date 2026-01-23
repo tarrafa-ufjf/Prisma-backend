@@ -74,8 +74,10 @@ indicators = ["engagement",
 ]
 
 ## General
-@app.route("/subjects", methods=["GET"])
+@app.route("/subjects", methods=["GET", "OPTIONS"])
 def get_all_subjects():
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_all_subjects()
         if not data:
@@ -85,8 +87,10 @@ def get_all_subjects():
         return jsonify({"error": f"internal error: {e}"}), 500
 
 ## Página de Disciplina
-@app.route("/analysis/subject/<int:id>/summary", methods=["GET"])
+@app.route("/analysis/subject/<int:id>/summary", methods=["GET", "OPTIONS"])
 def subject_summary(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_summary(id)
         if not data:
@@ -95,8 +99,10 @@ def subject_summary(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:id>/indicators", methods=["GET"])
+@app.route("/analysis/subject/<int:id>/indicators", methods=["GET", "OPTIONS"])
 def subject_indicators(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_indicators(id)
         if not data:
@@ -105,8 +111,10 @@ def subject_indicators(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:id>/info_graphs", methods=["GET"])
+@app.route("/analysis/subject/<int:id>/info_graphs", methods=["GET", "OPTIONS"])
 def subject_info_graphs(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_info_graphs(id)
         if not data:
@@ -115,8 +123,10 @@ def subject_info_graphs(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
         
-@app.route("/analysis/subject/<int:id>/rankings", methods=["GET"])
+@app.route("/analysis/subject/<int:id>/rankings", methods=["GET", "OPTIONS"])
 def subject_rankings(id):
+    if request.method == "OPTIONS":
+        return "", 200
     kind = request.args.get("type", "best-performance")
     limit_str = request.args.get("limit", "5")
 
@@ -138,8 +148,10 @@ def subject_rankings(id):
         return jsonify({"error": f"internal error: {e}"}), 500
 
 ## Página de Alunos na Disciplina
-@app.route("/analysis/subject/<int:id>/students/engagement", methods=["GET"])
+@app.route("/analysis/subject/<int:id>/students/engagement", methods=["GET", "OPTIONS"])
 def subject_students_engagement(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_students_engagement(id)
         if not data:
@@ -148,8 +160,10 @@ def subject_students_engagement(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:id>/students/motivation", methods=["GET"])
+@app.route("/analysis/subject/<int:id>/students/motivation", methods=["GET", "OPTIONS"])
 def subject_students_motivation(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_students_motivation(id)
         if not data:
@@ -158,8 +172,10 @@ def subject_students_motivation(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:id>/students/performance", methods=["GET"])
+@app.route("/analysis/subject/<int:id>/students/performance", methods=["GET", "OPTIONS"])
 def subject_students_performance(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_students_performance(id)
         if not data:
@@ -168,8 +184,10 @@ def subject_students_performance(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:id>/students/cognitive", methods=["GET"])
+@app.route("/analysis/subject/<int:id>/students/cognitive", methods=["GET", "OPTIONS"])
 def subject_students_cognitive(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_students_cognitive(id)
         if not data:
@@ -178,8 +196,10 @@ def subject_students_cognitive(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:id>/students/pedagogic", methods=["GET"])
+@app.route("/analysis/subject/<int:id>/students/pedagogic", methods=["GET", "OPTIONS"])
 def subject_students_pedagogic(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_students_pedagogic(id)
         if not data:
@@ -188,8 +208,10 @@ def subject_students_pedagogic(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:id>/students/give_up", methods=["GET"])
+@app.route("/analysis/subject/<int:id>/students/give_up", methods=["GET", "OPTIONS"])
 def subject_students_give_up(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_students_give_up(id)
         if not data:
@@ -199,8 +221,10 @@ def subject_students_give_up(id):
         return jsonify({"error": f"internal error: {e}"}), 500
     
 ## Página de Aluno da Disciplina
-@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/summary", methods=["GET"])
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/summary", methods=["GET", "OPTIONS"])
 def subject_student_summary(subject_id, student_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_student_summary(subject_id, student_id)
         if not data:
@@ -209,8 +233,10 @@ def subject_student_summary(subject_id, student_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/grades", methods=["GET"])
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/grades", methods=["GET", "OPTIONS"])
 def subject_student_grades(subject_id, student_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_student_grades(subject_id, student_id)
         if not data:
@@ -219,8 +245,10 @@ def subject_student_grades(subject_id, student_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/engagement", methods=["GET"])
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/engagement", methods=["GET", "OPTIONS"])
 def subject_student_engagement(subject_id, student_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_student_engagement(subject_id, student_id)
         if not data:
@@ -229,8 +257,10 @@ def subject_student_engagement(subject_id, student_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/motivation", methods=["GET"])
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/motivation", methods=["GET", "OPTIONS"])
 def subject_student_motivation(subject_id, student_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_student_motivation(subject_id, student_id)
         if not data:
@@ -239,8 +269,10 @@ def subject_student_motivation(subject_id, student_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/performance", methods=["GET"])
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/performance", methods=["GET", "OPTIONS"])
 def subject_student_performance(subject_id, student_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_student_performance(subject_id, student_id)
         if not data:
@@ -249,8 +281,10 @@ def subject_student_performance(subject_id, student_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/cognitive", methods=["GET"])
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/cognitive", methods=["GET", "OPTIONS"])
 def subject_student_cognitive(subject_id, student_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_student_cognitive(subject_id, student_id)
         if not data:
@@ -259,8 +293,10 @@ def subject_student_cognitive(subject_id, student_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/pedagogic", methods=["GET"])
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/pedagogic", methods=["GET", "OPTIONS"])
 def subject_student_pedagogic(subject_id, student_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_student_pedagogic(subject_id, student_id)
         if not data:
@@ -269,8 +305,10 @@ def subject_student_pedagogic(subject_id, student_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/give_up", methods=["GET"])
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/give_up", methods=["GET", "OPTIONS"])
 def subject_student_give_up(subject_id, student_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_student_give_up(subject_id, student_id)
         if not data:
@@ -279,8 +317,10 @@ def subject_student_give_up(subject_id, student_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/indicators", methods=["GET"])
+@app.route("/analysis/subject/<int:subject_id>/student/<int:student_id>/indicators", methods=["GET", "OPTIONS"])
 def subject_student_indicators(subject_id, student_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_subject_student_indicators(subject_id, student_id)
         if not data:
@@ -289,8 +329,10 @@ def subject_student_indicators(subject_id, student_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/general/subjects/indicators", methods=["GET"])
+@app.route("/analysis/general/subjects/indicators", methods=["GET", "OPTIONS"])
 def general_subjects_indicators():
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_general_subjects_indicators()
         if not data:
@@ -300,8 +342,10 @@ def general_subjects_indicators():
         return jsonify({"error": f"internal error: {e}"}), 500
     
 ## Página de análise geral da Disciplina
-@app.route("/analysis/general/indicators", methods=["GET"])
+@app.route("/analysis/general/indicators", methods=["GET", "OPTIONS"])
 def general_indicators():
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_general_indicators()
         if not data:
@@ -310,8 +354,10 @@ def general_indicators():
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/general/summary", methods=["GET"])
+@app.route("/analysis/general/summary", methods=["GET", "OPTIONS"])
 def general_summary():
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_general_summary()
         if not data:
@@ -320,8 +366,10 @@ def general_summary():
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/general/rankings", methods=["GET"])
+@app.route("/analysis/general/rankings", methods=["GET", "OPTIONS"])
 def general_rankings():
+    if request.method == "OPTIONS":
+        return "", 200
     kind = request.args.get("type", "best-performance")
     limit_str = request.args.get("limit", "5")
 
@@ -347,8 +395,10 @@ def general_rankings():
 ## ======
 
 ## Página da Disciplina
-@app.route("/analysis/tutors/subject/<int:id>/summary", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:id>/summary", methods=["GET", "OPTIONS"])
 def tutors_subject_summary(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_summary(id)
         if not data:
@@ -357,8 +407,10 @@ def tutors_subject_summary(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/tutors/subject/<int:id>/indicators", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:id>/indicators", methods=["GET", "OPTIONS"])
 def tutors_subject_indicators(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_indicators(id)
         if not data:
@@ -367,8 +419,10 @@ def tutors_subject_indicators(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/tutors/subject/<int:id>/interaction_channels", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:id>/interaction_channels", methods=["GET", "OPTIONS"])
 def subject_tutors_subject_interaction_channels(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_interaction_channels(id) 
 
@@ -379,8 +433,10 @@ def subject_tutors_subject_interaction_channels(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
         
-@app.route("/analysis/tutors/subject/<int:id>/rankings", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:id>/rankings", methods=["GET", "OPTIONS"])
 def tutors_subject_rankings(id):
+    if request.method == "OPTIONS":
+        return "", 200
     kind = request.args.get("type", "best-performance")
     limit_str = request.args.get("limit", "5")
 
@@ -411,8 +467,10 @@ def tutors_subject_rankings(id):
         return jsonify({"error": f"internal error: {e}"}), 500
     
 ## Página de Tutores na Disciplina
-@app.route("/analysis/tutors/subject/<int:id>/response_forums", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:id>/response_forums", methods=["GET", "OPTIONS"])
 def subject_tutors_subject_response_forums(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_response_forums(id) 
 
@@ -423,8 +481,10 @@ def subject_tutors_subject_response_forums(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/tutors/subject/<int:id>/access", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:id>/access", methods=["GET", "OPTIONS"])
 def subject_tutors_subject_access(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_access(id) 
 
@@ -435,8 +495,10 @@ def subject_tutors_subject_access(id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
 
-@app.route("/analysis/tutors/subject/<int:id>/feedback", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:id>/feedback", methods=["GET", "OPTIONS"])
 def subject_tutors_subject_feedback(id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_feedback(id) 
 
@@ -448,8 +510,10 @@ def subject_tutors_subject_feedback(id):
         return jsonify({"error": f"internal error: {e}"}), 500
     
 ## Página de Tutor na Disciplina
-@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/summary", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/summary", methods=["GET", "OPTIONS"])
 def subject_tutors_subject__tutor_summary(subject_id, tutor_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_tutor_summary(subject_id, tutor_id)
         if not data:
@@ -458,8 +522,10 @@ def subject_tutors_subject__tutor_summary(subject_id, tutor_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/indicators", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/indicators", methods=["GET", "OPTIONS"])
 def subject_tutors_subject_tutor_indicators(subject_id, tutor_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_tutor_indicators(subject_id, tutor_id)
         if not data:
@@ -468,8 +534,10 @@ def subject_tutors_subject_tutor_indicators(subject_id, tutor_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/access", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/access", methods=["GET", "OPTIONS"])
 def subject_tutors_subject_tutor_access(subject_id, tutor_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_tutor_access(subject_id, tutor_id)
         if not data:
@@ -478,8 +546,10 @@ def subject_tutors_subject_tutor_access(subject_id, tutor_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/response_forums", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/response_forums", methods=["GET", "OPTIONS"])
 def subject_tutors_subject_tutor_response_forums(subject_id, tutor_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_tutor_response_forums(subject_id, tutor_id)
         if not data:
@@ -488,8 +558,10 @@ def subject_tutors_subject_tutor_response_forums(subject_id, tutor_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/feedback", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/feedback", methods=["GET", "OPTIONS"])
 def subject_tutors_subject_tutor_feedback(subject_id, tutor_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_tutor_feedback(subject_id, tutor_id)
         if not data:
@@ -498,8 +570,10 @@ def subject_tutors_subject_tutor_feedback(subject_id, tutor_id):
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/graphs", methods=["GET"])
+@app.route("/analysis/tutors/subject/<int:subject_id>/tutor/<int:tutor_id>/graphs", methods=["GET", "OPTIONS"])
 def subject_tutors_subject_tutor_graphs(subject_id, tutor_id):
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_subject_tutor_graphs(subject_id, tutor_id)
         if not data:
@@ -509,8 +583,10 @@ def subject_tutors_subject_tutor_graphs(subject_id, tutor_id):
         return jsonify({"error": f"internal error: {e}"}), 500
     
 # Página Global de Tutores
-@app.route("/analysis/tutors/general/indicators", methods=["GET"])
+@app.route("/analysis/tutors/general/indicators", methods=["GET", "OPTIONS"])
 def tutors_general_indicators():
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_general_indicators()
         if not data:
@@ -519,8 +595,10 @@ def tutors_general_indicators():
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/tutors/general/summary", methods=["GET"])
+@app.route("/analysis/tutors/general/summary", methods=["GET", "OPTIONS"])
 def tutors_general_summary():
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         data = build_tutors_general_summary()
         if not data:
@@ -529,8 +607,10 @@ def tutors_general_summary():
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
     
-@app.route("/analysis/tutors/general/rankings", methods=["GET"])
+@app.route("/analysis/tutors/general/rankings", methods=["GET", "OPTIONS"])
 def tutors_general_rankings():
+    if request.method == "OPTIONS":
+        return "", 200
     kind = request.args.get("type", "best-performance")
     limit_str = request.args.get("limit", "5")
 
@@ -554,6 +634,9 @@ def tutors_general_rankings():
 
 @app.route("/analysis", methods=["PUT"])
 def analysis():
+    if request.method == "OPTIONS":
+        return "", 200
+    
     # global indicators
     db_inst_config = request.get_json()
     processor = Processor(user=1)

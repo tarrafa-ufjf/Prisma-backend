@@ -135,7 +135,6 @@ class Analyzer:
             pass
         elif type_query == 'subject': 
             res = summary.subject_analysis(subject_id, version, connector)
-            print(res)
 
         return res
     

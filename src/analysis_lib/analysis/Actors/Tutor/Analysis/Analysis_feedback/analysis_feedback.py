@@ -9,7 +9,6 @@ class Analysis_Feedback(Indicator):
         super().__init__(mapper)
 
     def tutors_analysis(self, subject_id, student_id, version, connector):
-        print("Chegou student")
         return None
     
     def discretize_value_quartis(self, x, lim_inf, q1, q3, lim_sup):

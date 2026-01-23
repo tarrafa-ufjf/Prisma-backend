@@ -8,7 +8,6 @@ class Analysis_Login(Indicator):
         super().__init__(mapper)
 
     def tutors_analysis(self, subject_id, tutor_id, version, connector):
-        print("Chegou tutor")
         return None
     
     def discretize_value_quartis(self, x, lim_inf, q1, q3, lim_sup):

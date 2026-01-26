@@ -95,7 +95,7 @@ class Worker:
         engine = self.db_admin.get_connector()
 
         try:
-            self.set_mysql_session_timeouts(connector, lock_wait_s=50, net_timeout_s=120, idle_timeout_s=28800, max_exec_ms=600_000)
+            self.set_mysql_session_timeouts(connector, lock_wait_s=50, net_timeout_s=120, idle_timeout_s=28800, max_exec_ms=30_000)
 
             subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
             subject_df_tutor   = self.tutors_subject_analysis(subject_id, version, connector, engine)
@@ -323,8 +323,8 @@ class Worker:
         df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
         start_at, end_at = self._best_block_dynamic_window(df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)
         analysis_response_foruns = self.safe_df("response_foruns", self.analyzer.analysis_response_foruns, subject_id, "subject", version, connector, start_at, end_at, connector=connector,)
-        analysis_feedback_df = self.safe_df("feedback", self.analyzer.analysis_feedback, subject_id, "subject", version, connector, start_at, end_at, connector=connector,)
         analysis_login_df = self.safe_df("login", self.analyzer.analysis_login, subject_id, "subject", version, connector, start_at, end_at, connector=connector,)
+        analysis_feedback_df = self.safe_df("feedback", self.analyzer.analysis_feedback, subject_id, "subject", version, connector, start_at, end_at, connector=connector,)
     
         if (analysis_response_foruns is None or analysis_response_foruns.empty) and (analysis_login_df is None or analysis_login_df.empty):
             return None
@@ -845,7 +845,7 @@ class Worker:
                     pass
 
                 # print(f"[ERROR] {label} attempt={attempt} code={code} err={e}")
-                # traceback.print_exc()
+                traceback.print_exc()
 
                 if connector is not None:
                     try:

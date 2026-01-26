@@ -7,6 +7,8 @@ import pandas as pd
 from sqlalchemy import text
 import numpy as np
 import math
+import time
+import traceback
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -47,30 +49,75 @@ class Worker:
         self.db_admin = DatabaseAdmin()
         self.analyzer = Analyzer()
         self.mapper = Mapper()
+        
+    def set_mysql_session_timeouts(self, conn, *, lock_wait_s=50, net_timeout_s=120, idle_timeout_s=28800, max_exec_ms=600_000):
+        cur = conn.cursor()
+        try:
+            desired = {
+                "innodb_lock_wait_timeout": int(lock_wait_s),
+                "lock_wait_timeout": int(lock_wait_s),
+                "net_read_timeout": int(net_timeout_s),
+                "net_write_timeout": int(net_timeout_s),
+                "wait_timeout": int(idle_timeout_s),
+
+                "max_execution_time": int(max_exec_ms),
+                "max_statement_time": int(max_exec_ms / 1000),  
+            }
+
+            applied = {}
+
+            for var, val in desired.items():
+                cur.execute("SHOW VARIABLES LIKE %s", (var,))
+                row = cur.fetchone()
+                if not row:
+                    continue  
+
+                try:
+                    cur.execute(f"SET SESSION {var} = %s", (val,))
+                    cur.execute("SHOW VARIABLES LIKE %s", (var,))
+                    applied[var] = cur.fetchone()
+                except Exception as e:
+                    applied[var] = f"FAILED: {e}"
+
+            # print("[mysql session timeouts] applied:", applied)
+            return applied
+
+        finally:
+            cur.close()
 
     def subject_analysis(self, message):
         body = message["body"]
         cfg = body.get("analysis_config", {})
         subject_id = int(cfg["subject_id"])
         version = self.db_admin.get_version_in_database(1)
+
         connector = conn.get_connection_with_config(body.get("db_inst_config"))
         engine = self.db_admin.get_connector()
 
-        subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
-        subject_df_tutor = self.tutors_subject_analysis(subject_id, version, connector, engine)
-        
-        self.save_subject_global_indicators_students(subject_df_student, engine)
-        self.save_subject_global_indicators_tutors(subject_df_tutor, engine)
+        try:
+            self.set_mysql_session_timeouts(connector, lock_wait_s=50, net_timeout_s=120, idle_timeout_s=28800, max_exec_ms=600_000)
 
-        self.db_admin.update_subject_analysis_status(1, subject_id, "D")
-    
+            subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
+            subject_df_tutor   = self.tutors_subject_analysis(subject_id, version, connector, engine)
+
+            self.save_subject_global_indicators_students(subject_df_student, engine)
+            self.save_subject_global_indicators_tutors(subject_df_tutor, engine)
+
+            self.db_admin.update_subject_analysis_status(1, subject_id, "D")
+
+        finally:
+            try:
+                connector.close()
+            except Exception:
+                pass
+        
     def students_subject_analysis(self, subject_id, version, connector, engine):
-        eng = self.analyzer.engagement_analysis(subject_id, 'subject', version, connector)
-        per = self.analyzer.performance_analysis(subject_id, 'subject', version, connector)
-        mot = self.analyzer.motivation_analysis(subject_id, 'subject', version, connector)
-        cog = self.analyzer.cognitive_analysis(subject_id, 'subject', version, connector)
-        ped = self.analyzer.pedagogic_analysis(subject_id, 'subject', version, connector)
-        giv = self.analyzer.give_up_analysis(subject_id, 'subject', version, connector)
+        eng = self.safe_df("engagement", self.analyzer.engagement_analysis, subject_id, "subject", version, connector, connector=connector)
+        per = self.safe_df("performance", self.analyzer.performance_analysis, subject_id, "subject", version, connector, connector=connector)
+        mot = self.safe_df("motivation", self.analyzer.motivation_analysis, subject_id, "subject", version, connector, connector=connector)
+        cog = self.safe_df("cognitive", self.analyzer.cognitive_analysis, subject_id, "subject", version, connector, connector=connector)
+        ped = self.safe_df("pedagogic", self.analyzer.pedagogic_analysis, subject_id, "subject", version, connector, connector=connector)
+        giv = self.safe_df("give_up", self.analyzer.give_up_analysis, subject_id, "subject", version, connector, connector=connector)
 
         indicator_dfs = {"eng": eng, "per": per, "mot": mot, "ped": ped, "cog": cog, "giv": giv}
         normalized = []
@@ -153,8 +200,21 @@ class Worker:
             if c not in merged.columns:
                 merged[c] = pd.NA
 
-        subject_df = merged[desired_cols]
-        subject_df = subject_df.fillna(0)
+        subject_df = merged[desired_cols].copy()
+
+        numeric_cols = [
+            "n_posts_engagement",
+            "n_posts_motivation",
+            "grade_performance",
+            "grade_comparative_performance",
+            "mean_forum_interactions_cognitive",
+            "mean_quiz_interactions_cognitive",
+            "mean_assign_interactions_cognitive",
+            "n_responses_relation_teacher_student",
+        ]
+        for c in numeric_cols:
+            if c in subject_df.columns:
+                subject_df[c] = pd.to_numeric(subject_df[c], errors="coerce").fillna(0)
 
         subject_df["institution_id"] = 1
         subject_df["subject_id"] = subject_id
@@ -259,12 +319,12 @@ class Worker:
 
         return df_out
     
-    def tutors_subject_analysis(self, subject_id, version, connector, engine):       
+    def tutors_subject_analysis(self, subject_id, version, connector, engine):
         df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
         start_at, end_at = self._best_block_dynamic_window(df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)
-        analysis_response_foruns = self.analyzer.analysis_response_foruns(subject_id, "subject", version, connector, start_at, end_at)
-        analysis_login_df = self.analyzer.analysis_login(subject_id, "subject", version, connector, start_at, end_at)
-        analysis_feedback_df = self.analyzer.analysis_feedback(subject_id, "subject", version, connector, start_at, end_at)
+        analysis_response_foruns = self.safe_df("response_foruns", self.analyzer.analysis_response_foruns, subject_id, "subject", version, connector, start_at, end_at, connector=connector,)
+        analysis_feedback_df = self.safe_df("feedback", self.analyzer.analysis_feedback, subject_id, "subject", version, connector, start_at, end_at, connector=connector,)
+        analysis_login_df = self.safe_df("login", self.analyzer.analysis_login, subject_id, "subject", version, connector, start_at, end_at, connector=connector,)
     
         if (analysis_response_foruns is None or analysis_response_foruns.empty) and (analysis_login_df is None or analysis_login_df.empty):
             return None
@@ -376,7 +436,7 @@ class Worker:
                     "end_date": to_db_date(end_at),
                 },
             )
-
+            
         return df
     
     # ------------------------------------------------------------------
@@ -415,9 +475,9 @@ class Worker:
                 return float(value)
 
             s = str(value).strip().lower()
-            if s in ("true"):
+            if s == "true":
                 return 1.0
-            if s in ("false"):
+            if s == "false":
                 return 0.0
 
             return np.nan
@@ -759,49 +819,92 @@ class Worker:
                         "label_global_feedback": clean_na(row["label_global_feedback"]),
                     },
                 )
+                
+                
+    def safe_df(self, label, fn, *args, connector=None, retries=0, sleep_s=0.3, **kwargs):
+        MYSQL_RETRYABLE = {1205, 1213, 1317, 3024}  
+        # 1205 lock wait timeout
+        # 1213 deadlock
+        # 1317 query interrupted
+        # 3024 max_execution_time exceeded (varia por engine)
+    
+        for attempt in range(retries + 1):
+            try:
+                df = fn(*args, **kwargs)
+                if df is None or (hasattr(df, "empty") and df.empty):
+                    # print(f"[WARN] {label}: empty/None")
+                    return None
+                return df
+
+            except Exception as e:
+                code = None
+                try:
+                    if getattr(e, "args", None):
+                        code = e.args[0]
+                except Exception:
+                    pass
+
+                # print(f"[ERROR] {label} attempt={attempt} code={code} err={e}")
+                # traceback.print_exc()
+
+                if connector is not None:
+                    try:
+                        connector.rollback()
+                    except Exception:
+                        pass
+                    try:
+                        connector.ping(reconnect=True)
+                    except Exception:
+                        pass
+
+                if attempt < retries and code in MYSQL_RETRYABLE:
+                    time.sleep(sleep_s)
+                    continue
+
+                return None
 
 def continuously_listen():
     rabbit_admin = RabbitMQAdmin()
 
     def callback(ch, method, properties, body):
-        message = json.loads(body.decode())
-        analysis_type = message.get("body", {}).get("type")
         worker = Worker(rabbit_admin)
+        try:
+            message = json.loads(body.decode())
+            analysis_type = message.get("body", {}).get("type")
 
-        if analysis_type == "subject_analysis":
-            worker.subject_analysis(message)
-        elif analysis_type in (
-            "global_analysis_engagement",
-            "global_analysis_pedagogic",
-            "global_analysis_performance",
-            "global_analysis_motivation",
-            "global_analysis_cognitive",
-            "global_analysis_give_up",
-        ):
-            worker.global_analysis(message)
-        else:
-            print(f"[!] Tipo de análise desconhecido: {analysis_type}")
+            if analysis_type == "subject_analysis":
+                worker.subject_analysis(message)
+            elif analysis_type in (...):
+                worker.global_analysis(message)
+            else:
+                print(f"[!] Tipo de análise desconhecido: {analysis_type}")
 
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        except Exception as e:
+            print("[FATAL in callback]:", e)
+            import traceback; traceback.print_exc()
 
-        # ------------------------------------------------------------------
-        # Depois de processar a mensagem, verifica se ainda há itens na fila.
-        # Se não houver mais mensagens pendentes, roda a discretização dos indicadores globais.
-        # ------------------------------------------------------------------
-        state = ch.queue_declare(queue='tasks_to_process', passive=True)
-        if state.method.message_count == 0:
-            worker.discretize_global_indicators(1)
-            worker.discretize_global_indicators_tutors(1)
+        finally:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
+            # se quiser manter sua lógica de discretização aqui, ok:
+            try:
+                state = ch.queue_declare(queue='tasks_to_process', passive=True)
+                if state.method.message_count == 0:
+                    worker.discretize_global_indicators(1)
+                    worker.discretize_global_indicators_tutors(1)
+            except Exception as e:
+                print("[WARN] post-process failed:", e)
+            
     rabbit_admin.channel.basic_qos(prefetch_count=1)
     rabbit_admin.channel.basic_consume(queue='tasks_to_process', on_message_callback=callback)
 
     print(' [*] Aguardando mensagens. Para sair pressione CTRL+C')
     while True:
-        # try:
-        rabbit_admin.channel.start_consuming()
-        # except Exception as e:
-        #     print(f"Erro: {e}")
+        try:
+            rabbit_admin.channel.start_consuming()
+        except Exception as e:
+            print("[consume loop error]:", e)
+            time.sleep(2)
 
 if __name__ == '__main__':
     print("Worker iniciado. Aguardando mensagens...")

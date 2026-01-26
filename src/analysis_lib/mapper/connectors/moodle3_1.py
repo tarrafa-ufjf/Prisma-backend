@@ -6,10 +6,9 @@ import pandas as pd
 class Moodle31(Moodle):
     def __init__(self, connector):
         super().__init__(connector)
-    
-    def save_foruns_ava_csv(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+
+    def save_foruns_ava_csv(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT p.userid AS user_id, f.id AS forum_id_required, p.id AS post_id_required, p.created AS post_date_required
                 FROM mdl_forum f
@@ -32,9 +31,8 @@ class Moodle31(Moodle):
             w.writerow(cols)
             w.writerows([list(r.values()) for r in rows])
     
-    def save_all_student_csv(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def save_all_student_csv(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT u.id AS user_id
                 FROM mdl_user u
@@ -52,9 +50,8 @@ class Moodle31(Moodle):
             w.writerow(cols)
             w.writerows([list(r.values()) for r in rows])
     
-    def get_courses(self):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_courses(self, connector):
+        with connector.cursor() as cur:
             cur.execute('SELECT id AS subject_id, fullname FROM mdl_course')
             courses = cur.fetchall()
         return courses
@@ -64,9 +61,8 @@ class Moodle31(Moodle):
     Consultas relacionadas ao indicador de Engajamento:
     '''
 
-    def get_all_posts_for_forum_required_by_course(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_all_posts_for_forum_required_by_course(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT p.userid AS user_id, f.id AS forum_id_required, p.id AS post_id_required
                 FROM mdl_forum_posts p
@@ -92,9 +88,8 @@ class Moodle31(Moodle):
         return df
         
     
-    def get_all_students_by_course(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_all_students_by_course(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT u.id AS user_id, CONCAT(u.firstname, ' ', u.lastname) AS full_name
                 FROM mdl_user u
@@ -108,14 +103,13 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
-    
+
     '''
     Consultas relacionadas ao indicador de Desempenho:
     '''
 
-    def get_grades_by_course(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_grades_by_course(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT
                     u.id AS user_id,
@@ -138,9 +132,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def get_activity_weights(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_activity_weights(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT 
                     cm.id AS activity_id,
@@ -169,9 +162,8 @@ class Moodle31(Moodle):
     Consultas relacionadas ao indicador de Motivação:
     '''
 
-    def get_foruns_non_required_by_course(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_foruns_non_required_by_course(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT p.userid AS user_id, f.id AS forum_id_unrequired, p.id AS post_id_unrequired
                 FROM mdl_forum_posts p
@@ -200,9 +192,8 @@ class Moodle31(Moodle):
     Consultas relacionadas ao indicador Pedagógico:
     '''
 
-    def get_forum_data(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_forum_data(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT
                     t.tutor_id,
@@ -287,9 +278,8 @@ class Moodle31(Moodle):
     '''
 
     # Fóruns
-    def get_course_forum_viewed(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_course_forum_viewed(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
                     u.id AS user_id,
@@ -307,9 +297,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def get_forum_post_created(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_forum_post_created(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
                     u.id AS user_id,
@@ -331,9 +320,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def forum_reply_viewed(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def forum_reply_viewed(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT 
                     p.userid AS user_id,
@@ -361,9 +349,8 @@ class Moodle31(Moodle):
         return df
     
     # Assign
-    def get_assign_submission_status_viewed(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_assign_submission_status_viewed(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
                     u.id AS user_id,
@@ -382,9 +369,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def get_assign_assessable_submitted(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_assign_assessable_submitted(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
                     u.id AS user_id,
@@ -404,9 +390,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def get_assign_feedback_viewed(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_assign_feedback_viewed(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
                     u.id AS user_id,
@@ -427,9 +412,8 @@ class Moodle31(Moodle):
         return df
     
     # Quizzes
-    def get_quizz_viewed(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_quizz_viewed(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
                     u.id AS user_id,
@@ -448,9 +432,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def get_quizz_attempt_submitted(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_quizz_attempt_submitted(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
                     u.id AS user_id,
@@ -470,9 +453,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def get_quizz_attempt_reviewd(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_quizz_attempt_reviewd(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
                     u.id AS user_id,
@@ -495,9 +477,9 @@ class Moodle31(Moodle):
     '''
     Consultas relacionadas as informações gerais das disciplinas para povoar as telas:
     '''
-    def fetch_subject_info(self, subject_id):
+    def fetch_subject_info(self, connector, subject_id):
         conn = self.connector
-        with conn.cursor() as cur:
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT
                     c.id        AS subject_id,
@@ -512,9 +494,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def fetch_subject_metrics(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def fetch_subject_metrics(self, connector, subject_id):
+        with connector.cursor() as cur:
             # 1) Total de alunos
             cur.execute('''
                 SELECT COUNT(DISTINCT ra.userid) AS total_enrolled
@@ -573,9 +554,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(data)
         return df
     
-    def get_pct_usage_resource(self, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_pct_usage_resource(self, connector, subject_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT
                     cm.course AS subject_id,
@@ -604,9 +584,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def get_all_subjects(self):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def get_all_subjects(self, connector):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT
                     c.id                           AS id,
@@ -625,9 +604,8 @@ class Moodle31(Moodle):
         Página de aluno na disciplina
     '''
 
-    def fetch_student_summary(self, subject_id, student_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def fetch_student_summary(self, connector, subject_id, student_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT DISTINCT
                     u.id AS id,
@@ -655,9 +633,8 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
     
-    def fetch_student_grades(self, subject_id, student_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def fetch_student_grades(self, connector, subject_id, student_id):
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT
                     u.id AS id,
@@ -683,8 +660,7 @@ class Moodle31(Moodle):
     '''
     
     def fetch_subjects_summary(self, connector):
-        conn = connector
-        with conn.cursor() as cur:
+        with connector.cursor() as cur:
             cur.execute("""
                 SELECT
                     c.id        AS subject_id,
@@ -718,8 +694,7 @@ class Moodle31(Moodle):
         return df
     
     def fetch_institution_info(self, connector):
-        conn = connector
-        with conn.cursor() as cur:
+        with connector.cursor() as cur:
             cur.execute("""
                 SELECT
                     (SELECT COUNT(*)
@@ -744,8 +719,7 @@ class Moodle31(Moodle):
         return df   
     
     def fetch_responses_forums(self, connector, subject_id, start_at, end_at):
-        conn = self.connector
-        with conn.cursor() as cur:
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT
                     t.tutor_id,
@@ -885,8 +859,7 @@ class Moodle31(Moodle):
         return pd.DataFrame(rows, columns=cols)
 
     def fetch_daily_events(self, connector, subject_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+        with connector.cursor() as cur:
             cur.execute('''
                 SELECT
                     DATE(FROM_UNIXTIME(timecreated)) AS day,
@@ -907,9 +880,8 @@ class Moodle31(Moodle):
 
         return pd.DataFrame(rows, columns=cols)
     
-    def fetch_subject_info_tutors(self, subject_id, start_date, end_date):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def fetch_subject_info_tutors(self, connector, subject_id, start_date, end_date):
+        with connector.cursor() as cur:
             cur.execute(
                 '''
                 SELECT
@@ -1020,9 +992,7 @@ class Moodle31(Moodle):
         if (subject_id is None and user_id is None) or (subject_id is not None and user_id is not None):
             raise ValueError("Passe exatamente um parâmetro: subject_id OU user_id.")
 
-        conn = connector or self.connector
-
-        with conn.cursor() as cur:
+        with connector.cursor() as cur:
             if subject_id is not None:
                 cur.execute(
                     """
@@ -1056,8 +1026,7 @@ class Moodle31(Moodle):
         return pd.DataFrame(rows, columns=cols)
     
     def fetch_forum_messages_counts(self, connector, subject_id, start_at, end_at):
-        conn = connector
-        with conn.cursor() as cur:
+        with connector.cursor() as cur:
             cur.execute(
                 """
                 SELECT
@@ -1128,9 +1097,8 @@ class Moodle31(Moodle):
 
         return pd.DataFrame(rows, columns=cols)
     
-    def fetch_tutor_summary(self, subject_id, tutor_id):
-        conn = self.connector
-        with conn.cursor() as cur:
+    def fetch_tutor_summary(self, connector, subject_id, tutor_id):
+        with connector.cursor() as cur:
             cur.execute(
                 """
                 SELECT
@@ -1186,8 +1154,7 @@ class Moodle31(Moodle):
         return pd.DataFrame(rows, columns=cols)
     
     def fetch_institution_info_tutors(self, connector):
-        conn = connector
-        with conn.cursor() as cur:
+        with connector.cursor() as cur:
             cur.execute("""
                 SELECT
                     (SELECT COUNT(DISTINCT u.id)
@@ -1231,8 +1198,7 @@ class Moodle31(Moodle):
         return df   
     
     def fetch_tutors_feedback_subject(self, connector, subject_id, start_date, end_date):
-        conn = self.connector
-        with conn.cursor() as cur:
+        with connector.cursor() as cur:
             cur.execute(
                 """
                 SELECT

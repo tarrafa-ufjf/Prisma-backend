@@ -89,7 +89,7 @@ class Analysis_Feedback(Indicator):
 
         return df
 
-    def subject_analysis(self, subject_id, version, connector, start_at, end_at):
+    def subject_analysis(self, subject_id, version, connector, start_at, end_at, tutor_ids):
         if start_at is None or end_at is None:
             return pd.DataFrame(columns=["tutor_id","n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
                                             "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
@@ -98,7 +98,7 @@ class Analysis_Feedback(Indicator):
         start_date = pd.to_datetime(start_at).date()
         end_date = pd.to_datetime(end_at).date()
 
-        df_feedback_tutors = self.mapper.fetch_tutors_feedback_subject(connector, version, subject_id, start_date, end_date)
+        df_feedback_tutors = self.mapper.fetch_tutors_feedback_subject(connector, version, subject_id, start_date, end_date, tutor_ids)
 
         for col in ["n_corrections", "n_corrections_with_feedback", "n_textual_feedback", "n_feedback_pdf"]:
             df_feedback_tutors[col] = df_feedback_tutors[col].fillna(0).astype(int)

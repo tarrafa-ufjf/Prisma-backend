@@ -95,7 +95,7 @@ class Worker:
         engine = self.db_admin.get_connector()
 
         try:
-            self.set_mysql_session_timeouts(connector, lock_wait_s=50, net_timeout_s=120, idle_timeout_s=28800, max_exec_ms=30_000)
+            self.set_mysql_session_timeouts(connector, lock_wait_s=50, net_timeout_s=120, idle_timeout_s=28800, max_exec_ms=600_000)
 
             subject_df_student = self.students_subject_analysis(subject_id, version, connector, engine)
             subject_df_tutor   = self.tutors_subject_analysis(subject_id, version, connector, engine)
@@ -322,43 +322,40 @@ class Worker:
     def tutors_subject_analysis(self, subject_id, version, connector, engine):
         df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
         start_at, end_at = self._best_block_dynamic_window(df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10)
-        analysis_response_foruns = self.safe_df("response_foruns", self.analyzer.analysis_response_foruns, subject_id, "subject", version, connector, start_at, end_at, connector=connector,)
-        analysis_login_df = self.safe_df("login", self.analyzer.analysis_login, subject_id, "subject", version, connector, start_at, end_at, connector=connector,)
-        analysis_feedback_df = self.safe_df("feedback", self.analyzer.analysis_feedback, subject_id, "subject", version, connector, start_at, end_at, connector=connector,)
-    
-        if (analysis_response_foruns is None or analysis_response_foruns.empty) and (analysis_login_df is None or analysis_login_df.empty):
-            return None
-
-        tutor_ids = []
-
-        if analysis_response_foruns is not None and not analysis_response_foruns.empty:
-            tutor_ids.extend(analysis_response_foruns["tutor_id"].dropna().astype(int).tolist())
-
-        if analysis_login_df is not None and not analysis_login_df.empty:
-            tutor_ids.extend(analysis_login_df["tutor_id"].dropna().astype(int).tolist())
+        
+        df_all_tutors = self.mapper.fetch_all_tutors(connector, version, subject_id, start_at, end_at)
+        if df_all_tutors is None or df_all_tutors.empty:
+            return None 
+                        
+        tutor_ids = set(pd.to_numeric(df_all_tutors["tutor_id"], errors="coerce").dropna().astype(int).tolist())
 
         tutor_ids = sorted(set(tutor_ids))
+        
+        if not tutor_ids:
+            return None
+        
+        analysis_response_foruns = self.safe_df("response_foruns", self.analyzer.analysis_response_foruns, subject_id, "subject", version, connector, start_at, end_at, connector=connector, tutor_ids=tutor_ids)
+        analysis_feedback_df = self.safe_df("feedback", self.analyzer.analysis_feedback, subject_id, "subject", version, connector, start_at, end_at, connector=connector, tutor_ids=tutor_ids)
+        analysis_login_df = self.safe_df("login", self.analyzer.analysis_login, subject_id, "subject", version, connector, start_at, end_at, connector=connector, tutor_ids=tutor_ids)
+    
+        if (analysis_response_foruns is None or analysis_response_foruns.empty) and (analysis_login_df is None or analysis_login_df.empty) and (analysis_feedback_df is None or analysis_feedback_df.empty):
+            return None
 
-        df = pd.DataFrame({"tutor_id": tutor_ids})
+        df = pd.DataFrame({"tutor_id": tutor_ids}).merge(
+            df_all_tutors[["tutor_id"]].drop_duplicates(),
+            on="tutor_id",
+            how="inner",
+            validate="m:1",
+        )
         df["institution_id"] = 1
         df["subject_id"] = subject_id
         df["version"] = version
 
         if analysis_response_foruns is not None and not analysis_response_foruns.empty:
-            forum_cols = list(analysis_response_foruns.columns)  # ou uma lista explícita
+            forum_cols = list(analysis_response_foruns.columns)  
             forum_1 = self._ensure_one_row_per_tutor(analysis_response_foruns, forum_cols)
 
             df = df.merge(forum_1, on="tutor_id", how="left", validate="1:1")
-
-        if analysis_login_df is not None and not analysis_login_df.empty:
-            login_cols = [
-                "tutor_id", "n_login", "n_login_subject", "n_login_weekly",
-                "n_login_label", "n_login_weekly_label", "label_access",
-                "maximum_inactivity_days", "maximum_inactivity_days_label",
-            ]
-            login_1 = self._ensure_one_row_per_tutor(analysis_login_df, login_cols)
-
-            df = df.merge(login_1, on="tutor_id", how="left", validate="1:1")
             
         if analysis_feedback_df is not None and not analysis_feedback_df.empty:
             feedback_cols = [
@@ -370,6 +367,17 @@ class Worker:
             feedback_1 = self._ensure_one_row_per_tutor(analysis_feedback_df, feedback_cols)
 
             df = df.merge(feedback_1, on="tutor_id", how="left", validate="1:1")
+            
+        
+        if analysis_login_df is not None and not analysis_login_df.empty:
+            login_cols = [
+                "tutor_id", "n_login", "n_login_subject", "n_login_weekly",
+                "n_login_label", "n_login_weekly_label", "label_access",
+                "maximum_inactivity_days", "maximum_inactivity_days_label",
+            ]
+            login_1 = self._ensure_one_row_per_tutor(analysis_login_df, login_cols)
+
+            df = df.merge(login_1, on="tutor_id", how="left", validate="1:1")
             
         df["label_forums_response"] = df["label_forums_response"].fillna("Muito baixo")
 

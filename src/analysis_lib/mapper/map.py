@@ -140,13 +140,13 @@ class Mapper:
         moodle = self.get_moodle(connector, version)
         return moodle.fetch_institution_info(connector)
     
-    def fetch_responses_forums(self, connector, version, subject_id, start_at, end_at):
+    def fetch_responses_forums(self, connector, version, subject_id, start_at, end_at, tutor_ids):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_responses_forums(connector, subject_id, start_at, end_at)
+        return moodle.fetch_responses_forums(connector, subject_id, start_at, end_at, tutor_ids)
     
-    def fetch_tutors_login_subject(self, connector, version, subject_id, start_date, end_date):
+    def fetch_tutors_login_subject(self, connector, version, subject_id, start_date, end_date, tutor_ids):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_tutors_login_subject(connector, subject_id, start_date, end_date)
+        return moodle.fetch_tutors_login_subject(connector, subject_id, start_date, end_date, tutor_ids)
     
     def fetch_daily_events(self, connector, version, subject_id):
         moodle = self.get_moodle(connector, version)
@@ -174,10 +174,14 @@ class Mapper:
         moodle = self.get_moodle(connector, version)
         return moodle.fetch_institution_info_tutors(connector)
     
-    def fetch_tutors_feedback_subject(self, connector, version, subject_id, start_date, end_date):
+    def fetch_tutors_feedback_subject(self, connector, version, subject_id, start_date, end_date, tutor_ids):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_tutors_feedback_subject(connector, subject_id, start_date, end_date)
+        return moodle.fetch_tutors_feedback_subject(connector, subject_id, start_date, end_date, tutor_ids)
     
-    def fetch_tutors_access_days(self, connector, version, subject_id, start_date, end_date):
+    def fetch_tutors_access_days(self, connector, version, subject_id, start_date, end_date, tutor_ids):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_tutors_access_days(connector, subject_id, start_date, end_date)
+        return moodle.fetch_tutors_access_days(connector, subject_id, start_date, end_date, tutor_ids)
+    
+    def fetch_all_tutors(self, connector, version, subject_id, start_date, end_date):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_all_tutors(connector, subject_id, start_date, end_date)

@@ -14,10 +14,10 @@ def build_tutors_subject_response_forums(subject_id: int):
         version = analyzer.get_moodle_version(connector)
         df = analyzer.response_foruns_analysis(subject_id, 'subject', 'subject', version, connector)
         
-        if df is None:
+        if df is None or df.empty:
             return []
 
-        missing = [c for c in ["tutor_id", "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
+        missing = [c for c in ["tutor_id", "full_name", "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
                             "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_access_label",
                             "label_forums_response",
                             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"] if c not in df.columns]
@@ -25,7 +25,7 @@ def build_tutors_subject_response_forums(subject_id: int):
             raise KeyError(f"missing columns in engagement_analysis output: {missing}")
 
 
-        out = df.loc[:, ["tutor_id", "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
+        out = df.loc[:, ["tutor_id", "full_name", "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
                             "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_access_label",
                             "label_forums_response",
                             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]].copy()

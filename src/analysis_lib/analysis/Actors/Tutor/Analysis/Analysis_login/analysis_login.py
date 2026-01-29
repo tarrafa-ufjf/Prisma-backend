@@ -104,7 +104,7 @@ class Analysis_Login(Indicator):
 
         return max(0, start_gap, end_gap, max_internal)
 
-    def subject_analysis(self, subject_id, version, connector, start_at, end_at, tutor_ids):
+    def subject_analysis(self, subject_id, version, connector, start_at, end_at):
         if start_at is None or end_at is None:
             return pd.DataFrame(columns=["tutor_id", "n_login", "n_login_subject", "n_login_weekly", "n_login_label", 
                                             "n_login_weekly_label", "label_access", "maximum_inactivity_days", "maximum_inactivity_days_label"])
@@ -112,12 +112,12 @@ class Analysis_Login(Indicator):
         start_date = pd.to_datetime(start_at).date()
         end_date = pd.to_datetime(end_at).date()
 
-        df_course_views = self.mapper.fetch_tutors_login_subject(connector, version, subject_id, start_date, end_date, tutor_ids)
+        df_course_views = self.mapper.fetch_tutors_login_subject(connector, version, subject_id, start_date, end_date)
 
         for col in ["first_login", "last_login", "first_course_access", "last_course_access"]:
             df_course_views[col] = pd.to_datetime(df_course_views[col])
         
-        df_access_days = self.mapper.fetch_tutors_access_days(connector, version, subject_id, start_date, end_date, tutor_ids)
+        df_access_days = self.mapper.fetch_tutors_access_days(connector, version, subject_id, start_date, end_date)
         
         if df_access_days is None or df_access_days.empty:
             access_days_by_tutor = {}

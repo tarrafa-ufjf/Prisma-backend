@@ -93,8 +93,8 @@ class Analysis_Forums_Response(Indicator):
 
         return df
 
-    def subject_analysis(self, subject_id, version, connector, start_at, end_at, tutor_ids):
-        df_responses_forums = self.mapper.fetch_responses_forums(connector, version, subject_id, start_at, end_at, tutor_ids)
+    def subject_analysis(self, subject_id, version, connector, start_at, end_at):
+        df_responses_forums = self.mapper.fetch_responses_forums(connector, version, subject_id, start_at, end_at)
                 
         df_tutores = df_responses_forums[['tutor_id', 'tutor_completo']].drop_duplicates()
         df_forum = df_responses_forums.dropna(subset=['resposta_id']).copy()

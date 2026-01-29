@@ -718,42 +718,37 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df   
     
-    def fetch_responses_forums(self, connector, subject_id, start_at, end_at, tutor_ids):
-        tutor_ids = [int(x) for x in tutor_ids if x is not None]
-        if not tutor_ids:
-            return pd.DataFrame(columns=[
-                "tutor_id","tutor_completo","resposta_id","discussion_id","discussion_title",
-                "forum_id","forum_name","autor_resposta_id","autor_resposta_completo",
-                "resposta_enviada_em","post_aluno_id","autor_aluno_completo","post_criado_em"
-            ])
-
-        in_placeholders = ",".join(["%s"] * len(tutor_ids))
-
-        query = f"""
-            SELECT
-                t.tutor_id,
-                t.tutor_completo,
-                r.resposta_id,
-                r.discussion_id,
-                r.discussion_title,
-                r.forum_id,
-                r.forum_name,
-                r.autor_resposta_id,
-                r.autor_resposta_completo,
-                r.resposta_enviada_em,
-                r.post_aluno_id,
-                r.autor_aluno_completo,
-                r.post_criado_em
-            FROM
-                (
-                    SELECT
-                        u.id AS tutor_id,
+    def fetch_responses_forums(self, connector, subject_id, start_at, end_at):
+        with connector.cursor() as cur:
+            cur.execute('''
+                SELECT
+                    t.tutor_id,
+                    t.tutor_completo,
+                    r.resposta_id,
+                    r.discussion_id,
+                    r.discussion_title,
+                    r.forum_id,
+                    r.forum_name,
+                    r.autor_resposta_id,
+                    r.autor_resposta_completo,
+                    r.resposta_enviada_em,
+                    r.post_aluno_id,
+                    r.autor_aluno_completo,
+                    r.post_criado_em
+                FROM
+                    (
+                    SELECT u.id AS tutor_id,
                         CONCAT_WS(' ', u.firstname, u.lastname) AS tutor_completo
                     FROM mdl_user u
-                    WHERE u.id IN ({in_placeholders})
-                ) AS t
-            LEFT JOIN
-                (
+                    JOIN mdl_role_assignments ra ON ra.userid = u.id
+                    JOIN mdl_role r ON r.id = ra.roleid
+                    JOIN mdl_context c ON c.id = ra.contextid
+                    WHERE r.id IN (3,4,9,17)
+                    AND c.contextlevel = 50
+                    AND c.instanceid = %s
+                    ) AS t
+                LEFT JOIN
+                    (
                     SELECT 
                         p.id AS resposta_id,
                         p.discussion AS discussion_id,
@@ -775,136 +770,92 @@ class Moodle31(Moodle):
                     WHERE f.course = %s
                     AND p.created >= UNIX_TIMESTAMP(%s)
                     AND p.created <  UNIX_TIMESTAMP(DATE_ADD(%s, INTERVAL 1 DAY))
-                    AND p.userid IN ({in_placeholders})
+
                     AND EXISTS (
-                            SELECT 1
-                            FROM mdl_role_assignments ra2
-                            JOIN mdl_role r2 ON r2.id = ra2.roleid
-                            JOIN mdl_context c2 ON c2.id = ra2.contextid
-                            WHERE ra2.userid = parent.userid
+                        SELECT 1
+                        FROM mdl_role_assignments ra
+                        JOIN mdl_role r ON r.id = ra.roleid
+                        JOIN mdl_context c ON c.id = ra.contextid
+                        WHERE ra.userid = p.userid
+                            AND r.id IN (3,4,9,17)
+                            AND c.contextlevel = 50
+                            AND c.instanceid = f.course
+                    )
+                    AND EXISTS (
+                        SELECT 1
+                        FROM mdl_role_assignments ra2
+                        JOIN mdl_role r2 ON r2.id = ra2.roleid
+                        JOIN mdl_context c2 ON c2.id = ra2.contextid
+                        WHERE ra2.userid = parent.userid
                             AND r2.id IN (5)
                             AND c2.contextlevel = 50
                             AND c2.instanceid = f.course
                     )
-                ) AS r
-            ON t.tutor_id = r.autor_resposta_id
-            ORDER BY r.discussion_id, r.resposta_enviada_em;
-        """
-        params = []
-        params.extend(tutor_ids)
-        params.extend([subject_id, start_at, end_at])
-        params.extend(tutor_ids)
-
-        with connector.cursor() as cur:
-            cur.execute(query, params)
+                    ) AS r
+                ON t.tutor_id = r.autor_resposta_id
+                ORDER BY r.discussion_id, r.resposta_enviada_em;
+            ''', (subject_id, subject_id, start_at, end_at))
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
-
         return pd.DataFrame(rows, columns=cols)
     
-    def fetch_tutors_login_subject(self, connector, subject_id, start_date, end_date, tutor_ids):
-        tutor_ids = [int(x) for x in tutor_ids if x is not None]
-        if not tutor_ids:
-            return pd.DataFrame(columns=[
-                "tutor_id", "firstname", "lastname",
-                "first_login", "last_login",
-                "first_course_access", "last_course_access",
-                "n_login", "n_login_subject"
-            ])
+    def fetch_tutors_login_subject(self, connector, subject_id: int, start_date, end_date):
+        with connector.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 
+                    u.id AS tutor_id,
+                    u.firstname,
+                    u.lastname,
+                    r.shortname AS papel,
+                    FROM_UNIXTIME(MIN(
+                        CASE WHEN l.action = 'loggedin'
+                            THEN l.timecreated END
+                    )) AS first_login,
+                    FROM_UNIXTIME(MAX(
+                        CASE WHEN l.action = 'loggedin'
+                            THEN l.timecreated END
+                    )) AS last_login,
+                    FROM_UNIXTIME(MIN(
+                        CASE WHEN l.target = 'course' 
+                            AND l.action IN ('viewed','entered')
+                            THEN l.timecreated END
+                    )) AS first_course_access,
+                    FROM_UNIXTIME(MAX(
+                        CASE WHEN l.target = 'course' 
+                            AND l.action IN ('viewed','entered')
+                            THEN l.timecreated END
+                    )) AS last_course_access,
+                    SUM(CASE WHEN l.action = 'loggedin' THEN 1 ELSE 0 END) AS n_login,
+                    SUM(CASE WHEN l.target = 'course' 
+                            AND l.action IN ('viewed','entered')
+                            THEN 1 ELSE 0 END
+                    ) AS n_login_subject
+                FROM mdl_user u
+                JOIN mdl_role_assignments ra ON ra.userid = u.id
+                JOIN mdl_role r ON r.id = ra.roleid
+                JOIN mdl_context ctx ON ctx.id = ra.contextid
 
-        in_placeholders = ",".join(["%s"] * len(tutor_ids))
-
-        query = f"""
-            SELECT 
-                u.id AS tutor_id,
-                u.firstname,
-                u.lastname,
-
-                FROM_UNIXTIME(MIN(CASE WHEN l.action = 'loggedin'
-                                    THEN l.timecreated END)) AS first_login,
-                FROM_UNIXTIME(MAX(CASE WHEN l.action = 'loggedin'
-                                    THEN l.timecreated END)) AS last_login,
-
-                FROM_UNIXTIME(MIN(CASE WHEN l.target = 'course'
-                                        AND l.action IN ('viewed','entered')
-                                    THEN l.timecreated END)) AS first_course_access,
-                FROM_UNIXTIME(MAX(CASE WHEN l.target = 'course'
-                                        AND l.action IN ('viewed','entered')
-                                    THEN l.timecreated END)) AS last_course_access,
-
-                SUM(CASE WHEN l.action = 'loggedin' THEN 1 ELSE 0 END) AS n_login,
-                SUM(CASE WHEN l.target = 'course'
-                        AND l.action IN ('viewed','entered')
-                        THEN 1 ELSE 0 END) AS n_login_subject
-
-            FROM mdl_user u
-            LEFT JOIN mdl_logstore_standard_log l
+                LEFT JOIN mdl_logstore_standard_log l
                 ON l.userid = u.id
-            AND l.component = 'core'
-            AND l.timecreated BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
-            AND (
-                    (l.action = 'loggedin')
+                AND l.component = 'core'
+                AND l.timecreated BETWEEN UNIX_TIMESTAMP(%s)
+                                    AND UNIX_TIMESTAMP(%s)
+                AND (
+                    (l.action = 'loggedin')  
                 OR (l.courseid = %s AND l.target = 'course' AND l.action IN ('viewed','entered'))
+                )
+                WHERE 
+                    ctx.contextlevel = 50
+                    AND ctx.instanceid = %s
+                    AND r.id IN (3,4,9,17)
+                GROUP BY u.id, u.firstname, u.lastname, r.shortname
+                ORDER BY u.id;
+                """,
+                (start_date, end_date, subject_id, subject_id),
             )
-            WHERE u.id IN ({in_placeholders})
-            GROUP BY u.id, u.firstname, u.lastname
-            ORDER BY u.id;
-        """
-
-        params = [start_date, end_date, subject_id]
-        params.extend(tutor_ids)
-
-        with connector.cursor() as cur:
-            cur.execute(query, params)
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
-
-        df = pd.DataFrame(rows, columns=cols)
-
-        if not df.empty:
-            df["n_login"] = df["n_login"].fillna(0).astype(int)
-            df["n_login_subject"] = df["n_login_subject"].fillna(0).astype(int)
-
-        return df
-    
-    def fetch_tutors_access_days(self, connector, subject_id: int, start_date, end_date, tutor_ids):
-        tutor_ids = [int(x) for x in tutor_ids if x is not None]
-        if not tutor_ids:
-            return pd.DataFrame(columns=["tutor_id", "access_day"])
-
-        in_placeholders = ",".join(["%s"] * len(tutor_ids))
-
-        query = f"""
-            SELECT
-                t.tutor_id,
-                DATE(FROM_UNIXTIME(l.timecreated)) AS access_day
-            FROM
-                (
-                    SELECT u.id AS tutor_id
-                    FROM mdl_user u
-                    WHERE u.id IN ({in_placeholders})
-                ) AS t
-            JOIN mdl_logstore_standard_log l
-                ON l.userid = t.tutor_id
-            AND l.component = 'core'
-            AND l.timecreated BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
-            AND (
-                    (l.action = 'loggedin')
-                OR (l.courseid = %s AND l.target = 'course' AND l.action IN ('viewed','entered'))
-            )
-            GROUP BY t.tutor_id, access_day
-            ORDER BY t.tutor_id, access_day;
-        """
-
-        params = []
-        params.extend(tutor_ids)
-        params.extend([start_date, end_date, subject_id])
-
-        with connector.cursor() as cur:
-            cur.execute(query, params)
-            rows = cur.fetchall()
-            cols = [d[0] for d in cur.description]
-
         return pd.DataFrame(rows, columns=cols)
 
     def fetch_daily_events(self, connector, subject_id):
@@ -1246,166 +1197,137 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df   
     
-    def fetch_tutors_feedback_subject(self, connector, subject_id, start_date, end_date, tutor_ids):
-        tutor_ids = [int(x) for x in tutor_ids if x is not None]
-        if not tutor_ids:
-            return pd.DataFrame(columns=[
-                "tutor_id", "tutor_nome", "papel",
-                "n_corrections", "n_corrections_with_feedback",
-                "n_textual_feedback", "n_feedback_pdf",
-                "percentage_feedback"
-            ])
-
-        in_placeholders = ",".join(["%s"] * len(tutor_ids))
-
-        query = f"""
-            SELECT
-                t.tutor_id,
-                CONCAT(t.firstname, ' ', t.lastname) AS tutor_nome,
-                t.papel,
-
-                COUNT(a.gradeid)    AS n_corrections,
-                SUM(a.tem_feedback) AS n_corrections_with_feedback,
-
-                SUM(a.n_textual_feedback) AS n_textual_feedback,
-                SUM(a.n_feedback_pdf)     AS n_feedback_pdf,
-
-                CASE
-                    WHEN COUNT(a.gradeid) > 0
-                    THEN ROUND(SUM(a.tem_feedback) / COUNT(a.gradeid), 2)
-                    ELSE 0
-                END AS percentage_feedback
-
-            FROM (
-                SELECT
-                    u.id        AS tutor_id,
-                    u.firstname,
-                    u.lastname,
-                    'tutor'     AS papel
-                FROM mdl_user u
-                WHERE u.id IN ({in_placeholders})
-            ) t
-
-            LEFT JOIN (
-                SELECT
-                    g.id     AS gradeid,
-                    g.grader AS tutor_id,
-
-                    CASE
-                        WHEN EXISTS (
-                            SELECT 1
-                            FROM mdl_assignfeedback_comments c
-                            WHERE c.grade = g.id
-                            AND c.commenttext IS NOT NULL
-                            AND LENGTH(c.commenttext) > 0
-                        )
-                        OR EXISTS (
-                            SELECT 1
-                            FROM mdl_assignfeedback_editpdf_cmnt p
-                            WHERE p.gradeid = g.id
-                            AND p.rawtext IS NOT NULL
-                            AND LENGTH(p.rawtext) > 0
-                            AND p.draft = 0
-                        )
-                        THEN 1 ELSE 0
-                    END AS tem_feedback,
-
-                    CASE
-                        WHEN EXISTS (
-                            SELECT 1
-                            FROM mdl_assignfeedback_comments c
-                            WHERE c.grade = g.id
-                            AND c.commenttext IS NOT NULL
-                            AND LENGTH(c.commenttext) > 0
-                        )
-                        THEN 1 ELSE 0
-                    END AS n_textual_feedback,
-
-                    CASE
-                        WHEN EXISTS (
-                            SELECT 1
-                            FROM mdl_assignfeedback_editpdf_cmnt p
-                            WHERE p.gradeid = g.id
-                            AND p.rawtext IS NOT NULL
-                            AND LENGTH(p.rawtext) > 0
-                            AND p.draft = 0
-                        )
-                        THEN 1 ELSE 0
-                    END AS n_feedback_pdf
-
-                FROM mdl_assign_grades g
-                WHERE g.timemodified BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
-                AND g.grader IN ({in_placeholders})
-            ) a
-                ON a.tutor_id = t.tutor_id
-
-            GROUP BY
-                t.tutor_id,
-                t.firstname,
-                t.lastname,
-                t.papel
-            ORDER BY percentage_feedback DESC;
-        """
-
-        params = []
-        params.extend(tutor_ids)
-        params.extend([start_date, end_date])
-        params.extend(tutor_ids)
-
-        with connector.cursor() as cur:
-            cur.execute(query, params)
-            rows = cur.fetchall()
-            cols = [d[0] for d in cur.description]
-
-        df = pd.DataFrame(rows, columns=cols)
-
-        if not df.empty:
-            for c in ["n_corrections", "n_corrections_with_feedback", "n_textual_feedback", "n_feedback_pdf"]:
-                df[c] = df[c].fillna(0).astype(int)
-            df["percentage_feedback"] = df["percentage_feedback"].fillna(0).astype(float)
-
-        return df
-    
-    def fetch_all_tutors(self, connector, subject_id, start_date, end_date):
+    def fetch_tutors_feedback_subject(self, connector, subject_id, start_date, end_date):
         with connector.cursor() as cur:
             cur.execute(
                 """
                 SELECT
-                    ls.relateduserid AS tutor_id,
-                    CONCAT(u.firstname, ' ', u.lastname) AS full_name,
-                    r.id AS role_id,
-                    r.name AS role_assigned,
-                    FROM_UNIXTIME(ls.timecreated) AS event_time,
-                    ls.action AS role_action,
-                    ctx.instanceid AS subject_id
-                FROM mdl_logstore_standard_log ls
-                JOIN mdl_context ctx ON ctx.id = ls.contextid
-                        AND ctx.contextlevel = 50 AND ctx.instanceid = %s
-                JOIN mdl_user u ON u.id = ls.relateduserid
-                JOIN mdl_role r ON r.id = ls.objectid
-                WHERE ls.target = 'role'
-                    AND ls.action = 'assigned'
-                    AND ls.objectid IN (3, 4, 9, 17)
-                    AND ls.timecreated <= UNIX_TIMESTAMP(%s) 
-                    AND NOT EXISTS (
-                        SELECT 1
-                        FROM mdl_logstore_standard_log ls2
-                        JOIN mdl_context ctx2
-                        ON ctx2.id = ls2.contextid
-                        AND ctx2.contextlevel = 50
-                        AND ctx2.instanceid = %s             
-                        WHERE ls2.target = 'role'
-                        AND ls2.action = 'unassigned'
-                        AND ls2.objectid = ls.objectid
-                        AND ls2.relateduserid = ls.relateduserid
-                        AND ls2.timecreated <= UNIX_TIMESTAMP(%s) 
-                    )
-                ORDER BY ls.timecreated ASC;
+                    t.tutor_id,
+                    CONCAT(t.firstname, ' ', t.lastname) AS tutor_nome,
+                    t.papel,
+
+                    COUNT(a.gradeid)    AS n_corrections,
+                    SUM(a.tem_feedback) AS n_corrections_with_feedback,
+
+                    SUM(a.n_textual_feedback) AS n_textual_feedback,
+                    SUM(a.n_feedback_pdf)     AS n_feedback_pdf,
+
+                    CASE
+                        WHEN COUNT(a.gradeid) > 0
+                        THEN ROUND(SUM(a.tem_feedback) / COUNT(a.gradeid), 2)
+                        ELSE 0
+                    END AS percentage_feedback
+
+                FROM (
+                    SELECT DISTINCT
+                        u.id        AS tutor_id,
+                        u.firstname,
+                        u.lastname,
+                        r.shortname AS papel
+                    FROM mdl_user u
+                    JOIN mdl_role_assignments ra ON ra.userid = u.id
+                    JOIN mdl_role r              ON r.id = ra.roleid
+                    JOIN mdl_context ctx         ON ctx.id = ra.contextid
+                    WHERE ctx.contextlevel = 50
+                    AND ctx.instanceid = %s
+                    AND r.id IN (3, 4, 9, 17)
+                ) t
+
+                LEFT JOIN (
+                    SELECT
+                        g.id     AS gradeid,
+                        g.grader AS tutor_id,
+
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM mdl_assignfeedback_comments c
+                                WHERE c.grade = g.id
+                                AND c.commenttext IS NOT NULL
+                                AND LENGTH(c.commenttext) > 0
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM mdl_assignfeedback_editpdf_cmnt p
+                                WHERE p.gradeid = g.id
+                                AND p.rawtext IS NOT NULL
+                                AND LENGTH(p.rawtext) > 0
+                                AND p.draft = 0
+                            )
+                            THEN 1 ELSE 0
+                        END AS tem_feedback,
+
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM mdl_assignfeedback_comments c
+                                WHERE c.grade = g.id
+                                AND c.commenttext IS NOT NULL
+                                AND LENGTH(c.commenttext) > 0
+                            )
+                            THEN 1 ELSE 0
+                        END AS n_textual_feedback,
+
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM mdl_assignfeedback_editpdf_cmnt p
+                                WHERE p.gradeid = g.id
+                                AND p.rawtext IS NOT NULL
+                                AND LENGTH(p.rawtext) > 0
+                                AND p.draft = 0
+                            )
+                            THEN 1 ELSE 0
+                        END AS n_feedback_pdf
+
+                    FROM mdl_assign_grades g
+                    WHERE g.timemodified BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
+                ) a
+                    ON a.tutor_id = t.tutor_id
+
+                GROUP BY
+                    t.tutor_id,
+                    t.firstname,
+                    t.lastname,
+                    t.papel
+                ORDER BY percentage_feedback DESC;
                 """,
-                (subject_id, start_date, subject_id, end_date),
+                (subject_id, start_date, end_date),
             )
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
 
         return pd.DataFrame(rows, columns=cols)
     
+    def fetch_tutors_access_days(self, connector, subject_id: int, start_date, end_date):
+        with connector.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    u.id AS tutor_id,
+                    DATE(FROM_UNIXTIME(l.timecreated)) AS access_day
+                FROM mdl_user u
+                JOIN mdl_role_assignments ra ON ra.userid = u.id
+                JOIN mdl_role r ON r.id = ra.roleid
+                JOIN mdl_context ctx ON ctx.id = ra.contextid
+                JOIN mdl_logstore_standard_log l
+                ON l.userid = u.id
+                AND l.component = 'core'
+                AND l.timecreated BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
+                AND (
+                    (l.action = 'loggedin')
+                OR (l.courseid = %s AND l.target = 'course' AND l.action IN ('viewed','entered'))
+                )
+                WHERE
+                    ctx.contextlevel = 50
+                    AND ctx.instanceid = %s
+                    AND r.id IN (3,4,9,17)
+                GROUP BY u.id, access_day
+                ORDER BY u.id, access_day;
+                """,
+                (start_date, end_date, subject_id, subject_id),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        return pd.DataFrame(rows, columns=cols)

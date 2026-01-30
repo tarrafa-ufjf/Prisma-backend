@@ -1409,3 +1409,66 @@ class Moodle31(Moodle):
 
         return pd.DataFrame(rows, columns=cols)
     
+    def fetch_subjects_summary_tutors(self, connector):
+        with connector.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    c.id AS subject_id,
+                    c.fullname AS name,
+                    c.shortname AS abbrev,
+                    (
+                        SELECT GROUP_CONCAT(DISTINCT CONCAT(u.firstname, ' ', u.lastname) SEPARATOR ', ')
+                        FROM mdl_role_assignments ra
+                        JOIN mdl_context ctx ON ctx.id = ra.contextid
+                        JOIN mdl_user u ON u.id = ra.userid
+                        WHERE ctx.contextlevel = 50
+                          AND ctx.instanceid = c.id
+                          AND ra.roleid IN (3, 4)
+                    ) AS teachers,
+                    (
+                        SELECT COUNT(DISTINCT ra.userid)
+                        FROM mdl_role_assignments ra
+                        JOIN mdl_context ctx ON ctx.id = ra.contextid
+                        WHERE ctx.contextlevel = 50
+                          AND ctx.instanceid = c.id
+                          AND ra.roleid = 5
+                    ) AS total_students,
+                    (
+                        SELECT COUNT(DISTINCT ra.userid)
+                        FROM mdl_role_assignments ra
+                        JOIN mdl_context ctx ON ctx.id = ra.contextid
+                        WHERE ctx.contextlevel = 50
+                          AND ctx.instanceid = c.id
+                          AND ra.roleid IN (9, 17)
+                    ) AS total_tutors,
+                    (
+                        (
+                            SELECT COUNT(DISTINCT ra.userid)
+                            FROM mdl_role_assignments ra
+                            JOIN mdl_context ctx ON ctx.id = ra.contextid
+                            WHERE ctx.contextlevel = 50
+                              AND ctx.instanceid = c.id
+                              AND ra.roleid = 5
+                        )
+                        /
+                        NULLIF(
+                            (
+                                SELECT COUNT(DISTINCT ra.userid)
+                                FROM mdl_role_assignments ra
+                                JOIN mdl_context ctx ON ctx.id = ra.contextid
+                                WHERE ctx.contextlevel = 50
+                                  AND ctx.instanceid = c.id
+                                  AND ra.roleid IN (9, 17)
+                            ),
+                            0
+                        )
+                    ) AS students_per_tutor
+
+                FROM mdl_course c
+                WHERE c.id != 1
+            """)
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        return pd.DataFrame(rows, columns=cols)
+    

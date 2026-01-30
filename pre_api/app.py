@@ -42,6 +42,8 @@ from services.tutors.tutor.build_tutors_subject_tutor_graphs import build_tutors
 from pre_api.services.tutors.general.build_tutors_general_indicators import build_tutors_general_indicators
 from pre_api.services.tutors.general.build_tutors_general_summary import build_tutors_general_summary 
 from pre_api.services.tutors.general.build_tutors_general_rankings import build_tutors_general_rankings
+from pre_api.services.tutors.general.build_general_tutors_subjects_indicators import build_general_tutors_subjects_indicators
+
 
 
 
@@ -630,7 +632,18 @@ def tutors_general_rankings():
         return jsonify({"data": data}), 200
     except Exception as e:
         return jsonify({"error": f"internal error: {e}"}), 500
-
+    
+@app.route("/analysis/tutors/general/subjects/indicators", methods=["GET", "OPTIONS"])
+def general_tutors_subjects_indicators():
+    if request.method == "OPTIONS":
+        return "", 200
+    try:
+        data = build_general_tutors_subjects_indicators()
+        if not data:
+            return jsonify({"data": {}, "error": f"error /analysis/general/subjects/indicators"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
 
 @app.route("/analysis", methods=["PUT"])
 def analysis():

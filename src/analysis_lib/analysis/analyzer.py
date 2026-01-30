@@ -59,7 +59,7 @@ class Analyzer:
         from .Actors.Student.General.general_subjects_indicators import General_subjects_indicators
 
         general = General_subjects_indicators(self.mapper)
-        return general.general_subjects_indicators(version, connector)
+        return general.general_subjects_indicators(version, connector)    
     
     def general_indicators(self, version, connector):
         from .Actors.Student.General.general_indicators import General_indicators
@@ -205,3 +205,9 @@ class Analyzer:
         rankings = Rankings(self.mapper)
 
         return rankings.general_analysis(version, connector, kind=kind, limit=limit)
+    
+    def tutors_general_subjects_indicators(self, version, connector):
+        from .Actors.Tutor.General.tutor_general_subjects_indicators import Tutor_General_Subjects_Indicators
+
+        general = Tutor_General_Subjects_Indicators(self.mapper)
+        return general.tutors_general_subjects_indicators(version, connector)

@@ -588,12 +588,19 @@ class Moodle31(Moodle):
         with connector.cursor() as cur:
             cur.execute('''
                 SELECT
-                    c.id                           AS id,
-                    c.fullname                     AS fullname,
-                    c.shortname                    AS shortname,
-                    c.startdate                    AS startdate
+                    c.id        AS id,
+                    c.fullname  AS fullname,
+                    c.shortname AS shortname,
+                    c.startdate AS startdate
                 FROM mdl_course c
-                WHERE c.id <> 1;
+                JOIN mdl_context ctx ON ctx.instanceid = c.id
+                AND ctx.contextlevel = 50
+                JOIN mdl_role_assignments ra ON ra.contextid = ctx.id
+                JOIN mdl_role r ON r.id = ra.roleid AND r.id = 5
+                JOIN mdl_user u ON u.id = ra.userid
+                WHERE c.id <> 1
+                GROUP BY c.id, c.fullname, c.shortname, c.startdate
+                HAVING COUNT(u.id) >= 10;
             ''', ())
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]

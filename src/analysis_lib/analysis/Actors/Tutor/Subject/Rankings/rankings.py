@@ -178,18 +178,27 @@ class Rankings(Indicator):
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)
-
+        
         ranked_df = self.build_local_ranking(df)
 
-        df_names = self.mapper.fetch_tutors_names(connector, version, subject_id=subject_id)
-        if isinstance(df_names, pd.DataFrame) and not df_names.empty:
-            ranked_df = ranked_df.merge(df_names, on="tutor_id", how="left")
+        tutor_ids = ranked_df["tutor_id"].dropna().astype(int).unique().tolist()
+
+        names_rows = []
+        for tid in tutor_ids:
+            df_name = self.mapper.fetch_tutors_names(connector, version, user_id=tid)
+            full_name = df_name.iloc[0]["full_name"] if (df_name is not None and not df_name.empty and "full_name" in df_name.columns) else None
+            names_rows.append({"tutor_id": tid, "full_name": full_name})
+
+        df_names = pd.DataFrame(names_rows)
+                
+        ranked_df = ranked_df.merge(df_names, on="tutor_id", how="left")
 
         if kind == "best-performance":
             return (ranked_df.sort_values("score_final", ascending=False).head(limit)[["full_name", "subject_id", "tutor_id"]])
 
         if kind == "at-risk":
             return (ranked_df.sort_values("score_final", ascending=True).head(limit)[["full_name", "subject_id", "tutor_id"]])
+
 
     def general_analysis(self, version, connector, institution_id: int = 1, kind: str = "best-performance", limit: int = 10):
         engine = self.db_admin.get_connector()

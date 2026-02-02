@@ -1154,13 +1154,10 @@ class Moodle31(Moodle):
                     u.id AS tutor_id,
                     CONCAT(u.firstname, ' ', u.lastname) AS full_name,
                     u.email AS email,
-
                     cc2.name AS degree_program,
                     r.name AS role,
                     g.name AS tutor_group,
-
                     FROM_UNIXTIME(ula.timeaccess) AS last_access,
-
                     (
                         SELECT FROM_UNIXTIME(MIN(ls.timecreated))
                         FROM mdl_logstore_standard_log ls
@@ -1172,26 +1169,18 @@ class Moodle31(Moodle):
                         AND r2.id IN (3,4,9,17)
                         AND ls.action = 'assigned'
                     ) AS tutor_since
-
-                FROM mdl_course_categories cc1
-                JOIN mdl_course_categories cc2 ON cc2.parent = cc1.id
-                JOIN mdl_course_categories cc3 ON cc3.parent = cc2.id
-                JOIN mdl_course c ON c.category = cc3.id
-
-                JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
-                JOIN mdl_role_assignments ra ON ra.contextid = ctx.id
-                JOIN mdl_role r ON r.id = ra.roleid
-                JOIN mdl_user u ON u.id = ra.userid
-
+                FROM mdl_course c
+                LEFT JOIN mdl_course_categories cc3 ON cc3.id = c.category
+                LEFT JOIN mdl_course_categories cc2 ON cc2.id = cc3.parent
+                LEFT JOIN mdl_course_categories cc1 ON cc1.id = cc2.parent
+                JOIN mdl_user u ON u.id = %s
+                LEFT JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+                LEFT JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.userid = u.id
+                LEFT JOIN mdl_role r ON r.id = ra.roleid AND r.id IN (3,4,9,17)
                 LEFT JOIN mdl_groups_members gm ON gm.userid = u.id
                 LEFT JOIN mdl_groups g ON g.id = gm.groupid AND g.courseid = c.id
-
                 LEFT JOIN mdl_user_lastaccess ula ON ula.userid = u.id AND ula.courseid = c.id
-
-                WHERE u.id = %s
-                AND c.id = %s
-                AND r.id IN (3,4,9,17)
-
+                WHERE c.id = %s
                 ORDER BY ula.timeaccess DESC
                 LIMIT 1;
                 """,

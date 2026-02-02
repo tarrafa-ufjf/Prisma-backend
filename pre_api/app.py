@@ -26,6 +26,7 @@ from pre_api.services.student.general.build_general_indicators import build_gene
 from pre_api.services.student.general.build_general_summary import build_general_summary 
 from pre_api.services.student.general.build_general_rankings import build_general_rankings
 
+from pre_api.services.tutors.general.build_all_subjects_tutors import build_all_subjects_tutors
 from pre_api.services.tutors.subject.build_tutors_subject_summary import build_tutors_subject_summary
 from pre_api.services.tutors.subject.build_tutors_subject_interaction_channels import build_tutors_subject_interaction_channels
 from pre_api.services.tutors.subject.build_tutors_subject_rankings import build_tutors_subject_rankings
@@ -395,6 +396,17 @@ def general_rankings():
 ## ======
 ## TUTORS
 ## ======
+@app.route("/subjects/tutors", methods=["GET", "OPTIONS"])
+def get_all_subjects_tutors():
+    if request.method == "OPTIONS":
+        return "", 200
+    try:
+        data = build_all_subjects_tutors()
+        if not data:
+            return jsonify({"data": {}, "error": f"there is no subject with id {id}"}), 404
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": f"internal error: {e}"}), 500
 
 ## Página da Disciplina
 @app.route("/analysis/tutors/subject/<int:id>/summary", methods=["GET", "OPTIONS"])

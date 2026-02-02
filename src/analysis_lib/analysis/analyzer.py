@@ -126,6 +126,17 @@ class Analyzer:
 
         return rankings.general_analysis(version, connector, kind=kind, limit=limit)
     
+    
+    #########
+    # TUTORES
+    #########
+    
+    def get_all_subjects_tutors(self, version, connector):
+        from .Actors.Tutor.General.subjects import Subjects
+        subjects = Subjects(self.mapper)
+        
+        return subjects.get_subjects(version, connector)
+    
     def tutor_summary_analysis(self, subject_id, type_query, version, connector):
         from .Actors.Tutor.Subject.Summary.summary import Summary
         summary = Summary(self.mapper)

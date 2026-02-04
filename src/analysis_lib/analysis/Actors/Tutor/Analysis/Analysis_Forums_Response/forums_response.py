@@ -25,14 +25,18 @@ class Analysis_Forums_Response(Indicator):
         
     def label_from_score(self, score_access):
         if pd.isna(score_access):
-            return "Muito baixo"
+            return np.nan  
+
         if score_access < 1.5:
+            return "Muito baixo"
+        elif score_access < 2.0:
             return "Baixo"
-        if score_access <= 2.5:
-            return "Normal"
-        if score_access <= 2.5:
+        elif score_access < 2.5:
+            return "Médio"
+        elif score_access < 2.9:
             return "Alto"
-        return "Muito Alto"
+        else:
+            return "Muito alto"
 
     def label_to_numeric(self, label):
         mapping = {
@@ -58,14 +62,42 @@ class Analysis_Forums_Response(Indicator):
         else:
             return "Muito alto"
         
-    def run_discretization(self, df):
+    def run_discretization(self, df):       
         metrics = {
             "total_response_forum": "Qtd de respostas",
             "mean_forums_response_hours": "Tempo médio de resposta (h)",
             "median_forums_response_hours": "Tempo mediano de resposta (h)",
             "score_access": "Regra matemática que prioriza tutores rápidos"
         }
-        
+
+        for col in metrics.keys():
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+                
+        def bucket5_from_series(s: pd.Series, reverse: bool = False):
+            s = s.dropna()
+            if s.empty:
+                return lambda x: np.nan
+
+            p20, p40, p60, p80 = [float(v) for v in s.quantile([0.2, 0.4, 0.6, 0.8])]
+
+            if p20 == p80:
+                return lambda x: np.nan if pd.isna(x) else "Médio"
+
+            labels_normal = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"]
+            labels_rev    = ["Muito alto", "Alto", "Médio", "Baixo", "Muito baixo"]
+            labels = labels_rev if reverse else labels_normal
+
+            def bucket(x):
+                if pd.isna(x): return np.nan
+                if x <= p20: return labels[0]
+                if x <= p40: return labels[1]
+                if x <= p60: return labels[2]
+                if x <= p80: return labels[3]
+                return labels[4]
+
+            return bucket
+
         for col, _ in metrics.items():
             if col not in df.columns:
                 continue
@@ -73,23 +105,26 @@ class Analysis_Forums_Response(Indicator):
             if col == "score_access":
                 df["score_access_label"] = df["score_access"].apply(self.label_from_score)
                 continue
+            
+            if col in ["mean_forums_response_hours", "median_forums_response_hours"]:
+                bucket = bucket5_from_series(df[col], reverse=True)  
+            else:
+                bucket = bucket5_from_series(df[col], reverse=False)
 
-            lim_inf = df[col].min()
-            q1 = df[col].quantile(0.25)
-            q3 = df[col].quantile(0.75)
-            lim_sup = df[col].max()
-
-            df[f"{col}_label"] = df[col].apply(
-                lambda x: self.discretize_value_quartis(x, lim_inf, q1, q3, lim_sup)
-            )
+            df[f"{col}_label"] = df[col].apply(bucket)
 
         class_cols = [f"{col}_label" for col in metrics.keys() if f"{col}_label" in df.columns]
-
         for c in class_cols:
             df[f"{c}_num"] = df[c].apply(self.label_to_numeric)
 
         df["mean_label_num"] = df[[f"{c}_num" for c in class_cols]].mean(axis=1)
-        df["label_forums_response"] = df["mean_label_num"].apply(self.numeric_to_label)
+
+        labels = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"]
+        
+        try:
+            df["label_forums_response"] = pd.qcut(df["mean_label_num"], q=5, labels=labels, duplicates="drop").astype(object)
+        except ValueError:
+            df["label_forums_response"] = df["mean_label_num"].apply(self.numeric_to_label)
 
         return df
 
@@ -162,8 +197,8 @@ class Analysis_Forums_Response(Indicator):
         forum_count = df_tutores.merge(forum_count, on=["tutor_id", "tutor_completo"], how="left")
 
         forum_count["total_response_forum"] = forum_count["total_response_forum"].fillna(0).astype(int)
-        forum_count["mean_forums_response_hours"] = forum_count["mean_forums_response_hours"].fillna(0)
-        forum_count["median_forums_response_hours"] = forum_count["median_forums_response_hours"].fillna(0)
+        forum_count["mean_forums_response_hours"] = pd.to_numeric(forum_count["mean_forums_response_hours"], errors="coerce")
+        forum_count["median_forums_response_hours"] = pd.to_numeric(forum_count["median_forums_response_hours"], errors="coerce")
 
         for col in ["num_response_fast_forum", "num_response_normal_forum", "num_response_late_forum"]:
             if col not in forum_count.columns:

@@ -59,27 +59,66 @@ class Analysis_Login(Indicator):
         for col in metrics.keys():
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
+                
+        def bucket5_from_series(s: pd.Series, reverse: bool = False):
+            """
+            Cria uma função bucket(x) baseada nos quantis 20/40/60/80 de s.
+            reverse=True inverte o sentido (bom quando "menor é melhor", ex: inatividade).
+            """
+            s = s.dropna()
+            if s.empty:
+                return lambda x: np.nan
 
-        for col, label in metrics.items():
-            if col in df.columns:
-                lim_inf = df[col].min()
-                q1 = df[col].quantile(0.25)
-                q3 = df[col].quantile(0.75)
-                lim_sup = df[col].max()
+            p20, p40, p60, p80 = [float(v) for v in s.quantile([0.2, 0.4, 0.6, 0.8])]
+            
+            if p20 == p80:
+                def bucket_equal(x):
+                    if pd.isna(x):
+                        return np.nan
+                    return "Médio" if not reverse else "Médio"
+                return bucket_equal
 
-                df[f"{col}_label"] = df[col].apply(
-                    lambda x: self.discretize_value_quartis(x, lim_inf, q1, q3, lim_sup)
-                )
+            labels_normal = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"]
+            labels_rev    = ["Muito alto", "Alto", "Médio", "Baixo", "Muito baixo"]
+            labels = labels_rev if reverse else labels_normal
+
+            def bucket(x):
+                if pd.isna(x):
+                    return np.nan
+                if x <= p20:
+                    return labels[0]
+                if x <= p40:
+                    return labels[1]
+                if x <= p60:
+                    return labels[2]
+                if x <= p80:
+                    return labels[3]
+                return labels[4]
+
+            return bucket
+
+        for col in metrics.keys():
+            if col not in df.columns:
+                continue
+
+            reverse = (col == "maximum_inactivity_days") 
+            bucket = bucket5_from_series(df[col], reverse=reverse)
+
+            df[f"{col}_label"] = df[col].apply(bucket)
 
         class_cols = [f"{col}_label" for col in metrics.keys() if f"{col}_label" in df.columns]
-
         for c in class_cols:
             df[f"{c}_num"] = df[c].apply(self.label_to_numeric)
 
         df["media_label_num"] = df[[f"{c}_num" for c in class_cols]].mean(axis=1)
+
+        labels = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"]
         
-        df["label_access"] = df["media_label_num"].apply(self.numeric_to_label)
-        
+        try:
+            df["label_access"] = pd.qcut(df["media_label_num"], q=5, labels=labels, duplicates="drop").astype(object)
+        except ValueError:
+            df["label_access"] = df["media_label_num"].apply(self.numeric_to_label)
+
         return df
     
     def _max_inactivity_days_for_tutor(self, active_days, start_date, end_date):

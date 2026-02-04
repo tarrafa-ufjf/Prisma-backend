@@ -1157,12 +1157,13 @@ class Moodle31(Moodle):
         with connector.cursor() as cur:
             cur.execute(
                 """
-                SELECT
+                SELECT 
                     u.id AS tutor_id,
                     CONCAT(u.firstname, ' ', u.lastname) AS full_name,
                     u.email AS email,
                     cc2.name AS degree_program,
                     r.name AS role,
+                    u.city, 
                     g.name AS tutor_group,
                     FROM_UNIXTIME(ula.timeaccess) AS last_access,
                     (
@@ -1184,11 +1185,10 @@ class Moodle31(Moodle):
                 LEFT JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
                 LEFT JOIN mdl_role_assignments ra ON ra.contextid = ctx.id AND ra.userid = u.id
                 LEFT JOIN mdl_role r ON r.id = ra.roleid AND r.id IN (3,4,9,17)
-                LEFT JOIN mdl_groups_members gm ON gm.userid = u.id
-                LEFT JOIN mdl_groups g ON g.id = gm.groupid AND g.courseid = c.id
+                LEFT JOIN mdl_groups g ON g.courseid = c.id
+                LEFT JOIN mdl_groups_members gm ON gm.groupid = g.id AND gm.userid = u.id
                 LEFT JOIN mdl_user_lastaccess ula ON ula.userid = u.id AND ula.courseid = c.id
                 WHERE c.id = %s
-                ORDER BY ula.timeaccess DESC
                 LIMIT 1;
                 """,
                 (tutor_id, subject_id),

@@ -62,30 +62,48 @@ class Analysis_Feedback(Indicator):
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        for col, _ in metrics.items():
+        def bucket5_from_series(s: pd.Series):
+            s = s.dropna()
+            if s.empty:
+                return lambda x: np.nan
+
+            p20, p40, p60, p80 = [float(v) for v in s.quantile([0.2, 0.4, 0.6, 0.8])]
+            if p20 == p80:
+                return lambda x: np.nan if pd.isna(x) else "Médio"
+
+            labels = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"]
+
+            def bucket(x):
+                if pd.isna(x):
+                    return np.nan
+                if x <= p20: return labels[0]
+                if x <= p40: return labels[1]
+                if x <= p60: return labels[2]
+                if x <= p80: return labels[3]
+                return labels[4]
+
+            return bucket
+
+        for col in metrics.keys():
             if col not in df.columns:
                 continue
 
-            s = df[col].dropna()
-            if s.empty:
-                df[f"{col}_label"] = np.nan
-                continue
-
-            lim_inf = s.min()
-            q1 = s.quantile(0.25)
-            q3 = s.quantile(0.75)
-            lim_sup = s.max()
-
-            df[f"{col}_label"] = df[col].apply(
-                lambda x: self.discretize_value_quartis(x, lim_inf, q1, q3, lim_sup)
-            )
+            bucket = bucket5_from_series(df[col])
+            df[f"{col}_label"] = df[col].apply(bucket)
 
         class_cols = [f"{col}_label" for col in metrics.keys() if f"{col}_label" in df.columns]
         for c in class_cols:
             df[f"{c}_num"] = df[c].apply(self.label_to_numeric)
 
         df["media_classificacao_num"] = df[[f"{c}_num" for c in class_cols]].mean(axis=1)
-        df["label_feedback"] = df["media_classificacao_num"].apply(self.numeric_to_label)
+
+        labels = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"]
+        try:
+            df["label_feedback"] = pd.qcut(
+                df["media_classificacao_num"], q=5, labels=labels, duplicates="drop"
+            ).astype(object)
+        except ValueError:
+            df["label_feedback"] = df["media_classificacao_num"].apply(self.numeric_to_label)
 
         return df
 
@@ -101,7 +119,12 @@ class Analysis_Feedback(Indicator):
         df_feedback_tutors = self.mapper.fetch_tutors_feedback_subject(connector, version, subject_id, start_date, end_date, tutor_ids)
 
         for col in ["n_corrections", "n_corrections_with_feedback", "n_textual_feedback", "n_feedback_pdf"]:
-            df_feedback_tutors[col] = df_feedback_tutors[col].fillna(0).astype(int)
+            for col in ["n_corrections", "n_corrections_with_feedback", "n_textual_feedback", "n_feedback_pdf"]:
+                df_feedback_tutors[col] = pd.to_numeric(df_feedback_tutors[col], errors="coerce").fillna(0).astype(int)
+
+            df_feedback_tutors["percentage_feedback"] = pd.to_numeric(df_feedback_tutors["percentage_feedback"], errors="coerce")
+            df_feedback_tutors.loc[df_feedback_tutors["n_corrections"] == 0, "percentage_feedback"] = np.nan
+            
 
         df_feedback_tutors["percentage_feedback"] = df_feedback_tutors["percentage_feedback"].fillna(0)
 

@@ -1,6 +1,6 @@
 # Instalação
 
-primeiramente, rode o comando para inicializar os bancos e serviços com o docker
+Primeiramente, rode o comando para inicializar os bancos e serviços com o docker
 
 ```bash
 docker compose up -d
@@ -22,7 +22,7 @@ poetry install
 poetry run python install.py
 ```
 
-Feito isso, entre no diretório da **API** e rode o comando:
+Feito isso, entre no diretório da **pre_api** e rode o comando:
 
 ```bash
 poetry install
@@ -30,13 +30,29 @@ poetry install
 
 # Como executar o sistema
 
-Feita a instalação mostrada no passo anterior, para rodar o sistema será necessário abrir 2 terminais: um para o diretório da **API** e outro para o diretório **worker**. Em ambos os terminais, rode o comando a seguir:
+Feita a instalação mostrada no passo anterior, para rodar o sistema será necessário abrir 2 terminais: um para o diretório da **pre_api** e outro para o diretório **worker**.
+
+No diretório **worker**, caso seja a primeira vez que roda o sistema, digite:
 
 ```bash
 poetry run python app.py
 ```
 
-Feito isso, no terminal da **API**, acesse o link disponibilizado pelo Flask. Irá abrir uma página no navegador onde o usuário irá inserir as informações de acesso ao banco de dados institucional, como o link do host, a porta, o usuário, etc. Após inserir os dados, o sistema irá iniciar a análise global enquanto o usuário pode fazer as análises locais.
+Caso já tenha rodado mais vezes e seja necessário limpar os dados salvos no banco, rode:
+
+```bash
+poetry run python clear.py ; poetry run python install.py ; clear ; poetry run python app.py
+```
+
+No diretório **pre_api** é necessário rodar apenas:
+
+```bash
+poetry run python app.py
+```
+
+Feito isso, no terminal da **API**, acesse o link disponibilizado pelo Flask. 
+
+Deve-se acessar a rota ```/analysis``` pelo Postman/Insomnia onde será necessário inserir as informações de acesso ao banco de dados institucional, como o link do host, a porta, o usuário, etc. Após isso, o sistema irá iniciar a análise global enquanto o usuário pode fazer as análises locais.
 
 # Modelo de troca de mensagens
 

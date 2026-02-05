@@ -1,5 +1,5 @@
 from typing import Any, Dict
-
+import pandas as pd
 from database import DatabaseAdmin, Database  
 from src.analysis_lib.analysis.analyzer import Analyzer  
 
@@ -25,6 +25,8 @@ def build_tutors_subject_access(subject_id: int):
 
         out = df.loc[:, ["tutor_id", "full_name", "n_login", "n_login_subject", "n_login_weekly", "n_login_label", 
                            "n_login_weekly_label", "label_access", "maximum_inactivity_days", "maximum_inactivity_days_label"]].copy()
+        
+        out = out.where(pd.notna(out), None)
 
         return out.to_dict(orient="records")
     

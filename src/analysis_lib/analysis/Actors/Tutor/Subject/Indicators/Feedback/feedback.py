@@ -93,15 +93,20 @@ class Feedback(Indicator):
         if df_feedback is None:
             df_feedback = pd.DataFrame()
 
-        df_names = self.mapper.fetch_tutors_names(connector, version, subject_id)
+        tutor_ids = df_feedback["tutor_id"].dropna().astype(int).unique().tolist()
 
-        if df_names is None:
-            df_names = pd.DataFrame()
-        elif not isinstance(df_names, pd.DataFrame):
-            df_names = pd.DataFrame(df_names)
+        names_rows = []
 
+        for tid in tutor_ids:
+            df_name = self.mapper.fetch_tutors_names(connector, version, user_id=tid)
+            full_name = df_name.iloc[0]["full_name"] if (df_name is not None and not df_name.empty and "full_name" in df_name.columns) else None
+            names_rows.append({"tutor_id": tid, "full_name": full_name})
+
+        df_names = pd.DataFrame(names_rows)
+        
         if df_feedback.empty:
             return df_feedback
 
         out = df_feedback.merge(df_names, on="tutor_id", how="left")
+        
         return out

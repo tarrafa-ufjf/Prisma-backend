@@ -1,5 +1,5 @@
 from typing import Any, Dict
-
+import pandas as pd
 from database import DatabaseAdmin, Database  
 from src.analysis_lib.analysis.analyzer import Analyzer  
 
@@ -27,6 +27,8 @@ def build_tutors_subject_feedback(subject_id: int):
         out = df.loc[:, ["tutor_id","full_name", "n_corrections","n_corrections_with_feedback","percentage_feedback","n_textual_feedback","n_feedback_pdf",
                             "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
                             "n_textual_feedback_label", "n_feedback_pdf_label", "label_feedback"]].copy()
+        
+        out = out.where(pd.notna(out), None)
 
         return out.to_dict(orient="records")
     

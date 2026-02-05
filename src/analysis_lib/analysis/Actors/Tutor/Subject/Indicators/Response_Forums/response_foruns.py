@@ -92,16 +92,21 @@ class Response_Forums(Indicator):
 
         if df_response_foruns is None:
             df_response_foruns = pd.DataFrame()
+            
+        tutor_ids = df_response_foruns["tutor_id"].dropna().astype(int).unique().tolist()
 
-        df_names = self.mapper.fetch_tutors_names(connector, version, subject_id)
+        names_rows = []
 
-        if df_names is None:
-            df_names = pd.DataFrame()
-        elif not isinstance(df_names, pd.DataFrame):
-            df_names = pd.DataFrame(df_names)
+        for tid in tutor_ids:
+            df_name = self.mapper.fetch_tutors_names(connector, version, user_id=tid)
+            full_name = df_name.iloc[0]["full_name"] if (df_name is not None and not df_name.empty and "full_name" in df_name.columns) else None
+            names_rows.append({"tutor_id": tid, "full_name": full_name})
 
+        df_names = pd.DataFrame(names_rows)
+        
         if df_response_foruns.empty:
             return df_response_foruns
 
         out = df_response_foruns.merge(df_names, on="tutor_id", how="left")
+        
         return out

@@ -1,4 +1,5 @@
 from typing import Any, Dict
+import pandas as pd
 
 from database import DatabaseAdmin, Database  
 from src.analysis_lib.analysis.analyzer import Analyzer  
@@ -23,12 +24,13 @@ def build_tutors_subject_response_forums(subject_id: int):
                             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"] if c not in df.columns]
         if missing:
             raise KeyError(f"missing columns in engagement_analysis output: {missing}")
-
-
+        
         out = df.loc[:, ["tutor_id", "full_name", "total_response_forum", "median_forums_response_hours", "mean_forums_response_hours", "score_access",
                             "mean_forums_response_hours_label", "median_forums_response_hours_label", "score_access_label",
                             "label_forums_response",
                             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]].copy()
+        
+        out = out.where(pd.notna(out), None)
 
         return out.to_dict(orient="records")
     

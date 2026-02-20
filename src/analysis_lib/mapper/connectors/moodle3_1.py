@@ -820,57 +820,69 @@ class Moodle31(Moodle):
             ])
 
         in_placeholders = ",".join(["%s"] * len(tutor_ids))
+        start_ts = int(pd.Timestamp(start_date).timestamp())
+        end_ts = int(pd.Timestamp(end_date).timestamp())
 
-        query = f"""
-            SELECT 
-                u.id AS tutor_id,
-                u.firstname,
-                u.lastname,
-
-                FROM_UNIXTIME(MIN(CASE WHEN l.action = 'loggedin'
-                                    THEN l.timecreated END)) AS first_login,
-                FROM_UNIXTIME(MAX(CASE WHEN l.action = 'loggedin'
-                                    THEN l.timecreated END)) AS last_login,
-
-                FROM_UNIXTIME(MIN(CASE WHEN l.target = 'course'
-                                        AND l.action IN ('viewed','entered')
-                                    THEN l.timecreated END)) AS first_course_access,
-                FROM_UNIXTIME(MAX(CASE WHEN l.target = 'course'
-                                        AND l.action IN ('viewed','entered')
-                                    THEN l.timecreated END)) AS last_course_access,
-
-                SUM(CASE WHEN l.action = 'loggedin' THEN 1 ELSE 0 END) AS n_login,
-                SUM(CASE WHEN l.target = 'course'
-                        AND l.action IN ('viewed','entered')
-                        THEN 1 ELSE 0 END) AS n_login_subject
-
-            FROM mdl_user u
-            LEFT JOIN mdl_logstore_standard_log l
-                ON l.userid = u.id
-            AND l.component = 'core'
-            AND l.timecreated BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
-            AND (
-                    (l.action = 'loggedin')
-                OR (l.courseid = %s AND l.target = 'course' AND l.action IN ('viewed','entered'))
-            )
-            WHERE u.id IN ({in_placeholders})
-            GROUP BY u.id, u.firstname, u.lastname
-            ORDER BY u.id;
+        q_users = f"""
+            SELECT id AS tutor_id, firstname, lastname
+            FROM mdl_user
+            WHERE id IN ({in_placeholders})
+            ORDER BY id
         """
 
-        params = [start_date, end_date, subject_id]
-        params.extend(tutor_ids)
+        q_login = f"""
+            SELECT
+                userid AS tutor_id,
+                FROM_UNIXTIME(MIN(timecreated)) AS first_login,
+                FROM_UNIXTIME(MAX(timecreated)) AS last_login,
+                COUNT(*) AS n_login
+            FROM mdl_logstore_standard_log
+            WHERE component = 'core'
+            AND action = 'loggedin'
+            AND timecreated BETWEEN %s AND %s
+            AND userid IN ({in_placeholders})
+            GROUP BY userid
+        """
+
+        # 3) Acessos ao curso (só course viewed/entered)
+        q_course = f"""
+            SELECT
+                userid AS tutor_id,
+                FROM_UNIXTIME(MIN(timecreated)) AS first_course_access,
+                FROM_UNIXTIME(MAX(timecreated)) AS last_course_access,
+                COUNT(*) AS n_login_subject
+            FROM mdl_logstore_standard_log
+            WHERE component = 'core'
+            AND courseid = %s
+            AND target = 'course'
+            AND action IN ('viewed','entered')
+            AND timecreated BETWEEN %s AND %s
+            AND userid IN ({in_placeholders})
+            GROUP BY userid
+        """
 
         with connector.cursor() as cur:
-            cur.execute(query, params)
+            cur.execute(q_users, tutor_ids)
+            users = cur.fetchall()
+            users_cols = [d[0] for d in cur.description]
+            df_users = pd.DataFrame(users, columns=users_cols)
+
+            cur.execute(q_login, [start_ts, end_ts] + tutor_ids)
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
+            df_login = pd.DataFrame(rows, columns=cols)
 
-        df = pd.DataFrame(rows, columns=cols)
+            cur.execute(q_course, [subject_id, start_ts, end_ts] + tutor_ids)
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+            df_course = pd.DataFrame(rows, columns=cols)
+
+        # Merge final
+        df = df_users.merge(df_login, on="tutor_id", how="left").merge(df_course, on="tutor_id", how="left")
 
         if not df.empty:
-            df["n_login"] = df["n_login"].fillna(0).astype(int)
-            df["n_login_subject"] = df["n_login_subject"].fillna(0).astype(int)
+            df["n_login"] = pd.to_numeric(df.get("n_login"), errors="coerce").fillna(0).astype(int)
+            df["n_login_subject"] = pd.to_numeric(df.get("n_login_subject"), errors="coerce").fillna(0).astype(int)
 
         return df
     
@@ -880,32 +892,38 @@ class Moodle31(Moodle):
             return pd.DataFrame(columns=["tutor_id", "access_day"])
 
         in_placeholders = ",".join(["%s"] * len(tutor_ids))
+        start_ts = int(pd.Timestamp(start_date).timestamp())
+        end_ts = int(pd.Timestamp(end_date).timestamp())
 
         query = f"""
-            SELECT
-                t.tutor_id,
-                DATE(FROM_UNIXTIME(l.timecreated)) AS access_day
-            FROM
-                (
-                    SELECT u.id AS tutor_id
-                    FROM mdl_user u
-                    WHERE u.id IN ({in_placeholders})
-                ) AS t
-            JOIN mdl_logstore_standard_log l
-                ON l.userid = t.tutor_id
-            AND l.component = 'core'
-            AND l.timecreated BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
-            AND (
-                    (l.action = 'loggedin')
-                OR (l.courseid = %s AND l.target = 'course' AND l.action IN ('viewed','entered'))
-            )
-            GROUP BY t.tutor_id, access_day
-            ORDER BY t.tutor_id, access_day;
+            SELECT tutor_id, access_day
+            FROM (
+                SELECT
+                    userid AS tutor_id,
+                    DATE(FROM_UNIXTIME(timecreated)) AS access_day
+                FROM mdl_logstore_standard_log
+                WHERE component='core'
+                AND action='loggedin'
+                AND timecreated BETWEEN %s AND %s
+                AND userid IN ({in_placeholders})
+
+                UNION DISTINCT
+
+                SELECT
+                    userid AS tutor_id,
+                    DATE(FROM_UNIXTIME(timecreated)) AS access_day
+                FROM mdl_logstore_standard_log
+                WHERE component='core'
+                AND courseid=%s
+                AND target='course'
+                AND action IN ('viewed','entered')
+                AND timecreated BETWEEN %s AND %s
+                AND userid IN ({in_placeholders})
+            ) x
+            ORDER BY tutor_id, access_day
         """
 
-        params = []
-        params.extend(tutor_ids)
-        params.extend([start_date, end_date, subject_id])
+        params = [start_ts, end_ts] + tutor_ids + [subject_id, start_ts, end_ts] + tutor_ids
 
         with connector.cursor() as cur:
             cur.execute(query, params)

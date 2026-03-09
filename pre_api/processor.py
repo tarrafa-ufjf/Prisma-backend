@@ -3,7 +3,7 @@ import pandas as pd
 from rabbit import RabbitMQAdmin
 from sqlalchemy import and_, select
 from database import DatabaseAdmin, Database
-from src.analysis_lib.analysis.analysis import Analyzer
+from src.analysis_lib.analysis.analyzer import Analyzer
 
 class Processor:
     def __init__(self, user=None):
@@ -38,8 +38,10 @@ class Processor:
             return
     
         for sid in subjects:
-        # for sid in subjects[:200]:
-        # for sid in [37, 41, 78, 83, 84, 222, 223, 224]:
+        # for sid in subjects[1:20]:
+        # # for sid in [37, 41, 78, 83, 84, 222, 223, 224]:
+        # # for sid in [78, 222, 223, 224]:
+        # for sid in [78, 222]:
             try:
                 self.db_admin.insert_subject_analysis_status(1, sid, 'P')
             except Exception as e:

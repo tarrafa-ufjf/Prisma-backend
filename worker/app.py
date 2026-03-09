@@ -1,12 +1,16 @@
 from database import Database, DatabaseAdmin
 from rabbit import RabbitMQAdmin
-from src.analysis_lib.analysis.analysis import Analyzer
+from src.analysis_lib.analysis.analyzer import Analyzer
+from src.analysis_lib.mapper.map import Mapper
 import json
 import pandas as pd
 from sqlalchemy import text
 import numpy as np
+import math
+import time
+import traceback
 
-pd.set_option('future.no_silent_downcasting', True)
+pd.set_option("future.no_silent_downcasting", True)
 
 conn = Database()
 connector = None
@@ -35,7 +39,7 @@ ANALYSIS_MAP = {
     "global_analysis_give_up": {
         "func": "general_give_up_analysis",
         "status_index": 6,
-    }
+    },
 }
 
 
@@ -44,29 +48,167 @@ class Worker:
         self.rabbit_admin = rabbit_admin
         self.db_admin = DatabaseAdmin()
         self.analyzer = Analyzer()
+        self.mapper = Mapper()
+
+    def set_mysql_session_timeouts(
+        self,
+        conn,
+        *,
+        lock_wait_s=50,
+        net_timeout_s=120,
+        idle_timeout_s=28800,
+        max_exec_ms=600_000,
+    ):
+        cur = conn.cursor()
+        try:
+            desired = {
+                "innodb_lock_wait_timeout": int(lock_wait_s),
+                "lock_wait_timeout": int(lock_wait_s),
+                "net_read_timeout": int(net_timeout_s),
+                "net_write_timeout": int(net_timeout_s),
+                "wait_timeout": int(idle_timeout_s),
+                "max_execution_time": int(max_exec_ms),
+                "max_statement_time": int(max_exec_ms / 1000),
+            }
+
+            applied = {}
+
+            for var, val in desired.items():
+                cur.execute("SHOW VARIABLES LIKE %s", (var,))
+                row = cur.fetchone()
+                if not row:
+                    continue
+
+                try:
+                    cur.execute(f"SET SESSION {var} = %s", (val,))
+                    cur.execute("SHOW VARIABLES LIKE %s", (var,))
+                    applied[var] = cur.fetchone()
+                except Exception as e:
+                    applied[var] = f"FAILED: {e}"
+
+            # print("[mysql session timeouts] applied:", applied)
+            return applied
+
+        finally:
+            cur.close()
 
     def subject_analysis(self, message):
         body = message["body"]
         cfg = body.get("analysis_config", {})
         subject_id = int(cfg["subject_id"])
         version = self.db_admin.get_version_in_database(1)
+
         connector = conn.get_connection_with_config(body.get("db_inst_config"))
         engine = self.db_admin.get_connector()
 
-        eng = self.analyzer.engagement_analysis(subject_id, 'subject', version, connector)
-        per = self.analyzer.performance_analysis(subject_id, 'subject', version, connector)
-        mot = self.analyzer.motivation_analysis(subject_id, 'subject', version, connector)
-        cog = self.analyzer.cognitive_analysis(subject_id, 'subject', version, connector)
-        ped = self.analyzer.pedagogic_analysis(subject_id, 'subject', version, connector)
-        giv = self.analyzer.give_up_analysis(subject_id, 'subject', version, connector)
+        try:
+            self.set_mysql_session_timeouts(
+                connector,
+                lock_wait_s=50,
+                net_timeout_s=120,
+                idle_timeout_s=28800,
+                max_exec_ms=600_000,
+            )
 
-        indicator_dfs = {"eng": eng, "per": per, "mot": mot, "ped": ped, "cog": cog, "giv": giv}
+            subject_df_student = self.students_subject_analysis(
+                subject_id, version, connector, engine
+            )
+            subject_df_tutor = self.tutors_subject_analysis(
+                subject_id, version, connector, engine
+            )
+
+            self.save_subject_global_indicators_students(subject_df_student, engine)
+            self.save_NaN_global_indicators_tutors(subject_df_tutor, engine)
+
+            self.db_admin.update_subject_analysis_status(1, subject_id, "D")
+
+        finally:
+            try:
+                connector.close()
+            except Exception:
+                pass
+
+    def students_subject_analysis(self, subject_id, version, connector, engine):
+        print(f"students_subject_analysis_{subject_id}")
+        eng = self.safe_df(
+            "engagement",
+            self.analyzer.engagement_analysis,
+            subject_id,
+            "subject",
+            version,
+            connector,
+            connector=connector,
+        )
+        print("Eng já foi")
+        per = self.safe_df(
+            "performance",
+            self.analyzer.performance_analysis,
+            subject_id,
+            "subject",
+            version,
+            connector,
+            connector=connector,
+        )
+        print("Per já foi")
+
+        mot = self.safe_df(
+            "motivation",
+            self.analyzer.motivation_analysis,
+            subject_id,
+            "subject",
+            version,
+            connector,
+            connector=connector,
+        )
+        print("Mpt já foi")
+
+        cog = self.safe_df(
+            "cognitive",
+            self.analyzer.cognitive_analysis,
+            subject_id,
+            "subject",
+            version,
+            connector,
+            connector=connector,
+        )
+        print("Cog já foi")
+
+        ped = self.safe_df(
+            "pedagogic",
+            self.analyzer.pedagogic_analysis,
+            subject_id,
+            "subject",
+            version,
+            connector,
+            connector=connector,
+        )
+        print("Ped já foi")
+
+        giv = self.safe_df(
+            "give_up",
+            self.analyzer.give_up_analysis,
+            subject_id,
+            "subject",
+            version,
+            connector,
+            connector=connector,
+        )
+        print("Giv já foi")
+
+        indicator_dfs = {
+            "eng": eng,
+            "per": per,
+            "mot": mot,
+            "ped": ped,
+            "cog": cog,
+            "giv": giv,
+        }
         normalized = []
 
         for name, df in indicator_dfs.items():
             if df is None or df.empty:
                 continue
-            
+
             df = df.copy()
             normalized.append(df)
 
@@ -83,14 +225,18 @@ class Worker:
                 merged = df
                 continue
 
-            common_cols = [c for c in merged.columns if c in df.columns and c != "user_id"]
+            common_cols = [
+                c for c in merged.columns if c in df.columns and c != "user_id"
+            ]
 
             if common_cols:
-                merged = merged.merge(df, on="user_id", how="outer", suffixes=("", "_dup"))
+                merged = merged.merge(
+                    df, on="user_id", how="outer", suffixes=("", "_dup")
+                )
                 merged = merged.loc[:, ~merged.columns.str.endswith("_dup")]
             else:
                 merged = merged.merge(df, on="user_id", how="outer")
-        
+
         merged["subject_id"] = subject_id
         merged["version"] = version
 
@@ -120,7 +266,7 @@ class Worker:
         desired_cols = [
             "version",
             "subject_id",
-            "student_id", 
+            "student_id",
             "n_posts_engagement",
             "label_engagement",
             "n_posts_motivation",
@@ -141,8 +287,21 @@ class Worker:
             if c not in merged.columns:
                 merged[c] = pd.NA
 
-        subject_df = merged[desired_cols]
-        subject_df = subject_df.fillna(0)
+        subject_df = merged[desired_cols].copy()
+
+        numeric_cols = [
+            "n_posts_engagement",
+            "n_posts_motivation",
+            "grade_performance",
+            "grade_comparative_performance",
+            "mean_forum_interactions_cognitive",
+            "mean_quiz_interactions_cognitive",
+            "mean_assign_interactions_cognitive",
+            "n_responses_relation_teacher_student",
+        ]
+        for c in numeric_cols:
+            if c in subject_df.columns:
+                subject_df[c] = pd.to_numeric(subject_df[c], errors="coerce").fillna(0)
 
         subject_df["institution_id"] = 1
         subject_df["subject_id"] = subject_id
@@ -171,17 +330,340 @@ class Worker:
             }
         )
 
-        subject_df.to_sql("local_indicators_students", engine, if_exists="append", index=False)
+        subject_df.to_sql(
+            "local_indicators_students", engine, if_exists="append", index=False
+        )
 
-        self.save_subject_global_indicators(subject_df, engine)
+        return subject_df
 
-        self.db_admin.update_subject_analysis_status(1, subject_id, "D")
-    
+    def _best_block_dynamic_window(
+        self,
+        df_daily_events,
+        gap_days: int = 21,
+        pct_of_peak: float = 0.02,
+        floor_min: int = 10,
+    ):
+        """
+        - A ideia é ignorar "cauda longa" (acessos anos depois).
+        - 1) Agrega logs por dia (df_daily_events já vem assim).
+        - 2) Calcula pico_diario = max(events).
+        - 3) Define "dia ativo" como: events_dia >= max(floor_min, ceil(pct_of_peak * pico_diario))
+            * O pct escala com o tamanho da turma/curso
+            * O floor evita que cursos pequenos considerem 1-2 eventos como "dia ativo"
+        - 4) Considera apenas dias ativos e agrupa em blocos permitindo gaps <= gap_days.
+        - 5) Escolhe o bloco com maior soma de eventos (bloco "principal" do curso).
+        """
+        if df_daily_events is None or df_daily_events.empty:
+            return None, None
+
+        daily = df_daily_events.copy()
+
+        if "day" not in daily.columns or "events" not in daily.columns:
+            return None, None
+
+        daily["day"] = pd.to_datetime(daily["day"], errors="coerce").dt.normalize()
+        daily["events"] = (
+            pd.to_numeric(daily["events"], errors="coerce").fillna(0).astype(int)
+        )
+        daily = daily.dropna(subset=["day"]).sort_values("day").reset_index(drop=True)
+
+        if daily.empty or daily["events"].sum() <= 0:
+            return None, None
+
+        peak_daily = int(daily["events"].max())
+        active_min_dynamic = max(floor_min, int(math.ceil(pct_of_peak * peak_daily)))
+
+        active_days = daily[daily["events"] >= active_min_dynamic].copy()
+        if active_days.empty:
+            pos = daily[
+                daily["events"] > 0
+            ]  # se nada bater o active_min, devolve janela total (dias com evento > 0)
+            if pos.empty:
+                return None, None
+            return pos["day"].iloc[0], pos["day"].iloc[-1]
+
+        active_days = active_days.sort_values("day").reset_index(drop=True)
+
+        # Quebra em blocos quando gap > gap_days
+        active_days["prev_day"] = active_days["day"].shift(1)
+        active_days["gap"] = (active_days["day"] - active_days["prev_day"]).dt.days
+        active_days["new_block"] = active_days["gap"].isna() | (
+            active_days["gap"] > gap_days
+        )
+        active_days["block_id"] = active_days["new_block"].cumsum()
+
+        agg = (
+            active_days.groupby("block_id")
+            .agg(
+                start_day=("day", "min"),
+                end_day=("day", "max"),
+                events_sum=("events", "sum"),
+                days=("day", "count"),
+            )
+            .reset_index()
+        )
+
+        best = agg.sort_values(["events_sum", "days"], ascending=[False, False]).iloc[0]
+
+        start_at = best["start_day"]
+        end_at = best["end_day"]
+
+        return start_at, end_at
+
+    def _ensure_one_row_per_tutor(self, df_in, cols):
+        df_out = df_in.copy()
+
+        keep = [c for c in cols if c in df_out.columns]
+        df_out = df_out[keep].copy()
+
+        df_out["tutor_id"] = pd.to_numeric(df_out["tutor_id"], errors="coerce")
+        df_out = df_out.dropna(subset=["tutor_id"])
+        df_out["tutor_id"] = df_out["tutor_id"].astype(int)
+
+        df_out = (
+            df_out.sort_values("tutor_id").groupby("tutor_id", as_index=False).first()
+        )
+
+        return df_out
+
+    def tutors_subject_analysis(self, subject_id, version, connector, engine):
+        print(f"tutors_subject_analysis_{subject_id}")
+        df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
+        start_at, end_at = self._best_block_dynamic_window(
+            df_daily_events, gap_days=21, pct_of_peak=0.02, floor_min=10
+        )
+
+        df_all_tutors = self.mapper.fetch_all_tutors(
+            connector, version, subject_id, start_at, end_at
+        )
+        if df_all_tutors is None or df_all_tutors.empty:
+            return None
+
+        tutor_ids = set(
+            pd.to_numeric(df_all_tutors["tutor_id"], errors="coerce")
+            .dropna()
+            .astype(int)
+            .tolist()
+        )
+
+        tutor_ids = sorted(set(tutor_ids))
+
+        if not tutor_ids:
+            return None
+
+        analysis_response_foruns = self.safe_df(
+            "response_foruns",
+            self.analyzer.analysis_response_foruns,
+            subject_id,
+            "subject",
+            version,
+            connector,
+            start_at,
+            end_at,
+            connector=connector,
+            tutor_ids=tutor_ids,
+        )
+        print("analysis_response_foruns já foi")
+        analysis_feedback_df = self.safe_df(
+            "feedback",
+            self.analyzer.analysis_feedback,
+            subject_id,
+            "subject",
+            version,
+            connector,
+            start_at,
+            end_at,
+            connector=connector,
+            tutor_ids=tutor_ids,
+        )
+        print("analysis_feedback_df já foi")
+        analysis_login_df = self.safe_df(
+            "login",
+            self.analyzer.analysis_login,
+            subject_id,
+            "subject",
+            version,
+            connector,
+            start_at,
+            end_at,
+            connector=connector,
+            tutor_ids=tutor_ids,
+        )
+        print("analysis_login_df já foi")
+
+        if (
+            (analysis_response_foruns is None or analysis_response_foruns.empty)
+            and (analysis_login_df is None or analysis_login_df.empty)
+            and (analysis_feedback_df is None or analysis_feedback_df.empty)
+        ):
+            return None
+
+        df = pd.DataFrame({"tutor_id": tutor_ids}).merge(
+            df_all_tutors[["tutor_id"]].drop_duplicates(),
+            on="tutor_id",
+            how="inner",
+            validate="m:1",
+        )
+        df["institution_id"] = 1
+        df["subject_id"] = subject_id
+        df["version"] = version
+
+        if analysis_response_foruns is not None and not analysis_response_foruns.empty:
+            forum_cols = list(analysis_response_foruns.columns)
+            forum_1 = self._ensure_one_row_per_tutor(
+                analysis_response_foruns, forum_cols
+            )
+
+            df = df.merge(forum_1, on="tutor_id", how="left", validate="1:1")
+
+        if analysis_feedback_df is not None and not analysis_feedback_df.empty:
+            feedback_cols = [
+                "tutor_id",
+                "n_corrections",
+                "n_corrections_with_feedback",
+                "percentage_feedback",
+                "n_textual_feedback",
+                "n_feedback_pdf",
+                "n_corrections_label",
+                "n_corrections_with_feedback_label",
+                "percentage_feedback_label",
+                "n_textual_feedback_label",
+                "n_feedback_pdf_label",
+                "label_feedback",
+            ]
+            feedback_1 = self._ensure_one_row_per_tutor(
+                analysis_feedback_df, feedback_cols
+            )
+
+            df = df.merge(feedback_1, on="tutor_id", how="left", validate="1:1")
+
+        if analysis_login_df is not None and not analysis_login_df.empty:
+            login_cols = [
+                "tutor_id",
+                "n_login",
+                "n_login_subject",
+                "n_login_weekly",
+                "n_login_label",
+                "n_login_weekly_label",
+                "label_access",
+                "maximum_inactivity_days",
+                "maximum_inactivity_days_label",
+            ]
+            login_1 = self._ensure_one_row_per_tutor(analysis_login_df, login_cols)
+
+            df = df.merge(login_1, on="tutor_id", how="left", validate="1:1")
+
+        df["label_forums_response"] = df["label_forums_response"].fillna("Muito baixo")
+
+        for col in [
+            "n_login",
+            "n_login_subject",
+            "n_login_weekly",
+            "total_response_forum",
+            "median_forums_response_hours",
+            "mean_forums_response_hours",
+            "score_access",
+            "num_response_fast_forum",
+            "num_response_late_forum",
+            "num_response_normal_forum",
+            "n_corrections",
+            "n_corrections_with_feedback",
+            "percentage_feedback",
+            "n_textual_feedback",
+            "n_feedback_pdf",
+        ]:
+            if col in df.columns:
+                df[col] = df[col].fillna(0)
+
+        desired_cols = [
+            "institution_id",
+            "version",
+            "subject_id",
+            "tutor_id",
+            "total_response_forum",
+            "median_forums_response_hours",
+            "mean_forums_response_hours",
+            "score_access",
+            "mean_forums_response_hours_label",
+            "median_forums_response_hours_label",
+            "score_access_label",
+            "label_forums_response",
+            "num_response_fast_forum",
+            "num_response_late_forum",
+            "num_response_normal_forum",
+            "n_login",
+            "n_login_subject",
+            "n_login_weekly",
+            "n_login_label",
+            "n_login_weekly_label",
+            "label_access",
+            "maximum_inactivity_days",
+            "maximum_inactivity_days_label",
+            "n_corrections",
+            "n_corrections_with_feedback",
+            "percentage_feedback",
+            "n_textual_feedback",
+            "n_feedback_pdf",
+            "n_corrections_label",
+            "n_corrections_with_feedback_label",
+            "percentage_feedback_label",
+            "n_textual_feedback_label",
+            "n_feedback_pdf_label",
+            "label_feedback",
+        ]
+
+        for c in desired_cols:
+            if c not in df.columns:
+                df[c] = np.nan
+
+        df = df.groupby(
+            ["institution_id", "version", "subject_id", "tutor_id"], as_index=False
+        ).agg(
+            {
+                c: "first"
+                for c in desired_cols
+                if c not in ["institution_id", "version", "subject_id", "tutor_id"]
+            }
+        )
+
+        df = df[desired_cols]
+        df.to_sql("local_indicators_tutors", engine, if_exists="append", index=False)
+
+        # ---- UPDATE subjects_status (1 vez por subject) ----
+        def to_db_date(x):
+            if x is None or (isinstance(x, pd.Timestamp) and pd.isna(x)):
+                return None
+            return pd.to_datetime(x).date()
+
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    UPDATE subjects_status
+                    SET
+                        start_date = :start_date,
+                        end_date = :end_date
+                    WHERE
+                        institution_id = :institution_id
+                        AND subject_id = :subject_id
+                    """
+                ),
+                {
+                    "institution_id": 1,
+                    "subject_id": subject_id,
+                    "start_date": to_db_date(start_at),
+                    "end_date": to_db_date(end_at),
+                },
+            )
+
+        return df
+
     # ------------------------------------------------------------------
-    # Calcula as médias da disciplina e salva em global_indicators
+    # Calcula as médias da disciplina e salva em global_indicators_students
     # ------------------------------------------------------------------
-    def save_subject_global_indicators(self, subject_df, engine):
-        if subject_df.empty:
+    def save_subject_global_indicators_students(self, subject_df, engine):
+        print("save_subject_global_indicators_students")
+        if subject_df is None or subject_df.empty:
             return
 
         df = subject_df.copy()
@@ -213,9 +695,9 @@ class Worker:
                 return float(value)
 
             s = str(value).strip().lower()
-            if s in ("true"):
+            if s == "true":
                 return 1.0
-            if s in ("false"):
+            if s == "false":
                 return 0.0
 
             return np.nan
@@ -232,14 +714,20 @@ class Worker:
         # mean_give_up                            -> média de give_up_numeric (proporção de "true")
         # mean_responses_relation_teacher_student -> média de número de respostas do tutor e professor para os alunos
         # ------------------------------------------------------------------
-        global_subject_df = df.groupby(["institution_id", "version", "subject_id"], as_index=False,).agg(
-                mean_posts_engagement=("n_posts_engagement", "mean"),
-                mean_posts_motivation=("n_posts_motivation", "mean"),
-                mean_grade_performance=("grade_performance", "mean"),
-                mean_interactions_cognitive=("mean_interactions_cognitive", "mean"),
-                mean_responses_relation_teacher_student = ("n_responses_relation_teacher_student", "mean"),
-                mean_give_up=("give_up_numeric", "mean"),
-            )
+        global_subject_df = df.groupby(
+            ["institution_id", "version", "subject_id"],
+            as_index=False,
+        ).agg(
+            mean_posts_engagement=("n_posts_engagement", "mean"),
+            mean_posts_motivation=("n_posts_motivation", "mean"),
+            mean_grade_performance=("grade_performance", "mean"),
+            mean_interactions_cognitive=("mean_interactions_cognitive", "mean"),
+            mean_responses_relation_teacher_student=(
+                "n_responses_relation_teacher_student",
+                "mean",
+            ),
+            mean_give_up=("give_up_numeric", "mean"),
+        )
 
         # ------------------------------------------------------------------
         # Labels globais ainda não calculados -> NA
@@ -275,28 +763,30 @@ class Worker:
         ]
 
         global_subject_df.to_sql(
-            "global_indicators",
+            "global_indicators_students",
             engine,
-            if_exists="append",  
+            if_exists="append",
             index=False,
         )
-                
+
     def discretize_global_indicators(self, institution_id: int = 1):
         engine = self.db_admin.get_connector()
         version = self.db_admin.get_version_in_database(institution_id)
 
-        df = pd.read_sql_table("global_indicators", engine)
+        df = pd.read_sql_table("global_indicators_students", engine)
 
         if df.empty:
             return
 
-        mask = (df["institution_id"] == institution_id) & (df["version"] == str(version))
+        mask = (df["institution_id"] == institution_id) & (
+            df["version"] == str(version)
+        )
         df_sub = df.loc[mask].copy()
 
         if df_sub.empty:
             return
 
-        def discretize_metric(series: pd.Series) -> pd.Series:
+        def discretize_metric(series):
             if series.isna().all():
                 return pd.Series([pd.NA] * len(series), index=series.index)
 
@@ -335,15 +825,14 @@ class Worker:
                 df_sub[label_col] = discretize_metric(df_sub[metric_col])
             else:
                 df_sub[label_col] = pd.NA
-                
-        
+
         def clean_na(value):
-                    if pd.isna(value):
-                        return None
-                    return value
+            if pd.isna(value):
+                return None
+            return value
 
         # ------------------------------------------------------------------
-        # Atualiza a tabela global_indicators no banco
+        # Atualiza a tabela global_indicators_students no banco
         # PK: (institution_id, version, subject_id)
         # ------------------------------------------------------------------
         with engine.begin() as conn:
@@ -356,14 +845,16 @@ class Worker:
                     "label_motivation": clean_na(row.get("label_motivation")),
                     "label_performance": clean_na(row.get("label_performance")),
                     "label_cognitive": clean_na(row.get("label_cognitive")),
-                    "label_relation_teacher_student": clean_na(row.get("label_relation_teacher_student")),
+                    "label_relation_teacher_student": clean_na(
+                        row.get("label_relation_teacher_student")
+                    ),
                     "label_give_up": clean_na(row.get("label_give_up")),
                 }
-                
+
                 conn.execute(
                     text(
                         """
-                        UPDATE global_indicators
+                        UPDATE global_indicators_students
                         SET
                             label_engagement = :label_engagement,
                             label_motivation = :label_motivation,
@@ -380,48 +871,435 @@ class Worker:
                     params,
                 )
 
+    def save_NaN_global_indicators_tutors(self, subject_df, engine):
+        print("save_NaN_global_indicators_tutors")
+
+        if subject_df is None or subject_df.empty:
+            return
+
+        required_keys = ["institution_id", "version", "subject_id", "tutor_id"]
+        for k in required_keys:
+            if k not in subject_df.columns:
+                raise ValueError(f"subject_df precisa ter a coluna '{k}'")
+
+        df = subject_df.copy()
+
+        institution_id = int(
+            pd.to_numeric(df["institution_id"], errors="coerce").dropna().iloc[0]
+        )
+        version = str(df["version"].iloc[0])
+        subject_id = int(
+            pd.to_numeric(df["subject_id"], errors="coerce").dropna().iloc[0]
+        )
+
+        placeholder = pd.DataFrame(
+            [
+                {
+                    "institution_id": institution_id,
+                    "version": version,
+                    "subject_id": subject_id,
+                    "score_global_forum": np.nan,
+                    "label_global_forum": pd.NA,
+                    "score_global_access": np.nan,
+                    "label_global_access": pd.NA,
+                    "score_global_feedback": np.nan,
+                    "label_global_feedback": pd.NA,
+                }
+            ]
+        )
+
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    DELETE FROM global_indicators_tutors
+                    WHERE institution_id = :institution_id
+                    AND version = :version
+                    AND subject_id = :subject_id
+                """
+                ),
+                {
+                    "institution_id": institution_id,
+                    "version": version,
+                    "subject_id": subject_id,
+                },
+            )
+
+        placeholder.to_sql(
+            "global_indicators_tutors",
+            engine,
+            if_exists="append",
+            index=False,
+        )
+
+    def _minmax(
+        self, series, low_q: float = 0.05, high_q: float = 0.95, invert: bool = False
+    ):
+        """
+        Normalização (percentis), evitando distorção por outliers.
+        Retorna valores em [0,1]. NaN permanece NaN.
+        """
+        s = pd.to_numeric(series, errors="coerce")
+        out = pd.Series(np.nan, index=s.index, dtype="float64")
+
+        valid = s.dropna()
+        if valid.empty:
+            return out
+
+        lo = valid.quantile(low_q)
+        hi = valid.quantile(high_q)
+
+        if pd.isna(lo) or pd.isna(hi) or hi <= lo:
+            out.loc[s.notna()] = 0.5
+            return out
+
+        clipped = s.clip(lower=lo, upper=hi)
+        norm = (clipped - lo) / (hi - lo)
+
+        if invert:
+            norm = 1 - norm
+
+        out.loc[norm.index] = norm
+        return out
+
+    def _discretize_rank_5bins(self, values):
+        s = pd.to_numeric(values, errors="coerce")
+        out = pd.Series(pd.NA, index=s.index, dtype="object")
+
+        valid = s.dropna()
+        if valid.empty:
+            return out
+
+        if valid.nunique() == 1:
+            out.loc[valid.index] = "Médio"
+            return out
+
+        pct = valid.rank(method="average", pct=True)
+
+        bins = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+        labels = ["Muito baixo", "Baixo", "Médio", "Alto", "Muito alto"]
+
+        out.loc[valid.index] = pd.cut(
+            pct, bins=bins, labels=labels, include_lowest=True
+        ).astype(str)
+
+        return out
+
+    def discretize_global_indicators_tutors(self, institution_id: int = 1):
+        """
+        1) Lê local_indicators_tutors da instituição/version
+        2) Padroniza métricas em escala comum (0..1) com referência institucional
+        3) Inverte métricas onde menor é melhor
+        4) Calcula MÉDIA SIMPLES por dimensão (fórum, acesso, feedback) para cada tutor
+        5) Calcula MÉDIA dos tutores por disciplina
+        6) Discretiza as disciplinas em 5 faixas (rank percentílico)
+        """
+        engine = self.db_admin.get_connector()
+        version = str(self.db_admin.get_version_in_database(institution_id))
+
+        try:
+            local_df = pd.read_sql_table("local_indicators_tutors", engine)
+        except Exception as e:
+            print("[WARN] failed reading local_indicators_tutors:", e)
+            return
+
+        if local_df is None or local_df.empty:
+            return
+
+        local_df["version"] = local_df["version"].astype(str)
+
+        mask = (
+            pd.to_numeric(local_df["institution_id"], errors="coerce") == institution_id
+        ) & (local_df["version"] == version)
+        df = local_df.loc[mask].copy()
+
+        if df.empty:
+            return
+
+        for c in ["institution_id", "version", "subject_id", "tutor_id"]:
+            if c not in df.columns:
+                print(f"[WARN] coluna ausente em local_indicators_tutors: {c}")
+                return
+
+        expected_numeric = [
+            # Fórum
+            "total_response_forum",
+            "mean_forums_response_hours",
+            "median_forums_response_hours",
+            # Acesso
+            "n_login",
+            "n_login_subject",
+            "maximum_inactivity_days",
+            # Feedback
+            "n_corrections",
+            "n_corrections_with_feedback",
+            "percentage_feedback",
+            "n_textual_feedback",
+            "n_feedback_pdf",
+        ]
+        for c in expected_numeric:
+            if c not in df.columns:
+                df[c] = np.nan
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
+        # Fórum
+        df["total_response_forum"] = df["total_response_forum"].fillna(0.0)
+
+        has_forum_response = df["total_response_forum"] > 0
+
+        df["response_norm_inst"] = self._minmax(
+            df["total_response_forum"], invert=False
+        )
+        df["mean_resp_time_norm_inst"] = self._minmax(
+            df["mean_forums_response_hours"], invert=True
+        )
+        df["median_resp_time_norm_inst"] = self._minmax(
+            df["median_forums_response_hours"], invert=True
+        )
+
+        df.loc[~has_forum_response, "mean_resp_time_norm_inst"] = 0.0
+        df.loc[~has_forum_response, "median_resp_time_norm_inst"] = 0.0
+
+        df["response_norm_inst"] = df["response_norm_inst"].fillna(0.0)
+
+        df["score_forum_tutor_inst"] = df[
+            [
+                "response_norm_inst",
+                "mean_resp_time_norm_inst",
+                "median_resp_time_norm_inst",
+            ]
+        ].mean(axis=1, skipna=True)
+
+        # Acesso
+        df["n_login"] = df["n_login"].fillna(0.0)
+        df["n_login_subject"] = df["n_login_subject"].fillna(0.0)
+
+        df["n_login_norm_inst"] = self._minmax(df["n_login"], invert=False).fillna(0.0)
+        df["n_login_subject_norm_inst"] = self._minmax(
+            df["n_login_subject"], invert=False
+        ).fillna(0.0)
+        df["maximum_inactivity_days_norm_inst"] = self._minmax(
+            df["maximum_inactivity_days"], invert=True
+        )
+
+        df["score_access_tutor_inst"] = df[
+            [
+                "n_login_norm_inst",
+                "n_login_subject_norm_inst",
+                "maximum_inactivity_days_norm_inst",
+            ]
+        ].mean(axis=1, skipna=True)
+
+        for c in [
+            "n_corrections",
+            "n_corrections_with_feedback",
+            "n_textual_feedback",
+            "n_feedback_pdf",
+        ]:
+            df[c] = df[c].fillna(0.0)
+
+        # Feedback
+        df["percentage_feedback"] = pd.to_numeric(
+            df["percentage_feedback"], errors="coerce"
+        )
+        if df["percentage_feedback"].dropna().gt(1).any():
+            df["percentage_feedback"] = df["percentage_feedback"] / 100.0
+        df["percentage_feedback"] = df["percentage_feedback"].clip(lower=0, upper=1)
+
+        df["n_corrections_norm_inst"] = self._minmax(
+            df["n_corrections"], invert=False
+        ).fillna(0.0)
+        df["n_corrections_with_feedback_norm_inst"] = self._minmax(
+            df["n_corrections_with_feedback"], invert=False
+        ).fillna(0.0)
+        df["n_textual_feedback_norm_inst"] = self._minmax(
+            df["n_textual_feedback"], invert=False
+        ).fillna(0.0)
+        df["n_feedback_pdf_norm_inst"] = self._minmax(
+            df["n_feedback_pdf"], invert=False
+        ).fillna(0.0)
+
+        df["percentage_feedback_norm_inst"] = df["percentage_feedback"]
+
+        df["score_feedback_tutor_inst"] = df[
+            [
+                "n_corrections_norm_inst",
+                "n_corrections_with_feedback_norm_inst",
+                "percentage_feedback_norm_inst",
+                "n_textual_feedback_norm_inst",
+                "n_feedback_pdf_norm_inst",
+            ]
+        ].mean(axis=1, skipna=True)
+
+        df["institution_id"] = pd.to_numeric(
+            df["institution_id"], errors="coerce"
+        ).astype("Int64")
+        df["subject_id"] = pd.to_numeric(df["subject_id"], errors="coerce").astype(
+            "Int64"
+        )
+        df["version"] = df["version"].astype(str)
+
+        df = df.dropna(subset=["institution_id", "subject_id"])
+        if df.empty:
+            return
+
+        # Mediana dos tutores da disciplina
+        subject_scores = df.groupby(
+            ["institution_id", "version", "subject_id"], as_index=False
+        ).agg(
+            score_global_forum=("score_forum_tutor_inst", "median"),
+            score_global_access=("score_access_tutor_inst", "median"),
+            score_global_feedback=("score_feedback_tutor_inst", "median"),
+        )
+
+        if subject_scores.empty:
+            return
+
+        # discretização global
+        subject_scores["label_global_forum"] = self._discretize_rank_5bins(
+            subject_scores["score_global_forum"]
+        )
+        subject_scores["label_global_access"] = self._discretize_rank_5bins(
+            subject_scores["score_global_access"]
+        )
+        subject_scores["label_global_feedback"] = self._discretize_rank_5bins(
+            subject_scores["score_global_feedback"]
+        )
+
+        subject_scores["institution_id"] = subject_scores["institution_id"].astype(int)
+        subject_scores["subject_id"] = subject_scores["subject_id"].astype(int)
+        subject_scores["version"] = subject_scores["version"].astype(str)
+
+        subject_scores = subject_scores.sort_values(
+            ["institution_id", "version", "subject_id"]
+        ).reset_index(drop=True)
+
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    DELETE FROM global_indicators_tutors
+                    WHERE institution_id = :institution_id
+                    AND version = :version
+                """
+                ),
+                {"institution_id": institution_id, "version": version},
+            )
+
+        subject_scores = subject_scores[
+            [
+                "institution_id",
+                "version",
+                "subject_id",
+                "score_global_forum",
+                "label_global_forum",
+                "score_global_access",
+                "label_global_access",
+                "score_global_feedback",
+                "label_global_feedback",
+            ]
+        ]
+
+        subject_scores.to_sql(
+            "global_indicators_tutors",
+            engine,
+            if_exists="append",
+            index=False,
+        )
+
+    def safe_df(
+        self, label, fn, *args, connector=None, retries=0, sleep_s=0.3, **kwargs
+    ):
+        MYSQL_RETRYABLE = {1205, 1213, 1317, 3024}
+        # 1205 lock wait timeout
+        # 1213 deadlock
+        # 1317 query interrupted
+        # 3024 max_execution_time exceeded (varia por engine)
+
+        for attempt in range(retries + 1):
+            try:
+                df = fn(*args, **kwargs)
+                if df is None or (hasattr(df, "empty") and df.empty):
+                    # print(f"[WARN] {label}: empty/None")
+                    return None
+                return df
+
+            except Exception as e:
+                code = None
+                try:
+                    if getattr(e, "args", None):
+                        code = e.args[0]
+                except Exception:
+                    pass
+
+                # print(f"[ERROR] {label} attempt={attempt} code={code} err={e}")
+                traceback.print_exc()
+
+                if connector is not None:
+                    try:
+                        connector.rollback()
+                    except Exception:
+                        pass
+                    try:
+                        connector.ping(reconnect=True)
+                    except Exception:
+                        pass
+
+                if attempt < retries and code in MYSQL_RETRYABLE:
+                    time.sleep(sleep_s)
+                    continue
+
+                return None
+
+
 def continuously_listen():
     rabbit_admin = RabbitMQAdmin()
 
     def callback(ch, method, properties, body):
-        message = json.loads(body.decode())
-        analysis_type = message.get("body", {}).get("type")
         worker = Worker(rabbit_admin)
+        try:
+            message = json.loads(body.decode())
+            analysis_type = message.get("body", {}).get("type")
 
-        if analysis_type == "subject_analysis":
-            worker.subject_analysis(message)
-        elif analysis_type in (
-            "global_analysis_engagement",
-            "global_analysis_pedagogic",
-            "global_analysis_performance",
-            "global_analysis_motivation",
-            "global_analysis_cognitive",
-            "global_analysis_give_up",
-        ):
-            worker.global_analysis(message)
-        else:
-            print(f"[!] Tipo de análise desconhecido: {analysis_type}")
+            if analysis_type == "subject_analysis":
+                worker.subject_analysis(message)
+            elif analysis_type in (...):
+                worker.global_analysis(message)
+            else:
+                print(f"[!] Tipo de análise desconhecido: {analysis_type}")
 
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        except Exception as e:
+            print("[FATAL in callback]:", e)
+            import traceback
 
-        # ------------------------------------------------------------------
-        # Depois de processar a mensagem, verifica se ainda há itens na fila.
-        # Se não houver mais mensagens pendentes, roda a discretização dos indicadores globais.
-        # ------------------------------------------------------------------
-        state = ch.queue_declare(queue='tasks_to_process', passive=True)
-        if state.method.message_count == 0:
-            worker.discretize_global_indicators(1)
+            traceback.print_exc()
+
+        finally:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+            # se quiser manter sua lógica de discretização aqui, ok:
+            try:
+                state = ch.queue_declare(queue="tasks_to_process", passive=True)
+                if state.method.message_count == 0:
+                    worker.discretize_global_indicators(1)
+                    worker.discretize_global_indicators_tutors(1)
+            except Exception as e:
+                print("[WARN] post-process failed:", e)
 
     rabbit_admin.channel.basic_qos(prefetch_count=1)
-    rabbit_admin.channel.basic_consume(queue='tasks_to_process', on_message_callback=callback)
+    rabbit_admin.channel.basic_consume(
+        queue="tasks_to_process", on_message_callback=callback
+    )
 
-    print(' [*] Aguardando mensagens. Para sair pressione CTRL+C')
+    print(" [*] Aguardando mensagens. Para sair pressione CTRL+C")
     while True:
-        # try:
-        rabbit_admin.channel.start_consuming()
-        # except Exception as e:
-        #     print(f"Erro: {e}")
+        try:
+            rabbit_admin.channel.start_consuming()
+        except Exception as e:
+            print("[consume loop error]:", e)
+            time.sleep(2)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("Worker iniciado. Aguardando mensagens...")
     continuously_listen()

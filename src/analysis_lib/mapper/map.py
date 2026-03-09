@@ -43,94 +43,94 @@ class Mapper:
         moodle = self.get_moodle(connector, version)
         connector.close()
         return moodle.general_indicators()
-
+    
     def get_engagement_data(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_all_posts_for_forum_required_by_course(subject_id)
-    
+        return moodle.get_all_posts_for_forum_required_by_course(connector, subject_id)
+
     def get_all_students(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_all_students_by_course(subject_id)
+        return moodle.get_all_students_by_course(connector, subject_id)
     
     def get_courses(self, connector, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_courses()
+        return moodle.get_courses(connector)
     
     def get_activity_weights(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_activity_weights(subject_id)
+        return moodle.get_activity_weights(connector, subject_id)
     
     def get_grades_by_course(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_grades_by_course(subject_id)
+        return moodle.get_grades_by_course(connector, subject_id)
     
     def get_foruns_non_required(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_foruns_non_required_by_course(subject_id)
+        return moodle.get_foruns_non_required_by_course(connector, subject_id)
 
     def get_forum_data(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_forum_data(subject_id)
+        return moodle.get_forum_data(connector, subject_id)
     
     def get_course_forum_viewed(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_course_forum_viewed(subject_id)
+        return moodle.get_course_forum_viewed(connector, subject_id)
     
     def get_forum_post_created(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_forum_post_created(subject_id)
+        return moodle.get_forum_post_created(connector, subject_id)
     
     def forum_reply_viewed(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.forum_reply_viewed(subject_id)
+        return moodle.forum_reply_viewed(connector, subject_id)
     
     def get_assign_submission_status_viewed(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_assign_submission_status_viewed(subject_id)
+        return moodle.get_assign_submission_status_viewed(connector, subject_id)
     
     def get_assign_assessable_submitted(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_assign_assessable_submitted(subject_id)
+        return moodle.get_assign_assessable_submitted(connector, subject_id)
     
     def get_assign_feedback_viewed(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_assign_feedback_viewed(subject_id)
+        return moodle.get_assign_feedback_viewed(connector, subject_id)
     
     def get_quizz_viewed(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_quizz_viewed(subject_id)
+        return moodle.get_quizz_viewed(connector, subject_id)
     
     def get_quizz_attempt_submitted(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_quizz_attempt_submitted(subject_id)
+        return moodle.get_quizz_attempt_submitted(connector, subject_id)
     
     def get_quizz_attempt_reviewd(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_quizz_attempt_reviewd(subject_id)
+        return moodle.get_quizz_attempt_reviewd(connector, subject_id)
     
     def fetch_subject_info(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_subject_info(subject_id)
+        return moodle.fetch_subject_info(connector, subject_id)
     
     def fetch_total_enrollment(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_total_enrollment(subject_id)
+        return moodle.fetch_subject_metrics(connector, subject_id)
     
     def get_pct_usage_resource(self, connector, subject_id, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_pct_usage_resource(subject_id)
+        return moodle.get_pct_usage_resource(connector, subject_id)
     
     def get_all_subjects(self, connector, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.get_all_subjects()
+        return moodle.get_all_subjects(connector)
     
     def fetch_student_summary(self, subject_id, student_id, connector, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_student_summary(subject_id, student_id)
+        return moodle.fetch_student_summary(connector, subject_id, student_id)
     
     def fetch_student_grades(self, subject_id, student_id, connector, version):
         moodle = self.get_moodle(connector, version)
-        return moodle.fetch_student_grades(subject_id, student_id)
+        return moodle.fetch_student_grades(connector, subject_id, student_id)
     
     def fetch_subjects_summary(self, connector, version):
         moodle = self.get_moodle(connector, version)
@@ -139,3 +139,53 @@ class Mapper:
     def fetch_institution_info(self, connector, version):
         moodle = self.get_moodle(connector, version)
         return moodle.fetch_institution_info(connector)
+    
+    def fetch_responses_forums(self, connector, version, subject_id, start_at, end_at, tutor_ids):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_responses_forums(connector, subject_id, start_at, end_at, tutor_ids)
+    
+    def fetch_tutors_login_subject(self, connector, version, subject_id, start_date, end_date, tutor_ids):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_tutors_login_subject(connector, subject_id, start_date, end_date, tutor_ids)
+    
+    def fetch_daily_events(self, connector, version, subject_id):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_daily_events(connector, subject_id)
+    
+    def fetch_subject_info_tutors(self, connector, version, subject_id, start_date, end_date):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_subject_info_tutors(connector, subject_id, start_date, end_date)
+    
+
+    def fetch_tutors_names(self, connector, version, subject_id=None, user_id=None):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_tutors_names(connector=connector, subject_id=subject_id, user_id=user_id)
+
+    
+    def fetch_forum_messages_counts(self, version, connector, subject_id, start_at, end_at):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_forum_messages_counts(connector, subject_id, start_at, end_at)
+    
+    def fetch_tutor_summary(self, subject_id, tutor_id, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_tutor_summary(connector, subject_id, tutor_id)
+    
+    def fetch_institution_info_tutors(self, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_institution_info_tutors(connector)
+    
+    def fetch_tutors_feedback_subject(self, connector, version, subject_id, start_date, end_date, tutor_ids):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_tutors_feedback_subject(connector, subject_id, start_date, end_date, tutor_ids)
+    
+    def fetch_tutors_access_days(self, connector, version, subject_id, start_date, end_date, tutor_ids):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_tutors_access_days(connector, subject_id, start_date, end_date, tutor_ids)
+    
+    def fetch_all_tutors(self, connector, version, subject_id, start_date, end_date):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_all_tutors(connector, subject_id, start_date, end_date)
+    
+    def fetch_subjects_summary_tutors(self, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.fetch_subjects_summary_tutors(connector)

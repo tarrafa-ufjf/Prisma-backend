@@ -1,0 +1,214 @@
+import pandas as pd
+import numpy as np
+from ......indicator import Indicator
+
+class Performance(Indicator):
+    def __init__(self, mapper):
+        super().__init__(mapper)
+        self.columns = [
+            "user_id",
+            "subject_id",
+            "muito_baixo",
+            "baixo",
+            "medio",
+            "alto",
+            "muito_alto",
+        ]
+
+    def student_analysis(self, subject_id, student_id, version, connector):
+        df_course = self.subject_analysis(subject_id, version, connector)
+
+        df_course["user_id"] = pd.to_numeric(df_course["user_id"], errors="coerce")
+        sid = pd.to_numeric(student_id, errors="coerce")
+
+        student_df = df_course.loc[df_course["user_id"] == sid]
+        if student_df.empty:
+            return None 
+
+        row = student_df.iloc[0]
+        row = row.where(pd.notna(row), None).to_dict()
+        return row
+    
+    def subject_analysis(self, subject_id, version, connector, returnOnlyStudentStatus = False):
+        df_grades = self.mapper.get_grades_by_course(connector, subject_id, version)
+        df_pesos = self.mapper.get_activity_weights(connector, subject_id, version)
+        
+        df_alunos = self.mapper.get_all_students(connector, subject_id, version)
+        df_alunos["subject_id"] = subject_id
+        df_alunos_full_name = df_alunos[["user_id","subject_id"]].copy()
+        
+        if "full_name" in df_alunos.columns:
+            df_alunos_full_name["full_name"] = df_alunos["full_name"]
+        else:
+            first = df_alunos["firstname"].astype(str) if "firstname" in df_alunos.columns else ""
+            last  = df_alunos["lastname"].astype(str)  if "lastname"  in df_alunos.columns else ""
+            df_alunos_full_name["full_name"] = (first + " " + last).str.strip()
+
+        df = df_alunos.merge(df_grades, on='user_id', how='left')
+
+        # Converte tipos
+        df['grade_final']  = pd.to_numeric(df['grade_final'], errors='coerce').fillna(0)
+        df['activity_id']  = pd.to_numeric(df['activity_id'], errors='coerce').fillna(0).astype(int)
+        df_pesos['grademax']    = pd.to_numeric(df_pesos['grademax'], errors='coerce').fillna(0)
+        df_pesos['activity_id'] = pd.to_numeric(df_pesos['activity_id'], errors='coerce').fillna(0).astype(int)
+
+        # Remove atividades 100% zeradas
+        atividades_todas_nulas = df.groupby('activity_id', group_keys=False)['grade_final'].apply(lambda x: (x == 0).all())
+        ids_para_remover = atividades_todas_nulas[atividades_todas_nulas].index.tolist()
+        df = df[~df['activity_id'].isin(ids_para_remover)]
+
+        # Merge
+        df_merged = df.merge(df_pesos[['activity_id', 'grademax', 'activity_name']], on='activity_id', how='left')
+
+        # Nota final e max
+        notas_finais = df_merged.groupby(['user_id', 'firstname'], group_keys=False)['grade_final'].sum().reset_index()
+
+        notas_finais['situacao'] = notas_finais['grade_final'].apply(lambda x: 'Aprovado' if x >= 69 else ('RI' if x == 0 else 'Reprovado'))
+        notas_finais['situacao'] = notas_finais['situacao'].astype(str)
+
+        notas_finais['subject_id']  = subject_id
+        notas_finais['grademax']   = round(float(df_pesos['grademax'].sum()), 1)
+        notas_finais['grade_final'] = notas_finais['grade_final'].round(1)
+
+        if(returnOnlyStudentStatus): 
+            notas_finais = notas_finais.merge(df_alunos_full_name, on=["user_id","subject_id"], how="left").copy()
+            return notas_finais
+
+        df_aluno = self.analise_situation(notas_finais)
+        df_discretized = (self.discretized_performance(subject_id, df_aluno).rename(columns={'performance': 'performance_label'}))
+
+        df_final = df_aluno.merge(
+            df_discretized[['user_id','subject_id','performance_label']],
+            on=['user_id','subject_id'],
+            how='left'
+        )
+
+        df_final = df_final.merge(df_alunos_full_name, on=["user_id","subject_id"], how="left")
+        df_final = df_final.merge(notas_finais[['user_id','situacao']], on=['user_id'], how='left')
+        df_final.rename(columns={'situacao': 'situation'}, inplace=True)
+
+        df_final = df_final[["subject_id", "user_id", "full_name", "situation", "media_percentual", "performance_label"]]
+
+        turma_mean = float(df_final['media_percentual'].mean(skipna=True))
+        turma_std  = float(df_final['media_percentual'].std(ddof=1, skipna=True))
+    
+        df_final['comparative'] = np.where(turma_std > 0,
+            (df_final['media_percentual'] - turma_mean) / turma_std,
+            0.0
+        ).round(2)
+
+        col_order = ["subject_id","user_id","full_name", "situation","media_percentual","performance_label", "comparative"]
+        col_order = [c for c in col_order if c in df_final.columns]
+        df_final = df_final[col_order].copy()
+
+        return df_final
+
+    def analise_situation(self, df_norm):
+        df_norm['grade_final'] = pd.to_numeric(df_norm['grade_final'], errors='coerce')
+
+        df_norm['aprovado'] = df_norm['situacao'].str.contains('Aprovado', case=False)
+        df_norm['reprovado'] = df_norm['situacao'].str.contains('Reprovado', case=False)
+        df_norm['ri'] = df_norm['situacao'] == 'RI'
+        df_norm['ressalva'] = df_norm['situacao'].str.contains('ressalva', case=False)
+
+        df_aluno = df_norm.groupby(['user_id', 'firstname']).agg(
+            media_percentual=('grade_final', 'mean'),
+            qtd_cursos=('subject_id', 'nunique'),
+            qtd_aprovado=('aprovado', 'sum'),
+            qtd_reprovado=('reprovado', 'sum'),
+            qtd_ri=('ri', 'sum'),
+            qtd_ressalva=('ressalva', 'sum')
+        ).reset_index()
+
+        return df_aluno
+    
+    def discretized_performance(self, subject_id, df_norm):
+        # Calcula quartis e limites
+        q1 = df_norm["media_percentual"].quantile(0.25)
+        q3 = df_norm["media_percentual"].quantile(0.75)
+        q2 = df_norm["media_percentual"].quantile(0.5)
+
+        iqr = q3 - q1
+        lim_inf = q1 - 1.5 * iqr
+        lim_sup = q3 + 1.5 * iqr
+
+        # Funções auxiliares
+        def discretize_grade(x, lim_inf, q1, q3, lim_sup, method='absolute'):
+            if method == 'absolute':
+                if x <= 20:
+                    return 0  
+                elif x <= 40:
+                    return 1  
+                elif x <= 60:
+                    return 2  
+                elif x <= 80:
+                    return 3  
+                else:
+                    return 4  
+            elif method == 'quartis':
+                if x <= lim_inf:
+                    return 0  
+                elif x <= q1:
+                    return 1  
+                elif x <= q3:
+                    return 2  
+                elif x <= lim_sup:
+                    return 3  
+                else:
+                    return 4  
+
+        def label_from_mean(mean_value):
+            if mean_value == 0:
+                return 'muito_baixo'
+            elif mean_value == 1:
+                return 'baixo'
+            elif mean_value == 2:
+                return 'medio'
+            elif mean_value == 3:
+                return 'alto'
+            elif mean_value >= 4:
+                return 'muito_alto'
+            return 'Sem dados'
+
+        # Aplica discretizações numéricas e rotula com média
+        performance_labels = []
+        for index, row in df_norm.iterrows():
+            nota = row["media_percentual"]
+            if pd.notna(nota):
+                val_quartis = discretize_grade(nota, lim_inf, q1, q3, lim_sup, method='quartis')
+                val_absolute = discretize_grade(nota, 0, 0.4, 0.6, 0.8, method='absolute')
+                mean_value = round(np.mean([val_quartis, val_absolute]))
+                label = label_from_mean(mean_value)
+            else:
+                label = "Sem dados"
+            performance_labels.append(label)
+
+        # Cria a nova coluna
+        df_norm["performance"] = performance_labels
+        df_norm["subject_id"] = subject_id
+
+        return df_norm[["user_id", "subject_id", "performance"]]
+    
+    def status_students_analysis(self, version, connector, subject_id=None):
+        rows = []
+        df = self.subject_analysis(subject_id, version, connector,  returnOnlyStudentStatus = True)
+
+        s = df["situacao"].astype(str)
+        status = np.where(
+        s.eq("RI"), "RI",
+            np.where(s.str.startswith("Aprovado", na=False), "Aprovado",
+                np.where(s.str.startswith("Reprovado", na=False), "Reprovado", "Outro"))
+        )
+
+        counts = pd.Series(status).value_counts()
+        rows.append({
+            "subject_id": subject_id,
+            "Aprovado": int(counts.get("Aprovado", 0)),
+            "Reprovado": int(counts.get("Reprovado", 0)),
+            "RI": int(counts.get("RI", 0)),
+        })
+
+        return pd.DataFrame(rows, columns=["subject_id", "Aprovado", "Reprovado", "RI"])
+    
+    def grades_students_analysis(self, version, connector, subject_id=None):
+        return self.subject_analysis(subject_id, version, connector, returnOnlyStudentStatus=True)

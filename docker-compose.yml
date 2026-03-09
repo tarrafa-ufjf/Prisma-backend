@@ -4,7 +4,7 @@ services:
   postgres:
     image: postgres:17.6-alpine
     ports:
-      - "5435:5432"
+      - "5432:5432"
     environment:
       - POSTGRES_USER=tarrafa
       - POSTGRES_PASSWORD=tarrafa123

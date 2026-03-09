@@ -1,7 +1,7 @@
 import os
 import pika
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, Float, String, DECIMAL, PrimaryKeyConstraint
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, Float, String, Date, PrimaryKeyConstraint
 from sqlalchemy.exc import SQLAlchemyError
 
 # Carregar variáveis do arquivo .env
@@ -73,10 +73,22 @@ if __name__ == "__main__":
     columns_subjects_status = {
         "institution_id": Integer,
         "subject_id": Integer,
-        "status": String(1),   # P=Processing, D=Done, E=Error
+        "status": String(1),   # P=Processing, D=Done, E=Error,
+        "start_date": Date,
+        "end_date": Date,
     }
     primary_keys = ["institution_id", "subject_id"]
     create_table("subjects_status", columns_subjects_status, primary_key=primary_keys)
+    
+    
+    # columns_subjects_tutors = {
+    #     "institution_id": Integer,
+    #     "subject_id": Integer,
+    #     "tutor_id": Integer,
+    # }
+
+    # primary_keys = ["institution_id", "subject_id", "tutor_id"]
+    # create_table("subjects_tutors", columns_subjects_tutors, primary_key=primary_keys)
 
     columns_gl_local_students = {
         "institution_id": Integer,
@@ -134,10 +146,90 @@ if __name__ == "__main__":
         "label_give_up": String(32),
     }
     create_table(
-        "global_indicators",
+        "global_indicators_students",
         columns_gl_global,
         primary_key=["institution_id", "version", "subject_id"]
     )
+    
+    columns_gl_local_tutors = {
+        "institution_id": Integer,
+        "version": String(40),
+        "subject_id": Integer,
+        "tutor_id": Integer,
+
+        "median_forums_response_hours": Float,
+        "mean_forums_response_hours": Float,
+        "total_response_forum": Integer,
+        "score_access": Float,
+        "mean_forums_response_hours_label": String(32),
+        "median_forums_response_hours_label": String(32),
+        "score_access_label": String(32),
+        "label_forums_response": String(32),
+        "num_response_fast_forum": Integer,
+        "num_response_late_forum": Integer,
+        "num_response_normal_forum": Integer,
+
+        "n_login": Integer,
+        "n_login_subject": Integer,
+        "n_login_weekly": Integer,
+        "n_login_label": String(32),
+        "maximum_inactivity_days": Integer,
+        "n_login_weekly_label": String(32),
+        "label_access": String(32),
+        "maximum_inactivity_days_label": String(32),
+        
+        "n_corrections": Integer,
+        "n_corrections_with_feedback": Integer,
+        "percentage_feedback": Float,
+        "n_textual_feedback": Integer,
+        "n_feedback_pdf": Integer,
+
+        "n_corrections_label": String(32),
+        "n_corrections_with_feedback_label": String(32),
+        "percentage_feedback_label": String(32),
+        "n_textual_feedback_label": String(32),
+        "n_feedback_pdf_label": String(32),
+
+        "label_feedback": String(32),
+        
+    }
+    create_table(
+        "local_indicators_tutors",
+        columns_gl_local_tutors,
+        primary_key=["institution_id", "version", "subject_id", "tutor_id"]
+    )
+    
+    columns_global_indicators_tutors = {
+        "institution_id": Integer,
+        "version": String(40),
+        "subject_id": Integer,
+        "score_global_forum": Float,
+        "label_global_forum": String(32),
+        "score_global_access": Float,                
+        "label_global_access": String(32),
+        "score_global_feedback": Float,
+        "label_global_feedback": String(32),
+    }
+    create_table(
+        "global_indicators_tutors",
+        columns_global_indicators_tutors,
+        primary_key=["institution_id", "version", "subject_id"],
+    )
+
+    # columns_gl_global = {
+    #     "institution_id": Integer,
+    #     "version": String(40),
+    #     "tutor_id": Integer,
+
+    #     "median_messages_response_hours": Float,
+    #     "mean_messages_response_hours": Float,
+    #     "label_messages_response": String(32),
+    # }
+    # create_table(
+    #     "messages_tutors",
+    #     columns_gl_global,
+    #     primary_key=["institution_id", "version", "tutor_id"]
+    # )
 
     channel.queue_declare(
         queue="tasks_to_process",

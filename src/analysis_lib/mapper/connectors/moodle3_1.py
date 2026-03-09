@@ -1237,11 +1237,10 @@ class Moodle31(Moodle):
                 CONCAT(t.firstname, ' ', t.lastname) AS tutor_nome,
                 t.papel,
 
-                COUNT(a.gradeid)    AS n_corrections,
+                COUNT(a.gradeid) AS n_corrections,
                 SUM(a.tem_feedback) AS n_corrections_with_feedback,
-
                 SUM(a.n_textual_feedback) AS n_textual_feedback,
-                SUM(a.n_feedback_pdf)     AS n_feedback_pdf,
+                SUM(a.n_feedback_pdf) AS n_feedback_pdf,
 
                 CASE
                     WHEN COUNT(a.gradeid) > 0
@@ -1251,17 +1250,17 @@ class Moodle31(Moodle):
 
             FROM (
                 SELECT
-                    u.id        AS tutor_id,
+                    u.id AS tutor_id,
                     u.firstname,
                     u.lastname,
-                    'tutor'     AS papel
+                    'tutor' AS papel
                 FROM mdl_user u
                 WHERE u.id IN ({in_placeholders})
             ) t
 
             LEFT JOIN (
                 SELECT
-                    g.id     AS gradeid,
+                    g.id AS gradeid,
                     g.grader AS tutor_id,
 
                     CASE
@@ -1307,8 +1306,10 @@ class Moodle31(Moodle):
                     END AS n_feedback_pdf
 
                 FROM mdl_assign_grades g
+                JOIN mdl_assign ass ON ass.id = g.assignment
                 WHERE g.timemodified BETWEEN UNIX_TIMESTAMP(%s) AND UNIX_TIMESTAMP(%s)
                 AND g.grader IN ({in_placeholders})
+                AND ass.course = %s
             ) a
                 ON a.tutor_id = t.tutor_id
 
@@ -1321,10 +1322,11 @@ class Moodle31(Moodle):
         """
 
         params = []
-        params.extend(tutor_ids)
+        params.extend(tutor_ids)             
         params.extend([start_date, end_date])
-        params.extend(tutor_ids)
-
+        params.extend(tutor_ids)          
+        params.append(subject_id)           
+        
         with connector.cursor() as cur:
             cur.execute(query, params)
             rows = cur.fetchall()

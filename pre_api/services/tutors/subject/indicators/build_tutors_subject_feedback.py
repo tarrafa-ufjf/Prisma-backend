@@ -28,8 +28,8 @@ def build_tutors_subject_feedback(subject_id: int):
                             "n_corrections_label", "n_corrections_with_feedback_label", "percentage_feedback_label",
                             "n_textual_feedback_label", "n_feedback_pdf_label", "label_feedback"]].copy()
         
-        out = out.where(pd.notna(out), None)
-
+        out = out.fillna(0)
+        
         return out.to_dict(orient="records")
     
     finally:

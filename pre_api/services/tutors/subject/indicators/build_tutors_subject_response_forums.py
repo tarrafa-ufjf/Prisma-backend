@@ -30,7 +30,7 @@ def build_tutors_subject_response_forums(subject_id: int):
                             "label_forums_response",
                             "num_response_fast_forum", "num_response_late_forum", "num_response_normal_forum"]].copy()
         
-        out = out.where(pd.notna(out), None)
+        out = out.fillna(0)
 
         return out.to_dict(orient="records")
     

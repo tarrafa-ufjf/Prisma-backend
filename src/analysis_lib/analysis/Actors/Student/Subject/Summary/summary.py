@@ -3,6 +3,8 @@ import numpy as np
 from .....indicator import Indicator
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import MetaData, Table
+from ..Indicators.Performance.performance import Performance
+
 class Summary(Indicator):
     def __init__(self, mapper):
         super().__init__(mapper)
@@ -12,7 +14,7 @@ class Summary(Indicator):
         df_total_enrollment = self.mapper.fetch_total_enrollment(connector, subject_id, version)
         
         performance = Performance(self.mapper)
-        df_perf = performance.course_analysis(subject_id, version, connector, True)
+        df_perf = performance.subject_analysis(subject_id, version, connector, True)
 
         if not df_perf.empty and "grade_final" in df_perf.columns:
             avg_grade_all = float(df_perf["grade_final"].mean(skipna=True))

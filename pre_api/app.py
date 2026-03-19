@@ -1,7 +1,6 @@
 from flask import request, jsonify, Flask, send_file
 from processor import Processor
-from routes.student_routes import student_bp
-from routes.tutors_routes import tutors_bp
+from routes import student_bp, tutors_bp
 # from flasgger import Swagger
 from dotenv import load_dotenv
 from flask_cors import CORS
@@ -14,7 +13,7 @@ load_dotenv()
 app.register_blueprint(student_bp)
 app.register_blueprint(tutors_bp)
 
-@app.route("/analysis", methods=["PUT"])
+@app.route("/analysis", methods=["PUT", "OPTIONS"])
 def analysis():
     if request.method == "OPTIONS":
         return "", 200

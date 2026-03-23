@@ -1,6 +1,7 @@
 # Instalação
 
-Faça uma vez no terminal: 
+Faça uma vez no terminal
+
 ```bash
 export PYTHONPATH=..
 ```

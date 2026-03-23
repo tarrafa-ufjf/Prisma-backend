@@ -49,11 +49,13 @@ from pre_api.services.tutors.general.build_general_tutors_subjects_indicators im
 
 
 from processor import Processor
+from database import DatabaseAdmin
 # from flasgger import Swagger
 import json
 from dotenv import load_dotenv
 from flask_cors import CORS
 import pandas as pd
+import atexit
 
 app = Flask(__name__)
 CORS(app)
@@ -67,6 +69,7 @@ indicator_index_translate = {"engagement": 1,
                               "give_up": 6}
 load_dotenv()
 analyzer = Analyzer()
+atexit.register(DatabaseAdmin.dispose_connector)
 
 indicators = ["engagement", 
               "performance", 

@@ -49,18 +49,28 @@ class Database:
         )
 
 class DatabaseAdmin:
-    @staticmethod
-    def get_connector():
-        DB_USER = os.getenv("DB_USER")
-        DB_PASSWORD = os.getenv("DB_PASSWORD")
-        DB_HOST = os.getenv("DB_HOST", "localhost")
-        DB_PORT = int(os.getenv("DB_PORT", 5432))
-        DB_NAME = os.getenv("DB_DATABASE")
+    _engine = None
 
-        engine = create_engine(
-            f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        )
-        return engine
+    @classmethod
+    def get_connector(cls):
+        if cls._engine is None:
+            DB_USER = os.getenv("DB_USER")
+            DB_PASSWORD = os.getenv("DB_PASSWORD")
+            DB_HOST = os.getenv("DB_HOST", "localhost")
+            DB_PORT = int(os.getenv("DB_PORT", 5432))
+            DB_NAME = os.getenv("DB_DATABASE")
+
+            cls._engine = create_engine(
+                f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+            )
+
+        return cls._engine
+
+    @classmethod
+    def dispose_connector(cls):
+        if cls._engine is not None:
+            cls._engine.dispose()
+            cls._engine = None
 
     def get_global_analysis_table(self):
         metadata = MetaData()
@@ -86,8 +96,8 @@ class DatabaseAdmin:
         )
         return configs
     
-    def update_global_analysis_status(self, institution_id: int, indicator: int, status: str):
-        engine = self.get_connector()
+    def update_global_analysis_status(self, institution_id: int, indicator: int, status: str, engine=None):
+        engine = engine or self.get_connector()
         table = self.get_global_analysis_table()
 
         stmt = pg_insert(table).values(
@@ -102,8 +112,8 @@ class DatabaseAdmin:
         with engine.begin() as conn:
             conn.execute(stmt)
     
-    def get_all_from_table(self, table_name, institution_id=1):
-        engine = self.get_connector()
+    def get_all_from_table(self, table_name, institution_id=1, engine=None):
+        engine = engine or self.get_connector()
         metadata = MetaData()
         table = Table(table_name, metadata, autoload_with=engine)
 
@@ -111,8 +121,8 @@ class DatabaseAdmin:
             query = select(table).where(table.c.institution_id == institution_id)  # TODO
             return conn.execute(query).mappings().all()
     
-    def get_version_in_database(self, user):
-        engine = self.get_connector()
+    def get_version_in_database(self, user, engine=None):
+        engine = engine or self.get_connector()
         metadata = MetaData()
         configs = Table("configs", metadata, autoload_with=engine)
 
@@ -124,8 +134,8 @@ class DatabaseAdmin:
             else:
                 return None
     
-    def verify_if_there_is_version_in_database(self, user):
-        engine = self.get_connector()
+    def verify_if_there_is_version_in_database(self, user, engine=None):
+        engine = engine or self.get_connector()
         metadata = MetaData()
         configs = Table("configs", metadata, autoload_with=engine)
 
@@ -136,8 +146,8 @@ class DatabaseAdmin:
                 return True
             return False
     
-    def insert_version_in_database(self, user, version, db_config):
-        engine = self.get_connector()
+    def insert_version_in_database(self, user, version, db_config, engine=None):
+        engine = engine or self.get_connector()
         metadata = MetaData()
         configs = Table("configs", metadata, autoload_with=engine)
 
@@ -154,11 +164,8 @@ class DatabaseAdmin:
             conn.execute(insert_stmt)
             conn.commit()
     
-    def global_analysis_status(self, indicator, institution_id=1):
-        db_config = self.get_db_config_from_database()
-        engine = create_engine(
-            f"postgresql+psycopg://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['db']}"
-        )
+    def global_analysis_status(self, indicator, institution_id=1, engine=None):
+        engine = engine or self.get_connector()
         metadata = MetaData()
         global_analysis = Table('indicators_status', metadata, autoload_with=engine)
         with engine.connect() as conn:
@@ -167,8 +174,8 @@ class DatabaseAdmin:
             result = conn.execute(query).mappings().all()
             return {row['indicator']: row['status'] for row in result}
     
-    def insert_global_analysis_status(self, institution_id: int, indicator: int, status: str):
-        engine = self.get_connector()
+    def insert_global_analysis_status(self, institution_id: int, indicator: int, status: str, engine=None):
+        engine = engine or self.get_connector()
         table = self.get_global_analysis_table()
 
         stmt = pg_insert(table).values(
@@ -183,8 +190,8 @@ class DatabaseAdmin:
         with engine.begin() as conn:
             conn.execute(stmt)
     
-    def get_db_config_from_database(self, institution_id=1):
-        engine = self.get_connector()
+    def get_db_config_from_database(self, institution_id=1, engine=None):
+        engine = engine or self.get_connector()
         configs = self.get_configs_table()
 
         query = (
@@ -217,8 +224,8 @@ class DatabaseAdmin:
         )
         return table
     
-    def insert_subject_analysis_status(self, institution_id: int, subject_id: int, status: str):
-        engine = self.get_connector()
+    def insert_subject_analysis_status(self, institution_id: int, subject_id: int, status: str, engine=None):
+        engine = engine or self.get_connector()
         table = self.get_subjects_status_table()
         
         stmt = pg_insert(table).values(
@@ -233,10 +240,11 @@ class DatabaseAdmin:
         with engine.begin() as conn:
             conn.execute(stmt)
 
-    def update_subject_analysis_status(self, institution_id: int, subject_id: int, status: str):
+    def update_subject_analysis_status(self, institution_id: int, subject_id: int, status: str, engine=None):
         """Atualiza explicitamente o status"""
+        engine = engine or self.get_connector()
         table = self.get_subjects_status_table()
-        with self.get_connector().begin() as conn:
+        with engine.begin() as conn:
             conn.execute(
                 table.update()
                 .where(

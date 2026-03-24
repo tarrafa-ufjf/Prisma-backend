@@ -49,6 +49,7 @@ class Worker:
         self.db_admin = DatabaseAdmin()
         self.analyzer = Analyzer()
         self.mapper = Mapper()
+        self.engine = self.db_admin.get_connector()
 
     def set_mysql_session_timeouts(
         self,
@@ -96,10 +97,10 @@ class Worker:
         body = message["body"]
         cfg = body.get("analysis_config", {})
         subject_id = int(cfg["subject_id"])
-        version = self.db_admin.get_version_in_database(1)
+        version = self.db_admin.get_version_in_database(1, engine=self.engine)
 
         connector = conn.get_connection_with_config(body.get("db_inst_config"))
-        engine = self.db_admin.get_connector()
+        engine = self.engine
 
         try:
             self.set_mysql_session_timeouts(
@@ -120,7 +121,9 @@ class Worker:
             self.save_subject_global_indicators_students(subject_df_student, engine)
             self.save_NaN_global_indicators_tutors(subject_df_tutor, engine)
 
-            self.db_admin.update_subject_analysis_status(1, subject_id, "D")
+            self.db_admin.update_subject_analysis_status(
+                1, subject_id, "D", engine=engine
+            )
 
         finally:
             try:
@@ -770,8 +773,8 @@ class Worker:
         )
 
     def discretize_global_indicators(self, institution_id: int = 1):
-        engine = self.db_admin.get_connector()
-        version = self.db_admin.get_version_in_database(institution_id)
+        engine = self.engine
+        version = self.db_admin.get_version_in_database(institution_id, engine=engine)
 
         df = pd.read_sql_table("global_indicators_students", engine)
 
@@ -994,8 +997,8 @@ class Worker:
         5) Calcula MÉDIA dos tutores por disciplina
         6) Discretiza as disciplinas em 5 faixas (rank percentílico)
         """
-        engine = self.db_admin.get_connector()
-        version = str(self.db_admin.get_version_in_database(institution_id))
+        engine = self.engine
+        version = str(self.db_admin.get_version_in_database(institution_id, engine=engine))
 
         try:
             local_df = pd.read_sql_table("local_indicators_tutors", engine)
@@ -1302,4 +1305,7 @@ def continuously_listen():
 
 if __name__ == "__main__":
     print("Worker iniciado. Aguardando mensagens...")
-    continuously_listen()
+    try:
+        continuously_listen()
+    finally:
+        DatabaseAdmin.dispose_connector()

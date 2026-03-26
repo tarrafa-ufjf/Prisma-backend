@@ -19,7 +19,7 @@ app.register_blueprint(tutors_bp)
 
 def _build_db_inst_config_from_env():
     return {
-        "host": 'localhost',
+        "host": os.getenv("MYSQL_HOST", "localhost"),
         "port": int(os.getenv("MYSQL_GRAD_PORT")),
         "user": os.getenv("MYSQL_USER"),
         "password": os.getenv("MYSQL_PASSWORD"),
@@ -40,8 +40,15 @@ def scheduled_daily_analysis():
 
     try:
         processor = Processor(user=1)
+        version = processor.get_version(institution_id=1, db_config=db_inst_config)
+
+        try:
+            processor.db_admin.insert_version_in_database(1, version, db_inst_config)
+        except Exception as e:
+            print(f"[scheduler] Erro ao inserir versão na base de dados: {e}")
+
         processor.set_subjects_analysis(db_config=db_inst_config, channel="diario")
-        print("[scheduler] Daily analysis dispatch finished.")
+        print(f"[scheduler] Daily analysis dispatch finished. version={version}")
     except Exception as e:
         print(f"[scheduler] Daily analysis dispatch failed: {e}")
 

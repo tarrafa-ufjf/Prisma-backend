@@ -5,6 +5,7 @@ from routes import student_bp, tutors_bp
 from dotenv import load_dotenv
 from flask_cors import CORS
 import atexit
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -16,12 +17,44 @@ app.register_blueprint(student_bp)
 app.register_blueprint(tutors_bp)
 
 
+def _build_db_inst_config_from_env():
+    return {
+        "host": 'localhost',
+        "port": int(os.getenv("MYSQL_GRAD_PORT")),
+        "user": os.getenv("MYSQL_USER"),
+        "password": os.getenv("MYSQL_PASSWORD"),
+        "database": os.getenv("MYSQL_DATABASE"),
+    }
+
+
+def scheduled_daily_analysis():
+    """Daily job entrypoint used by the scheduler process."""
+    db_inst_config = _build_db_inst_config_from_env()
+    missing = [k for k, v in db_inst_config.items() if v in (None, "")]
+    if missing:
+        print(
+            "[scheduler] Missing required environment variables for db_inst_config: "
+            f"{', '.join(missing)}"
+        )
+        return
+
+    try:
+        processor = Processor(user=1)
+        processor.set_subjects_analysis(db_config=db_inst_config, channel="diario")
+        print("[scheduler] Daily analysis dispatch finished.")
+    except Exception as e:
+        print(f"[scheduler] Daily analysis dispatch failed: {e}")
+
+
 @app.route("/analysis", methods=["PUT"])
 def analysis():
     if request.method == "OPTIONS":
         return "", 200
 
-    db_inst_config = request.get_json()
+    payload = request.get_json() or {}
+    channel = payload.pop("channel", "diario")
+    print("channel:", channel)
+    db_inst_config = payload
     processor = Processor(user=1)
     version = processor.get_version(institution_id=1, db_config=db_inst_config)
 
@@ -30,7 +63,7 @@ def analysis():
     except Exception as e:
         print(f"Erro ao inserir versão na base de dados: {e}")
 
-    processor.set_subjects_analysis(db_config=db_inst_config)
+    processor.set_subjects_analysis(db_config=db_inst_config, channel=channel)
 
     result = {"message": "Análises iniciadas com sucesso", "version": version}
     return jsonify(result), 200

@@ -14,7 +14,13 @@ class Processor:
         self.analysis = Analyzer()
         self.connector_inst = Database()
 
-    def set_subjects_analysis(self, db_config=None, subject_ids=None, batch_size=1):
+    def set_subjects_analysis(
+        self,
+        db_config=None,
+        subject_ids=None,
+        batch_size=1,
+        channel="diario",
+    ):
         connector = self.connector_inst.get_connection_with_config(db_config)
         version = self.get_version(institution_id=1, db_config=db_config)
 
@@ -54,7 +60,8 @@ class Processor:
                     "db_inst_config": db_config,
                     "analysis_config": {
                         "subject_id": sid,
-                        "batch_size": batch_size
+                        "batch_size": batch_size,
+                        "channel": channel,
                     }
                 }
             }

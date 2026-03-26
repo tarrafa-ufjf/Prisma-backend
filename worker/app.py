@@ -2,6 +2,7 @@ from database import Database, DatabaseAdmin
 from rabbit import RabbitMQAdmin
 from src.analysis_lib.analysis.analyzer import Analyzer
 from src.analysis_lib.mapper.map import Mapper
+from indicator_publisher import IndicatorPublisher, register_default_indicators
 import json
 import pandas as pd
 from sqlalchemy import text
@@ -50,6 +51,8 @@ class Worker:
         self.analyzer = Analyzer()
         self.mapper = Mapper()
         self.engine = self.db_admin.get_connector()
+        self.publisher = IndicatorPublisher(retries=0, sleep_s=0.3)
+        register_default_indicators(self.publisher, self.analyzer)
 
     def set_mysql_session_timeouts(
         self,
@@ -97,6 +100,7 @@ class Worker:
         body = message["body"]
         cfg = body.get("analysis_config", {})
         subject_id = int(cfg["subject_id"])
+        channel = cfg.get("channel", "diario")
         version = self.db_admin.get_version_in_database(1, engine=self.engine)
 
         connector = conn.get_connection_with_config(body.get("db_inst_config"))
@@ -112,10 +116,10 @@ class Worker:
             )
 
             subject_df_student = self.students_subject_analysis(
-                subject_id, version, connector, engine
+                subject_id, version, connector, engine, channel=channel
             )
             subject_df_tutor = self.tutors_subject_analysis(
-                subject_id, version, connector, engine
+                subject_id, version, connector, engine, channel=channel
             )
 
             self.save_subject_global_indicators_students(subject_df_student, engine)
@@ -131,81 +135,24 @@ class Worker:
             except Exception:
                 pass
 
-    def students_subject_analysis(self, subject_id, version, connector, engine):
+    def students_subject_analysis(
+        self, subject_id, version, connector, engine, channel="diario"
+    ):
         print(f"students_subject_analysis_{subject_id}")
-        eng = self.safe_df(
-            "engagement",
-            self.analyzer.engagement_analysis,
-            subject_id,
-            "subject",
-            version,
-            connector,
+        notify_result = self.publisher.notify(
+            actor="student",
+            channel=channel,
+            subject_id=subject_id,
+            version=version,
             connector=connector,
+            engine=engine,
+            mapper=self.mapper,
         )
-        print("Eng já foi")
-        per = self.safe_df(
-            "performance",
-            self.analyzer.performance_analysis,
-            subject_id,
-            "subject",
-            version,
-            connector,
-            connector=connector,
-        )
-        print("Per já foi")
-
-        mot = self.safe_df(
-            "motivation",
-            self.analyzer.motivation_analysis,
-            subject_id,
-            "subject",
-            version,
-            connector,
-            connector=connector,
-        )
-        print("Mpt já foi")
-
-        cog = self.safe_df(
-            "cognitive",
-            self.analyzer.cognitive_analysis,
-            subject_id,
-            "subject",
-            version,
-            connector,
-            connector=connector,
-        )
-        print("Cog já foi")
-
-        ped = self.safe_df(
-            "pedagogic",
-            self.analyzer.pedagogic_analysis,
-            subject_id,
-            "subject",
-            version,
-            connector,
-            connector=connector,
-        )
-        print("Ped já foi")
-
-        giv = self.safe_df(
-            "give_up",
-            self.analyzer.give_up_analysis,
-            subject_id,
-            "subject",
-            version,
-            connector,
-            connector=connector,
-        )
-        print("Giv já foi")
-
-        indicator_dfs = {
-            "eng": eng,
-            "per": per,
-            "mot": mot,
-            "ped": ped,
-            "cog": cog,
-            "giv": giv,
-        }
+        indicator_dfs = notify_result.get("results", {})
+        if notify_result.get("errors"):
+            print(
+                f"[students_subject_analysis] actor=student channel={channel} errors={list(notify_result['errors'].keys())}"
+            )
         normalized = []
 
         for name, df in indicator_dfs.items():
@@ -429,7 +376,9 @@ class Worker:
 
         return df_out
 
-    def tutors_subject_analysis(self, subject_id, version, connector, engine):
+    def tutors_subject_analysis(
+        self, subject_id, version, connector, engine, channel="diario"
+    ):
         print(f"tutors_subject_analysis_{subject_id}")
         df_daily_events = self.mapper.fetch_daily_events(connector, version, subject_id)
         start_at, end_at = self._best_block_dynamic_window(
@@ -454,45 +403,26 @@ class Worker:
         if not tutor_ids:
             return None
 
-        analysis_response_foruns = self.safe_df(
-            "response_foruns",
-            self.analyzer.analysis_response_foruns,
-            subject_id,
-            "subject",
-            version,
-            connector,
-            start_at,
-            end_at,
+        notify_result = self.publisher.notify(
+            actor="tutor",
+            channel=channel,
+            subject_id=subject_id,
+            version=version,
             connector=connector,
+            engine=engine,
+            mapper=self.mapper,
+            start_at=start_at,
+            end_at=end_at,
             tutor_ids=tutor_ids,
         )
-        print("analysis_response_foruns já foi")
-        analysis_feedback_df = self.safe_df(
-            "feedback",
-            self.analyzer.analysis_feedback,
-            subject_id,
-            "subject",
-            version,
-            connector,
-            start_at,
-            end_at,
-            connector=connector,
-            tutor_ids=tutor_ids,
-        )
-        print("analysis_feedback_df já foi")
-        analysis_login_df = self.safe_df(
-            "login",
-            self.analyzer.analysis_login,
-            subject_id,
-            "subject",
-            version,
-            connector,
-            start_at,
-            end_at,
-            connector=connector,
-            tutor_ids=tutor_ids,
-        )
-        print("analysis_login_df já foi")
+        indicator_dfs = notify_result.get("results", {})
+        analysis_response_foruns = indicator_dfs.get("response_foruns")
+        analysis_feedback_df = indicator_dfs.get("feedback")
+        analysis_login_df = indicator_dfs.get("login")
+        if notify_result.get("errors"):
+            print(
+                f"[tutors_subject_analysis] actor=tutor channel={channel} errors={list(notify_result['errors'].keys())}"
+            )
 
         if (
             (analysis_response_foruns is None or analysis_response_foruns.empty)

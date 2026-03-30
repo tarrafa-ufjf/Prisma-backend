@@ -12,56 +12,39 @@ class General_subjects_indicators:
 
     def general_subjects_indicators(self, version, connector, institution_id=1):
         df_flags = self._fetch_flags_general(institution_id)
-        df_subjects_summary= self.mapper.fetch_subjects_summary(connector, version)
+        df_subjects_summary = self.mapper.fetch_subjects_summary(connector, version)
 
         subjects_info = {
             int(row["subject_id"]): {
                 "name": row["name"],
                 "abrev": row["abrev"],
-                "teachers": row["teachers"],
                 "total_enrolled": int(row["total_enrolled"] or 0),
             }
             for _, row in df_subjects_summary.iterrows()
         }
 
-        performance = Performance(self.mapper)
         subjects = []
+
         for row in df_flags:
             subject_id = int(row["subject_id"])
-
-            df_perf = performance.status_students_analysis(version, connector, subject_id)
-
-            if df_perf.empty:
-                situations = [
-                    {"qtd": 0, "situacao": "Aprovado"},
-                    {"qtd": 0, "situacao": "Reprovado"},
-                    {"qtd": 0, "situacao": "RI"},
-                ]
-            else:
-                r = df_perf.loc[:, ["Aprovado", "Reprovado", "RI"]].iloc[0].astype(int)
-                situations = [
-                    {"qtd": int(r["Aprovado"]),  "situacao": "Aprovado"},
-                    {"qtd": int(r["Reprovado"]), "situacao": "Reprovado"},
-                    {"qtd": int(r["RI"]),        "situacao": "RI"},
-                ]
-
-            info = subjects_info.get(subject_id, {"name": None, "abrev": None, "teachers": None, "total_enrolled": 0})
-
+            
+            info = subjects_info.get(subject_id, {
+                "name": None,
+                "abrev": None,
+                "total_enrolled": 0,
+            })
+            
             subjects.append({
                 "id": subject_id,
                 "name": info["name"],
                 "abbrev": info["abrev"],
-                "teachers": info["teachers"],
                 "total_enrolled": info["total_enrolled"],
-
                 "label_engagement": row["label_engagement"],
                 "label_motivation": row["label_motivation"],
                 "label_performance": row["label_performance"],
                 "label_cognitive": row["label_cognitive"],
                 "label_relation_teacher_student": row["label_relation_teacher_student"],
                 "label_give_up": row["label_give_up"],
-
-                "situations": situations,
                 "mean_subject": row["mean_grade_performance"],
             })
 

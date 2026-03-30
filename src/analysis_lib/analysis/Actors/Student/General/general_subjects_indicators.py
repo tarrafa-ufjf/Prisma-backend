@@ -1,9 +1,7 @@
 import pandas as pd
-import numpy as np
-import time
+from collections import defaultdict
 from database import DatabaseAdmin
-from sqlalchemy import MetaData, Table, select, func
-from ..Subject.Indicators.Performance.performance import Performance
+from sqlalchemy import MetaData, Table, select
 
 class General_subjects_indicators:
     def __init__(self, mapper):
@@ -21,23 +19,27 @@ class General_subjects_indicators:
                 "total_enrolled": int(row["total_enrolled"] or 0),
             }
             for _, row in df_subjects_summary.iterrows()
+            if pd.notna(row["subject_id"])
         }
+
+        teachers_by_subject = self._fetch_teachers_map(connector, version, institution_id)
 
         subjects = []
 
         for row in df_flags:
             subject_id = int(row["subject_id"])
-            
+
             info = subjects_info.get(subject_id, {
                 "name": None,
                 "abrev": None,
                 "total_enrolled": 0,
             })
-            
+
             subjects.append({
                 "id": subject_id,
                 "name": info["name"],
                 "abbrev": info["abrev"],
+                "teachers": teachers_by_subject.get(subject_id, []),
                 "total_enrolled": info["total_enrolled"],
                 "label_engagement": row["label_engagement"],
                 "label_motivation": row["label_motivation"],
@@ -49,11 +51,15 @@ class General_subjects_indicators:
             })
 
         return {"subjects": subjects}
-    
+
     def _fetch_flags_general(self, institution_id: int = 1):
         engine = self.db_admin.get_connector()
         metadata = MetaData()
-        global_indicators_students = Table("global_indicators_students", metadata, autoload_with=engine)
+        global_indicators_students = Table(
+            "global_indicators_students",
+            metadata,
+            autoload_with=engine
+        )
 
         with engine.connect() as conn:
             query = (
@@ -73,3 +79,58 @@ class General_subjects_indicators:
             rows = conn.execute(query).mappings().all()
 
         return rows
+
+    def _fetch_teachers_map(self, connector, version, institution_id: int):
+        engine = self.db_admin.get_connector()
+        metadata = MetaData()
+        local_indicators_tutors = Table(
+            "local_indicators_tutors",
+            metadata,
+            autoload_with=engine
+        )
+
+        with engine.connect() as conn:
+            query = (
+                select(
+                    local_indicators_tutors.c.subject_id,
+                    local_indicators_tutors.c.tutor_id
+                )
+                .where(local_indicators_tutors.c.institution_id == institution_id)
+            )
+
+            rows = conn.execute(query).mappings().all()
+
+        if not rows:
+            return {}
+
+        tutor_ids = sorted({int(row["tutor_id"]) for row in rows if row["tutor_id"] is not None})
+
+        df_names = self.mapper.fetch_tutors_names_by_ids(connector=connector, version=version, user_ids=tutor_ids)
+
+        name_map = {
+            int(row["tutor_id"]): row["full_name"]
+            for _, row in df_names.iterrows()
+            if pd.notna(row["tutor_id"])
+        }
+
+        teachers_by_subject = defaultdict(list)
+        seen = set()
+
+        for row in rows:
+            if row["subject_id"] is None or row["tutor_id"] is None:
+                continue
+
+            subject_id = int(row["subject_id"])
+            tutor_id = int(row["tutor_id"])
+
+            key = (subject_id, tutor_id)
+            if key in seen:
+                continue
+            seen.add(key)
+
+            teachers_by_subject[subject_id].append({
+                "tutor_id": tutor_id,
+                "full_name": name_map.get(tutor_id)
+            })
+
+        return dict(teachers_by_subject)

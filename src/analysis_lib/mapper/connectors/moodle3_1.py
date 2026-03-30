@@ -1058,6 +1058,28 @@ class Moodle31(Moodle):
 
         return pd.DataFrame(rows, columns=cols)
     
+    def fetch_tutors_names_by_ids(self, connector=None, user_ids=None):
+        if not user_ids:
+            return pd.DataFrame(columns=["tutor_id", "full_name"])
+
+        placeholders = ",".join(["%s"] * len(user_ids))
+
+        query = f"""
+            SELECT
+                u.id AS tutor_id,
+                CONCAT(u.firstname, ' ', u.lastname) AS full_name
+            FROM mdl_user u
+            WHERE u.id IN ({placeholders})
+            ORDER BY full_name
+        """
+
+        with connector.cursor() as cur:
+            cur.execute(query, tuple(user_ids))
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+
+        return pd.DataFrame(rows, columns=cols)
+    
     def fetch_forum_messages_counts(self, connector, subject_id, start_at, end_at):
         with connector.cursor() as cur:
             cur.execute(

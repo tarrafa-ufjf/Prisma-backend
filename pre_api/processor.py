@@ -63,7 +63,12 @@ class Processor:
         # # for sid in [78, 222, 223, 224]:
         for sid in [78, 222]:
             try:
-                self.db_admin.insert_subject_analysis_status(1, sid, 'P')
+                self.db_admin.insert_subject_analysis_status(
+                    1,
+                    sid,
+                    'P',
+                    update_type=channel,
+                )
             except Exception as e:
                 print(f"Falha ao inserir status de subject {sid}: {e}")
 

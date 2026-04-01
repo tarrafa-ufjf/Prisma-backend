@@ -1,7 +1,7 @@
 import os
 import pika
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, Float, String, Date, PrimaryKeyConstraint
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, Float, String, Date, DateTime, PrimaryKeyConstraint
 from sqlalchemy.exc import SQLAlchemyError
 
 # Carregar variáveis do arquivo .env
@@ -76,6 +76,8 @@ if __name__ == "__main__":
         "status": String(1),   # P=Processing, D=Done, E=Error,
         "start_date": Date,
         "end_date": Date,
+        "updated_at": DateTime(timezone=True),
+        "update_type": String(50),
     }
     primary_keys = ["institution_id", "subject_id"]
     create_table("subjects_status", columns_subjects_status, primary_key=primary_keys)

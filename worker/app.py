@@ -126,7 +126,11 @@ class Worker:
             self.save_NaN_global_indicators_tutors(subject_df_tutor, engine)
 
             self.db_admin.update_subject_analysis_status(
-                1, subject_id, "D", engine=engine
+                1,
+                subject_id,
+                "D",
+                update_type=channel,
+                engine=engine,
             )
 
         finally:
@@ -163,7 +167,12 @@ class Worker:
             normalized.append(df)
 
         if not normalized:
-            self.db_admin.update_subject_analysis_status(1, subject_id, "D")
+            self.db_admin.update_subject_analysis_status(
+                1,
+                subject_id,
+                "D",
+                update_type=channel,
+            )
             return
 
         merged = None
@@ -626,7 +635,9 @@ class Worker:
                     UPDATE subjects_status
                     SET
                         start_date = :start_date,
-                        end_date = :end_date
+                        end_date = :end_date,
+                        updated_at = NOW(),
+                        update_type = :update_type
                     WHERE
                         institution_id = :institution_id
                         AND subject_id = :subject_id
@@ -637,6 +648,7 @@ class Worker:
                     "subject_id": subject_id,
                     "start_date": to_db_date(start_at),
                     "end_date": to_db_date(end_at),
+                    "update_type": channel or "nao_indicado",
                 },
             )
 

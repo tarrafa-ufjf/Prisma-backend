@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 import pandas as pd
 import pymysql
-from sqlalchemy import and_,create_engine, select, MetaData, Table, Column, Integer, String, DECIMAL
+from sqlalchemy import and_,create_engine, select, MetaData, Table, Column, Integer, String, Date, DateTime, DECIMAL, func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from dotenv import load_dotenv
 
@@ -230,30 +230,42 @@ class DatabaseAdmin:
             metadata,
             Column("institution_id", Integer, primary_key=True),
             Column("subject_id", Integer, primary_key=True),
-            Column("status", String(1), nullable=False)
+            Column("status", String(1), nullable=False),
+            Column("start_date", Date, nullable=True),
+            Column("end_date", Date, nullable=True),
+            Column("updated_at", DateTime(timezone=True), nullable=False),
+            Column("update_type", String(50), nullable=False),
         )
         return table
     
-    def insert_subject_analysis_status(self, institution_id: int, subject_id: int, status: str, engine=None):
+    def insert_subject_analysis_status(self, institution_id: int, subject_id: int, status: str, update_type: str = None, engine=None):
         engine = engine or self.get_connector()
         table = self.get_subjects_status_table()
+        resolved_update_type = update_type or "nao_indicado"
         
         stmt = pg_insert(table).values(
             institution_id=institution_id,
             subject_id=subject_id,
-            status=status
+            status=status,
+            updated_at=func.now(),
+            update_type=resolved_update_type,
         ).on_conflict_do_update(
             constraint="subjects_status_pkey",
-            set_={"status": status}
+            set_={
+                "status": status,
+                "updated_at": func.now(),
+                "update_type": resolved_update_type,
+            }
         )
 
         with engine.begin() as conn:
             conn.execute(stmt)
 
-    def update_subject_analysis_status(self, institution_id: int, subject_id: int, status: str, engine=None):
+    def update_subject_analysis_status(self, institution_id: int, subject_id: int, status: str, update_type: str = None, engine=None):
         """Atualiza explicitamente o status"""
         engine = engine or self.get_connector()
         table = self.get_subjects_status_table()
+        resolved_update_type = update_type or "nao_indicado"
         with engine.begin() as conn:
             conn.execute(
                 table.update()
@@ -263,7 +275,11 @@ class DatabaseAdmin:
                         table.c.subject_id == subject_id
                     )
                 )
-                .values(status=status)
+                .values(
+                    status=status,
+                    updated_at=func.now(),
+                    update_type=resolved_update_type,
+                )
             )
     
     def get_connection_with_config(self, config):

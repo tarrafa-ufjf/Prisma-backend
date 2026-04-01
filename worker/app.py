@@ -280,6 +280,31 @@ class Worker:
             }
         )
 
+        institution_id = int(
+            pd.to_numeric(subject_df["institution_id"], errors="coerce").dropna().iloc[0]
+        )
+        delete_version = str(subject_df["version"].iloc[0])
+        delete_subject_id = int(
+            pd.to_numeric(subject_df["subject_id"], errors="coerce").dropna().iloc[0]
+        )
+
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    DELETE FROM local_indicators_students
+                    WHERE institution_id = :institution_id
+                    AND version = :version
+                    AND subject_id = :subject_id
+                """
+                ),
+                {
+                    "institution_id": institution_id,
+                    "version": delete_version,
+                    "subject_id": delete_subject_id,
+                },
+            )
+
         subject_df.to_sql(
             "local_indicators_students", engine, if_exists="append", index=False
         )
@@ -560,6 +585,32 @@ class Worker:
         )
 
         df = df[desired_cols]
+
+        institution_id = int(
+            pd.to_numeric(df["institution_id"], errors="coerce").dropna().iloc[0]
+        )
+        delete_version = str(df["version"].iloc[0])
+        delete_subject_id = int(
+            pd.to_numeric(df["subject_id"], errors="coerce").dropna().iloc[0]
+        )
+
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    DELETE FROM local_indicators_tutors
+                    WHERE institution_id = :institution_id
+                    AND version = :version
+                    AND subject_id = :subject_id
+                """
+                ),
+                {
+                    "institution_id": institution_id,
+                    "version": delete_version,
+                    "subject_id": delete_subject_id,
+                },
+            )
+
         df.to_sql("local_indicators_tutors", engine, if_exists="append", index=False)
 
         # ---- UPDATE subjects_status (1 vez por subject) ----
@@ -694,6 +745,35 @@ class Worker:
                 "label_give_up",
             ]
         ]
+
+        institution_id = int(
+            pd.to_numeric(
+                global_subject_df["institution_id"], errors="coerce"
+            ).dropna().iloc[0]
+        )
+        delete_version = str(global_subject_df["version"].iloc[0])
+        delete_subject_id = int(
+            pd.to_numeric(global_subject_df["subject_id"], errors="coerce")
+            .dropna()
+            .iloc[0]
+        )
+
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    DELETE FROM global_indicators_students
+                    WHERE institution_id = :institution_id
+                    AND version = :version
+                    AND subject_id = :subject_id
+                """
+                ),
+                {
+                    "institution_id": institution_id,
+                    "version": delete_version,
+                    "subject_id": delete_subject_id,
+                },
+            )
 
         global_subject_df.to_sql(
             "global_indicators_students",

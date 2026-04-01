@@ -151,8 +151,7 @@ class DatabaseAdmin:
         metadata = MetaData()
         configs = Table("configs", metadata, autoload_with=engine)
 
-        with engine.connect() as conn:
-            insert_stmt = configs.insert().values(
+        stmt = pg_insert(configs).values(
                 institution_id=user,
                 version=version,
                 host=db_config['host'],
@@ -160,9 +159,20 @@ class DatabaseAdmin:
                 database=db_config['database'],
                 user=db_config['user'],
                 password=db_config['password']
+            ).on_conflict_do_update(
+                constraint="configs_pkey",
+                set_={
+                    "version": version,
+                    "host": db_config['host'],
+                    "port": db_config['port'],
+                    "database": db_config['database'],
+                    "user": db_config['user'],
+                    "password": db_config['password'],
+                }
             )
-            conn.execute(insert_stmt)
-            conn.commit()
+
+        with engine.begin() as conn:
+            conn.execute(stmt)
     
     def global_analysis_status(self, indicator, institution_id=1, engine=None):
         engine = engine or self.get_connector()

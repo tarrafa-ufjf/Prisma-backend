@@ -565,6 +565,33 @@ class Moodle31(Moodle):
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
+
+    def get_daily_active_subjects(self, connector, version):
+        with connector.cursor() as cur:
+            cur.execute('''
+                SELECT
+                    c.id        AS id,
+                    c.fullname  AS fullname,
+                    c.shortname AS shortname,
+                    c.startdate AS startdate
+                FROM (
+                    SELECT DISTINCT courseid
+                    FROM mdl_logstore_standard_log
+                    WHERE timecreated BETWEEN 1740579449 AND 1740665849
+                        AND courseid > 1
+                ) AS ativos
+                JOIN mdl_course c ON c.id = ativos.courseid
+                JOIN mdl_context ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+                JOIN mdl_role_assignments ra ON ra.contextid = ctx.id
+                JOIN mdl_role r ON r.id = ra.roleid AND r.id = 5
+                JOIN mdl_user u ON u.id = ra.userid
+                GROUP BY c.id, c.fullname, c.shortname, c.startdate
+                HAVING COUNT(u.id) >= 10;
+            ''', ())
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        return df
     
     '''
         Página de aluno na disciplina

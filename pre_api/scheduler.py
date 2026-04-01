@@ -19,8 +19,8 @@ def _build_scheduler():
     scheduler.add_job(
         scheduled_daily_analysis,
         trigger="cron",
-        hour=3,
-        minute=0,
+        hour=12,
+        minute=4,
         id="daily_analysis_03h",
         max_instances=1,
         coalesce=True,

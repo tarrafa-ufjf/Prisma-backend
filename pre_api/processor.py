@@ -25,8 +25,22 @@ class Processor:
         version = self.get_version(institution_id=1, db_config=db_config)
 
         if subject_ids is None:
-            subjects_dict = self.analysis.get_all_subjects(version, connector)
+            if channel == "diario":
+                subjects_dict = self.analysis.get_daily_active_subjects(version, connector)
+            else:
+                subjects_dict = self.analysis.get_all_subjects(version, connector)
+
             subjects_df = pd.DataFrame(subjects_dict)
+
+            if (
+                not subjects_dict
+                or "subjects" not in subjects_dict
+                or subjects_dict["subjects"] is None
+                or len(subjects_dict["subjects"]) == 0
+            ):
+                print("Nenhuma turma ativa encontrada no período do dump.")
+                return
+
             subjects_df = subjects_df["subjects"].apply(pd.Series)
 
             if "id" not in subjects_df.columns:
@@ -43,11 +57,11 @@ class Processor:
             print("Nenhuma turma encontrada para enfileirar.")
             return
     
-        for sid in subjects:
+        # for sid in subjects:
         # for sid in subjects[1:20]:
         # # for sid in [37, 41, 78, 83, 84, 222, 223, 224]:
         # # for sid in [78, 222, 223, 224]:
-        # for sid in [78, 222]:
+        for sid in [78, 222]:
             try:
                 self.db_admin.insert_subject_analysis_status(1, sid, 'P')
             except Exception as e:

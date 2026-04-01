@@ -209,13 +209,24 @@ class TutorLoginObserver(BaseIndicatorObserver):
 
 
 def register_default_indicators(publisher: IndicatorPublisher, analyzer) -> None:
+
+    ## Diario
     publisher.subscribe("student", "diario", StudentEngagementObserver(analyzer))
     publisher.subscribe("student", "diario", StudentPerformanceObserver(analyzer))
-    publisher.subscribe("student", "diario", StudentMotivationObserver(analyzer))
-    publisher.subscribe("student", "diario", StudentCognitiveObserver(analyzer))
-    publisher.subscribe("student", "diario", StudentPedagogicObserver(analyzer))
-    publisher.subscribe("student", "diario", StudentGiveUpObserver(analyzer))
 
     publisher.subscribe("tutor", "diario", TutorResponseForumsObserver(analyzer))
-    publisher.subscribe("tutor", "diario", TutorFeedbackObserver(analyzer))
-    publisher.subscribe("tutor", "diario", TutorLoginObserver(analyzer))
+
+
+
+
+    ## Completo
+    publisher.subscribe("student", "completo", StudentEngagementObserver(analyzer))
+    publisher.subscribe("student", "completo", StudentPerformanceObserver(analyzer))
+    publisher.subscribe("student", "completo", StudentMotivationObserver(analyzer))
+    publisher.subscribe("student", "completo", StudentCognitiveObserver(analyzer))
+    publisher.subscribe("student", "completo", StudentPedagogicObserver(analyzer))
+    publisher.subscribe("student", "completo", StudentGiveUpObserver(analyzer))
+
+    publisher.subscribe("tutor", "completo", TutorResponseForumsObserver(analyzer))
+    publisher.subscribe("tutor", "completo", TutorFeedbackObserver(analyzer))
+    publisher.subscribe("tutor", "completo", TutorLoginObserver(analyzer))

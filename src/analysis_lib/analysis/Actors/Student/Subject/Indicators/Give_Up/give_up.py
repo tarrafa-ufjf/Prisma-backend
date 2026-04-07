@@ -51,7 +51,7 @@ class Give_Up(Indicator):
                 "give_up"
             ])
 
-        out = df_cognitive.loc[:, ["user_id", "full_name", "label"]].rename(columns={"label": "cognitive_label"})
+        out = df_cognitive.loc[:, ["user_id", "full_name", "cognitive_label"]].copy()
 
         def safe_merge(df_base, df_new, label_col, new_name):
             if not isinstance(df_new, pd.DataFrame) or df_new.empty or (label_col not in df_new.columns):
@@ -63,7 +63,7 @@ class Give_Up(Indicator):
             )
 
         out = safe_merge(out, df_engagement,  "posts_required_label",  "engagement_label")
-        out = safe_merge(out, df_motivation,  "posts_unrequired_label","motivation_label")
+        out = safe_merge(out, df_motivation,  "motivation_label",      "motivation_label")
         out = safe_merge(out, df_performance, "performance_label",     "performance_label")
 
         def is_low(x: object) -> bool:

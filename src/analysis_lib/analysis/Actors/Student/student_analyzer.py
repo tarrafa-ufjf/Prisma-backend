@@ -71,9 +71,9 @@ class StudentAnalyzer:
                 "student_id": user_id,  
                 "indicators": {
                     "engagement": eng.get("posts_required_label"),
-                    "motivation": mot.get("posts_unrequired_label"),
+                    "motivation": mot.get("motivation_label"),
                     "performance": per.get("performance_label"),
-                    "cognitive": cog.get("label"),
+                    "cognitive": cog.get("cognitive_label"),
                     "ped": ped.get("label_relation_teacher_student"),
                     "give_up": gu.get("give_up"),
                 },

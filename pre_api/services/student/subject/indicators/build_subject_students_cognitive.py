@@ -17,12 +17,12 @@ def build_subject_students_cognitive(subject_id: int):
         if df is None or df.empty:
             return []
         
-        missing = [c for c in ["user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"] if c not in df.columns]
+        missing = [c for c in ["user_id", "full_name", "cognitive_label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"] if c not in df.columns]
         if missing:
             raise KeyError(f"missing columns in cognitive_analysis output: {missing}")
 
 
-        out = df.loc[:, ["user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]].copy()
+        out = df.loc[:, ["user_id", "full_name", "cognitive_label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]].copy()
         out["full_name"] = out["full_name"].astype(str)
 
         return out.to_dict(orient="records")

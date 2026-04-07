@@ -189,16 +189,16 @@ class Cognitive(Indicator):
 
         out["subject_id"] = subject_id
 
-        return out[["subject_id", "user_id", "full_name", "label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]]
+        return out[["subject_id", "user_id", "full_name", "cognitive_label", "forum_mean_level", "quiz_mean_level", "assign_mean_level"]]
 
     def discretize_student_levels_class(self, df):
         if df is None or df.empty or "cognitive_depth_mean" not in df.columns:
-            return pd.DataFrame(columns=["user_id", "label"])
+            return pd.DataFrame(columns=["user_id", "cognitive_label"])
 
         serie_real = df.loc[df["cognitive_depth_mean"] > -1, "cognitive_depth_mean"]
         if serie_real.empty:
             out = df[["user_id"]].copy()
-            out["label"] = "muito_baixo"
+            out["cognitive_label"] = "muito_baixo"
             return out
 
         q1  = float(serie_real.quantile(0.25))
@@ -221,9 +221,9 @@ class Cognitive(Indicator):
             # cortes simétricos em [-1, 1]
             bins   = [-1.01, -0.6, -0.2, 0.2, 0.6, 1.01]
             labels = ["muito_baixo", "baixo", "medio", "alto", "muito_alto"]
-            out["label"] = pd.cut(out["cognitive_depth_mean"], bins=bins,
-                                labels=labels, include_lowest=True).astype(str)
+            out["cognitive_label"] = pd.cut(out["cognitive_depth_mean"], bins=bins,
+                                            labels=labels, include_lowest=True).astype(str)
         else:
-            out["label"] = out["cognitive_depth_mean"].apply(bucket_quantis)
+            out["cognitive_label"] = out["cognitive_depth_mean"].apply(bucket_quantis)
 
-        return out[["user_id", "label"]]
+        return out[["user_id", "cognitive_label"]]

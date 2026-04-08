@@ -5,7 +5,8 @@ from src.analysis_lib.mapper.map import Mapper
 from indicator_publisher import IndicatorPublisher, register_default_indicators
 import json
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import MetaData, Table, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 import numpy as np
 import math
 import time
@@ -95,6 +96,56 @@ class Worker:
 
         finally:
             cur.close()
+
+    def _table(self, engine, table_name):
+        metadata = MetaData()
+        return Table(table_name, metadata, autoload_with=engine)
+
+    def _df_to_records(self, df):
+        if df is None or df.empty:
+            return []
+
+        cleaned = df.astype(object).where(pd.notna(df), None)
+        return cleaned.to_dict(orient="records")
+
+    def _upsert_dynamic(self, engine, table_name, records, pk_columns):
+        if not records:
+            return
+
+        table = self._table(engine, table_name)
+        stmt = pg_insert(table)
+
+        record_keys = []
+        seen = set()
+        for key in records[0].keys():
+            if key not in seen:
+                record_keys.append(key)
+                seen.add(key)
+
+        update_columns = [col for col in record_keys if col not in pk_columns]
+
+        if update_columns:
+            stmt = stmt.on_conflict_do_update(
+                index_elements=pk_columns,
+                set_={col: stmt.excluded[col] for col in update_columns},
+            )
+        else:
+            stmt = stmt.on_conflict_do_nothing(index_elements=pk_columns)
+
+        with engine.begin() as conn:
+            conn.execute(stmt, records)
+
+    def _aggregate_first_by_keys(self, df, key_columns):
+        if df is None or df.empty:
+            return df
+
+        value_columns = [c for c in df.columns if c not in key_columns]
+        if not value_columns:
+            return df[key_columns].drop_duplicates().reset_index(drop=True)
+
+        return df.groupby(key_columns, as_index=False).agg(
+            {column: "first" for column in value_columns}
+        )
 
     def subject_analysis(self, message):
         body = message["body"]
@@ -222,7 +273,10 @@ class Worker:
         if "user_id" in merged.columns:
             merged = merged.rename(columns={"user_id": "student_id"})
 
+        merged["institution_id"] = 1
+
         desired_cols = [
+            "institution_id",
             "version",
             "subject_id",
             "student_id",
@@ -242,11 +296,8 @@ class Worker:
             "label_give_up",
         ]
 
-        for c in desired_cols:
-            if c not in merged.columns:
-                merged[c] = pd.NA
-
-        subject_df = merged[desired_cols].copy()
+        existing_cols = [c for c in desired_cols if c in merged.columns]
+        subject_df = merged[existing_cols].copy()
 
         numeric_cols = [
             "n_posts_engagement",
@@ -262,60 +313,19 @@ class Worker:
             if c in subject_df.columns:
                 subject_df[c] = pd.to_numeric(subject_df[c], errors="coerce").fillna(0)
 
-        subject_df["institution_id"] = 1
         subject_df["subject_id"] = subject_id
 
-        subject_df = subject_df.groupby(
-            ["subject_id", "student_id"],
-            as_index=False,
-        ).agg(
-            {
-                "version": "first",
-                "institution_id": "first",
-                "n_posts_engagement": "first",
-                "label_engagement": "first",
-                "n_posts_motivation": "first",
-                "label_motivation": "first",
-                "grade_performance": "first",
-                "grade_comparative_performance": "first",
-                "label_performance": "first",
-                "mean_forum_interactions_cognitive": "first",
-                "mean_quiz_interactions_cognitive": "first",
-                "mean_assign_interactions_cognitive": "first",
-                "label_cognitive": "first",
-                "n_responses_relation_teacher_student": "first",
-                "label_relation_teacher_student": "first",
-                "label_give_up": "first",
-            }
+        subject_df = self._aggregate_first_by_keys(
+            subject_df,
+            ["institution_id", "version", "subject_id", "student_id"],
         )
 
-        institution_id = int(
-            pd.to_numeric(subject_df["institution_id"], errors="coerce").dropna().iloc[0]
-        )
-        delete_version = str(subject_df["version"].iloc[0])
-        delete_subject_id = int(
-            pd.to_numeric(subject_df["subject_id"], errors="coerce").dropna().iloc[0]
-        )
-
-        with engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                    DELETE FROM local_indicators_students
-                    WHERE institution_id = :institution_id
-                    AND version = :version
-                    AND subject_id = :subject_id
-                """
-                ),
-                {
-                    "institution_id": institution_id,
-                    "version": delete_version,
-                    "subject_id": delete_subject_id,
-                },
-            )
-
-        subject_df.to_sql(
-            "local_indicators_students", engine, if_exists="append", index=False
+        records = self._df_to_records(subject_df)
+        self._upsert_dynamic(
+            engine,
+            "local_indicators_students",
+            records,
+            ["institution_id", "version", "subject_id", "student_id"],
         )
 
         return subject_df
@@ -520,7 +530,10 @@ class Worker:
 
             df = df.merge(login_1, on="tutor_id", how="left", validate="1:1")
 
-        df["label_forums_response"] = df["label_forums_response"].fillna("Muito baixo")
+        if "label_forums_response" in df.columns:
+            df["label_forums_response"] = df["label_forums_response"].fillna(
+                "Muito baixo"
+            )
 
         for col in [
             "n_login",
@@ -579,48 +592,20 @@ class Worker:
             "label_feedback",
         ]
 
-        for c in desired_cols:
-            if c not in df.columns:
-                df[c] = np.nan
-
-        df = df.groupby(
-            ["institution_id", "version", "subject_id", "tutor_id"], as_index=False
-        ).agg(
-            {
-                c: "first"
-                for c in desired_cols
-                if c not in ["institution_id", "version", "subject_id", "tutor_id"]
-            }
+        existing_cols = [c for c in desired_cols if c in df.columns]
+        df = df[existing_cols].copy()
+        df = self._aggregate_first_by_keys(
+            df,
+            ["institution_id", "version", "subject_id", "tutor_id"],
         )
 
-        df = df[desired_cols]
-
-        institution_id = int(
-            pd.to_numeric(df["institution_id"], errors="coerce").dropna().iloc[0]
+        records = self._df_to_records(df)
+        self._upsert_dynamic(
+            engine,
+            "local_indicators_tutors",
+            records,
+            ["institution_id", "version", "subject_id", "tutor_id"],
         )
-        delete_version = str(df["version"].iloc[0])
-        delete_subject_id = int(
-            pd.to_numeric(df["subject_id"], errors="coerce").dropna().iloc[0]
-        )
-
-        with engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                    DELETE FROM local_indicators_tutors
-                    WHERE institution_id = :institution_id
-                    AND version = :version
-                    AND subject_id = :subject_id
-                """
-                ),
-                {
-                    "institution_id": institution_id,
-                    "version": delete_version,
-                    "subject_id": delete_subject_id,
-                },
-            )
-
-        df.to_sql("local_indicators_tutors", engine, if_exists="append", index=False)
 
         # ---- UPDATE subjects_status (1 vez por subject) ----
         def to_db_date(x):
@@ -662,18 +647,45 @@ class Worker:
         if subject_df is None or subject_df.empty:
             return
 
-        df = subject_df.copy()
+        subject_id = int(pd.to_numeric(subject_df["subject_id"], errors="coerce").iloc[0])
+        version = str(subject_df["version"].iloc[0])
+
+        df = pd.read_sql_query(
+            text(
+                """
+                SELECT *
+                FROM local_indicators_students
+                WHERE subject_id = :subject_id
+                AND version = :version
+                """
+            ),
+            engine,
+            params={"subject_id": subject_id, "version": version},
+        )
+
+        if df.empty:
+            return
 
         # ------------------------------------------------------------------
         # Cálculo da média cognitiva geral do aluno (média das três interações: fórum, quiz e assign)
         # ------------------------------------------------------------------
-        df["mean_interactions_cognitive"] = df[
-            [
+        cognitive_columns = [
+            column
+            for column in [
                 "mean_forum_interactions_cognitive",
                 "mean_quiz_interactions_cognitive",
                 "mean_assign_interactions_cognitive",
             ]
-        ].mean(axis=1)
+            if column in df.columns
+        ]
+        if cognitive_columns:
+            df["mean_interactions_cognitive"] = (
+                df[cognitive_columns]
+                .apply(pd.to_numeric, errors="coerce")
+                .mean(axis=1)
+            )
+        else:
+            df["mean_interactions_cognitive"] = np.nan
 
         # ------------------------------------------------------------------
         # Converte label_give_up em 0/1 para calcular a média de "true"
@@ -698,32 +710,48 @@ class Worker:
 
             return np.nan
 
-        df["give_up_numeric"] = df["label_give_up"].apply(give_up_to_numeric)
+        if "label_give_up" in df.columns:
+            df["give_up_numeric"] = df["label_give_up"].apply(give_up_to_numeric)
+        else:
+            df["give_up_numeric"] = np.nan
 
-        # ------------------------------------------------------------------
-        # Agregação por disciplina na instituição
-        #
-        # mean_posts_engagement                   -> média de n_posts_engagement
-        # mean_posts_motivation                   -> média de n_posts_motivation
-        # mean_grade_performance                  -> média de grade_performance
-        # mean_interactions_cognitive             -> média da média cognitiva
-        # mean_give_up                            -> média de give_up_numeric (proporção de "true")
-        # mean_responses_relation_teacher_student -> média de número de respostas do tutor e professor para os alunos
-        # ------------------------------------------------------------------
-        global_subject_df = df.groupby(
-            ["institution_id", "version", "subject_id"],
-            as_index=False,
-        ).agg(
-            mean_posts_engagement=("n_posts_engagement", "mean"),
-            mean_posts_motivation=("n_posts_motivation", "mean"),
-            mean_grade_performance=("grade_performance", "mean"),
-            mean_interactions_cognitive=("mean_interactions_cognitive", "mean"),
-            mean_responses_relation_teacher_student=(
-                "n_responses_relation_teacher_student",
-                "mean",
-            ),
-            mean_give_up=("give_up_numeric", "mean"),
-        )
+        if "institution_id" in df.columns:
+            institution_id = int(
+                pd.to_numeric(df["institution_id"], errors="coerce").dropna().iloc[0]
+            )
+        else:
+            institution_id = 1
+            df["institution_id"] = institution_id
+
+        grouped_keys = {
+            "institution_id": institution_id,
+            "version": version,
+            "subject_id": subject_id,
+        }
+        global_values = {
+            "mean_posts_engagement": np.nan,
+            "mean_posts_motivation": np.nan,
+            "mean_grade_performance": np.nan,
+            "mean_interactions_cognitive": np.nan,
+            "mean_responses_relation_teacher_student": np.nan,
+            "mean_give_up": np.nan,
+        }
+
+        metric_sources = {
+            "mean_posts_engagement": "n_posts_engagement",
+            "mean_posts_motivation": "n_posts_motivation",
+            "mean_grade_performance": "grade_performance",
+            "mean_interactions_cognitive": "mean_interactions_cognitive",
+            "mean_responses_relation_teacher_student": "n_responses_relation_teacher_student",
+            "mean_give_up": "give_up_numeric",
+        }
+        for target_column, source_column in metric_sources.items():
+            if source_column in df.columns:
+                global_values[target_column] = pd.to_numeric(
+                    df[source_column], errors="coerce"
+                ).mean()
+
+        global_subject_df = pd.DataFrame([{**grouped_keys, **global_values}])
 
         # ------------------------------------------------------------------
         # Labels globais ainda não calculados -> NA
@@ -758,40 +786,12 @@ class Worker:
             ]
         ]
 
-        institution_id = int(
-            pd.to_numeric(
-                global_subject_df["institution_id"], errors="coerce"
-            ).dropna().iloc[0]
-        )
-        delete_version = str(global_subject_df["version"].iloc[0])
-        delete_subject_id = int(
-            pd.to_numeric(global_subject_df["subject_id"], errors="coerce")
-            .dropna()
-            .iloc[0]
-        )
-
-        with engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                    DELETE FROM global_indicators_students
-                    WHERE institution_id = :institution_id
-                    AND version = :version
-                    AND subject_id = :subject_id
-                """
-                ),
-                {
-                    "institution_id": institution_id,
-                    "version": delete_version,
-                    "subject_id": delete_subject_id,
-                },
-            )
-
-        global_subject_df.to_sql(
-            "global_indicators_students",
+        records = self._df_to_records(global_subject_df)
+        self._upsert_dynamic(
             engine,
-            if_exists="append",
-            index=False,
+            "global_indicators_students",
+            records,
+            ["institution_id", "version", "subject_id"],
         )
 
     def discretize_global_indicators(self, institution_id: int = 1):
@@ -902,20 +902,39 @@ class Worker:
         if subject_df is None or subject_df.empty:
             return
 
-        required_keys = ["institution_id", "version", "subject_id", "tutor_id"]
+        required_keys = ["institution_id", "version", "subject_id"]
         for k in required_keys:
             if k not in subject_df.columns:
                 raise ValueError(f"subject_df precisa ter a coluna '{k}'")
 
-        df = subject_df.copy()
-
         institution_id = int(
-            pd.to_numeric(df["institution_id"], errors="coerce").dropna().iloc[0]
+            pd.to_numeric(subject_df["institution_id"], errors="coerce").dropna().iloc[0]
         )
-        version = str(df["version"].iloc[0])
+        version = str(subject_df["version"].iloc[0])
         subject_id = int(
-            pd.to_numeric(df["subject_id"], errors="coerce").dropna().iloc[0]
+            pd.to_numeric(subject_df["subject_id"], errors="coerce").dropna().iloc[0]
         )
+
+        local_df = pd.read_sql_query(
+            text(
+                """
+                SELECT *
+                FROM local_indicators_tutors
+                WHERE institution_id = :institution_id
+                AND subject_id = :subject_id
+                AND version = :version
+                """
+            ),
+            engine,
+            params={
+                "institution_id": institution_id,
+                "subject_id": subject_id,
+                "version": version,
+            },
+        )
+
+        if local_df.empty:
+            return
 
         placeholder = pd.DataFrame(
             [
@@ -933,28 +952,12 @@ class Worker:
             ]
         )
 
-        with engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                    DELETE FROM global_indicators_tutors
-                    WHERE institution_id = :institution_id
-                    AND version = :version
-                    AND subject_id = :subject_id
-                """
-                ),
-                {
-                    "institution_id": institution_id,
-                    "version": version,
-                    "subject_id": subject_id,
-                },
-            )
-
-        placeholder.to_sql(
-            "global_indicators_tutors",
+        records = self._df_to_records(placeholder)
+        self._upsert_dynamic(
             engine,
-            if_exists="append",
-            index=False,
+            "global_indicators_tutors",
+            records,
+            ["institution_id", "version", "subject_id"],
         )
 
     def _minmax(
@@ -1199,18 +1202,6 @@ class Worker:
             ["institution_id", "version", "subject_id"]
         ).reset_index(drop=True)
 
-        with engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                    DELETE FROM global_indicators_tutors
-                    WHERE institution_id = :institution_id
-                    AND version = :version
-                """
-                ),
-                {"institution_id": institution_id, "version": version},
-            )
-
         subject_scores = subject_scores[
             [
                 "institution_id",
@@ -1225,11 +1216,12 @@ class Worker:
             ]
         ]
 
-        subject_scores.to_sql(
-            "global_indicators_tutors",
+        records = self._df_to_records(subject_scores)
+        self._upsert_dynamic(
             engine,
-            if_exists="append",
-            index=False,
+            "global_indicators_tutors",
+            records,
+            ["institution_id", "version", "subject_id"],
         )
 
     def safe_df(

@@ -158,6 +158,14 @@ class Worker:
         engine = self.engine
 
         try:
+            self.db_admin.update_subject_analysis_status(
+                1,
+                subject_id,
+                "P",
+                update_type=channel,
+                engine=engine,
+            )
+
             self.set_mysql_session_timeouts(
                 connector,
                 lock_wait_s=50,
@@ -183,6 +191,27 @@ class Worker:
                 update_type=channel,
                 engine=engine,
             )
+
+        except Exception as e:
+            try:
+                self.db_admin.update_subject_analysis_status(
+                    1,
+                    subject_id,
+                    "E",
+                    update_type=channel,
+                    engine=engine,
+                )
+            except Exception as status_error:
+                print(
+                    f"[subject_analysis] subject_id={subject_id} channel={channel} "
+                    f"failed_to_set_error_status={status_error}"
+                )
+
+            print(
+                f"[subject_analysis] subject_id={subject_id} channel={channel} error={e}"
+            )
+            traceback.print_exc()
+            raise
 
         finally:
             try:
@@ -223,6 +252,7 @@ class Worker:
                 subject_id,
                 "D",
                 update_type=channel,
+                engine=engine,
             )
             return
 

@@ -66,7 +66,7 @@ class Processor:
                 self.db_admin.insert_subject_analysis_status(
                     1,
                     sid,
-                    'P',
+                    'Q',
                     update_type=channel,
                 )
             except Exception as e:

@@ -2,6 +2,39 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-04-09
+
+### Titulo
+
+Refatoracao do fluxo de status de `subject_analysis` para 4 estados
+
+### Arquivos afetados
+
+- [`pre_api/processor.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/processor.py)
+- [`worker/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/app.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Objetivo
+
+Separar o status de enfileiramento do status de execucao real da analise de disciplinas, adotando os estados `Q`, `P`, `D` e `E`.
+
+### Resumo
+
+Antes, a disciplina era marcada como `P` ainda na API, antes mesmo de ser consumida pelo RabbitMQ, e so depois passava para `D` em caso de sucesso. Isso misturava fila com processamento em andamento e tambem nao garantia um estado explicito de erro quando a execucao falhava.
+
+Agora, o fluxo ficou assim:
+
+- `Q` quando a tarefa e registrada e enviada para a fila;
+- `P` quando o worker realmente inicia o processamento da disciplina;
+- `D` quando a execucao termina com sucesso;
+- `E` quando ocorre excecao durante o processamento no worker.
+
+No worker, a rotina `subject_analysis` passou a marcar `P` logo no inicio, registrar `E` no `except` com log e traceback, e relancar a excecao para nao mascarar falhas. O caminho de sucesso com `D` foi preservado, inclusive no caso sem dados normalizados em `students_subject_analysis`.
+
+### Impacto
+
+O comportamento anterior podia deixar a disciplina com status de processamento em andamento mesmo quando ela ainda estava apenas aguardando consumo da fila. Com a mudanca, o status persistido passa a refletir melhor o ciclo real da tarefa e evita que falhas deixem a execucao indefinidamente em `P`.
+
 ## 2026-04-08
 
 ### Titulo

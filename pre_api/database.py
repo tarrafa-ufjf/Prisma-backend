@@ -304,6 +304,7 @@ class DatabaseAdmin:
         indicator_name: str,
         status: str,
         engine=None,
+        conn=None,
     ):
         engine = engine or self.get_connector()
         table = self.get_subject_indicator_status_table()
@@ -323,8 +324,11 @@ class DatabaseAdmin:
             }
         )
 
-        with engine.begin() as conn:
+        if conn is not None:
             conn.execute(stmt)
+        else:
+            with engine.begin() as db_conn:
+                db_conn.execute(stmt)
     
     def get_connection_with_config(self, config):
         return pymysql.connect(

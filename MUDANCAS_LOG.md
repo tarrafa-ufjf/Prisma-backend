@@ -6,6 +6,31 @@ Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com dat
 
 ### Titulo
 
+Atomicidade entre dados locais e status por indicador
+
+### Arquivos afetados
+
+- [`worker/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/app.py)
+- [`worker/database.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/database.py)
+- [`pre_api/database.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/database.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Objetivo
+
+Evitar commits parciais quando a gravacao dos dados locais e a gravacao do status granular dos indicadores acontecem no worker.
+
+### Resumo
+
+Os metodos `upsert_indicator_status(...)` e `_upsert_dynamic(...)` passaram a aceitar uma conexao externa opcional, permitindo participar de uma transacao ja aberta. No worker, as gravacoes de `local_indicators_students`, `local_indicators_tutors` e dos status em `subject_indicator_status` foram reorganizadas para acontecerem dentro de um mesmo `with engine.begin() as tx_conn`.
+
+No fluxo de tutores, o `UPDATE subjects_status` que grava `start_date`, `end_date` e `update_type` tambem passou a usar essa mesma transacao compartilhada. Assim, se qualquer etapa do bloco falhar, nada e persistido parcialmente.
+
+### Impacto
+
+Antes, os status por indicador podiam ser commitados antes do upsert dos dados locais, deixando o banco em estado inconsistente quando a gravacao principal falhava depois. Agora, esses elementos passam a ser confirmados juntos no mesmo commit, reduzindo divergencias entre dados e status persistidos.
+
+### Titulo
+
 Ajuste do instalador para seguir o padrao de criacao de tabelas
 
 ### Arquivos afetados

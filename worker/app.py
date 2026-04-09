@@ -108,7 +108,7 @@ class Worker:
         cleaned = df.astype(object).where(pd.notna(df), None)
         return cleaned.to_dict(orient="records")
 
-    def _upsert_dynamic(self, engine, table_name, records, pk_columns):
+    def _upsert_dynamic(self, engine, table_name, records, pk_columns, conn=None):
         if not records:
             return
 
@@ -132,8 +132,11 @@ class Worker:
         else:
             stmt = stmt.on_conflict_do_nothing(index_elements=pk_columns)
 
-        with engine.begin() as conn:
+        if conn is not None:
             conn.execute(stmt, records)
+        else:
+            with engine.begin() as db_conn:
+                db_conn.execute(stmt, records)
 
     def _aggregate_first_by_keys(self, df, key_columns):
         if df is None or df.empty:
@@ -234,16 +237,6 @@ class Worker:
         )
         indicator_dfs = notify_result.get("results", {})
         indicator_errors = notify_result.get("errors", {})
-
-        for indicator_name in indicator_dfs.keys():
-            self.db_admin.upsert_indicator_status(
-                1, subject_id, "student", indicator_name, "D", engine
-            )
-
-        for indicator_name in indicator_errors.keys():
-            self.db_admin.upsert_indicator_status(
-                1, subject_id, "student", indicator_name, "E", engine
-            )
 
         if indicator_errors:
             print(
@@ -363,12 +356,39 @@ class Worker:
         )
 
         records = self._df_to_records(subject_df)
-        self._upsert_dynamic(
-            engine,
-            "local_indicators_students",
-            records,
-            ["institution_id", "version", "subject_id", "student_id"],
-        )
+        with engine.begin() as tx_conn:
+            self._upsert_dynamic(
+                engine,
+                "local_indicators_students",
+                records,
+                ["institution_id", "version", "subject_id", "student_id"],
+                conn=tx_conn,
+            )
+
+            # --- IGNORE ---
+
+            for indicator_name in indicator_dfs.keys():
+                self.db_admin.upsert_indicator_status(
+                    1,
+                    subject_id,
+                    "student",
+                    indicator_name,
+                    "D",
+                    engine=engine,
+                    conn=tx_conn,
+                )
+            
+
+            for indicator_name in indicator_errors.keys():
+                self.db_admin.upsert_indicator_status(
+                    1,
+                    subject_id,
+                    "student",
+                    indicator_name,
+                    "E",
+                    engine=engine,
+                    conn=tx_conn,
+                )
 
         return subject_df
 
@@ -503,16 +523,6 @@ class Worker:
         )
         indicator_dfs = notify_result.get("results", {})
         indicator_errors = notify_result.get("errors", {})
-
-        for indicator_name in indicator_dfs.keys():
-            self.db_admin.upsert_indicator_status(
-                1, subject_id, "tutor", indicator_name, "D", engine
-            )
-
-        for indicator_name in indicator_errors.keys():
-            self.db_admin.upsert_indicator_status(
-                1, subject_id, "tutor", indicator_name, "E", engine
-            )
 
         analysis_response_foruns = indicator_dfs.get("response_foruns")
         analysis_feedback_df = indicator_dfs.get("feedback")
@@ -654,21 +664,44 @@ class Worker:
         )
 
         records = self._df_to_records(df)
-        self._upsert_dynamic(
-            engine,
-            "local_indicators_tutors",
-            records,
-            ["institution_id", "version", "subject_id", "tutor_id"],
-        )
+        with engine.begin() as tx_conn:
+            self._upsert_dynamic(
+                engine,
+                "local_indicators_tutors",
+                records,
+                ["institution_id", "version", "subject_id", "tutor_id"],
+                conn=tx_conn,
+            )
 
-        # ---- UPDATE subjects_status (1 vez por subject) ----
-        def to_db_date(x):
-            if x is None or (isinstance(x, pd.Timestamp) and pd.isna(x)):
-                return None
-            return pd.to_datetime(x).date()
+            for indicator_name in indicator_dfs.keys():
+                self.db_admin.upsert_indicator_status(
+                    1,
+                    subject_id,
+                    "tutor",
+                    indicator_name,
+                    "D",
+                    engine=engine,
+                    conn=tx_conn,
+                )
 
-        with engine.begin() as conn:
-            conn.execute(
+            for indicator_name in indicator_errors.keys():
+                self.db_admin.upsert_indicator_status(
+                    1,
+                    subject_id,
+                    "tutor",
+                    indicator_name,
+                    "E",
+                    engine=engine,
+                    conn=tx_conn,
+                )
+
+            # ---- UPDATE subjects_status (1 vez por subject) ----
+            def to_db_date(x):
+                if x is None or (isinstance(x, pd.Timestamp) and pd.isna(x)):
+                    return None
+                return pd.to_datetime(x).date()
+
+            tx_conn.execute(
                 text(
                     """
                     UPDATE subjects_status

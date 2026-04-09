@@ -45,8 +45,12 @@ metadata = MetaData()
 def create_table(table_name, columns, primary_key=None):
     try:
         cols = []
-        for nome, tipo in columns.items():
-            cols.append(Column(nome, tipo))
+        for nome, definition in columns.items():
+            if isinstance(definition, tuple):
+                tipo, options = definition
+                cols.append(Column(nome, tipo, **options))
+            else:
+                cols.append(Column(nome, definition))
         if primary_key:
             cols.append(PrimaryKeyConstraint(*primary_key))
         
@@ -81,6 +85,21 @@ if __name__ == "__main__":
     }
     primary_keys = ["institution_id", "subject_id"]
     create_table("subjects_status", columns_subjects_status, primary_key=primary_keys)
+
+    columns_subject_indicator_status = {
+        "institution_id": Integer,
+        "subject_id": Integer,
+        "actor": String(20),
+        "indicator_name": String(50),
+        "status": (String(1), {"nullable": False}),
+        "updated_at": (DateTime(timezone=True), {"nullable": False}),
+    }
+    primary_keys = ["institution_id", "subject_id", "actor", "indicator_name"]
+    create_table(
+        "subject_indicator_status",
+        columns_subject_indicator_status,
+        primary_key=primary_keys,
+    )
     
     
     # columns_subjects_tutors = {

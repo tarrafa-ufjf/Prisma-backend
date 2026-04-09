@@ -6,6 +6,53 @@ Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com dat
 
 ### Titulo
 
+Ajuste do instalador para seguir o padrao de criacao de tabelas
+
+### Arquivos afetados
+
+- [`worker/install.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/install.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Objetivo
+
+Alinhar a criacao da tabela `subject_indicator_status` ao mesmo padrao usado pelas demais tabelas do instalador.
+
+### Resumo
+
+O helper `create_table(...)` passou a aceitar definicoes de coluna com opcoes adicionais, como `nullable=False`, por meio de tuplas `(tipo, opcoes)`. Com isso, a tabela `subject_indicator_status` deixou de ser criada com `Table(...)` manual inline e passou a usar o mesmo fluxo declarativo das outras tabelas do arquivo.
+
+### Impacto
+
+Nao ha mudanca funcional no schema previsto da tabela. O impacto e de padronizacao e manutencao: o instalador fica mais consistente e a definicao da nova tabela passa a seguir o mesmo estilo do restante do arquivo.
+
+### Titulo
+
+Rastreamento granular de status por indicador
+
+### Arquivos afetados
+
+- [`worker/install.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/install.py)
+- [`worker/database.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/database.py)
+- [`pre_api/database.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/database.py)
+- [`worker/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/app.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Objetivo
+
+Persistir o status individual de cada indicador por disciplina e ator, sem depender apenas do status global salvo em `subjects_status`.
+
+### Resumo
+
+Foi adicionada a tabela `subject_indicator_status` ao instalador do banco, com chave primaria composta por `institution_id`, `subject_id`, `actor` e `indicator_name`. As classes `DatabaseAdmin` do worker e da pre API passaram a expor a definicao dessa tabela e um metodo `upsert_indicator_status(...)` baseado em `INSERT ... ON CONFLICT DO UPDATE`.
+
+No worker, os metodos `students_subject_analysis` e `tutors_subject_analysis` agora percorrem os indicadores retornados por `notify(...)` e registram `D` para indicadores presentes em `results` e `E` para indicadores presentes em `errors`, sempre atualizando tambem o `updated_at`.
+
+### Impacto
+
+Antes, o sistema informava apenas o estado agregado da disciplina em `subjects_status`, sem mostrar quais indicadores foram concluidos ou falharam individualmente. Agora, passa a existir rastreabilidade granular por indicador e por ator, o que melhora diagnostico, auditoria e reprocessamento direcionado sem alterar o fluxo atual de status global da disciplina.
+
+### Titulo
+
 Refatoracao do fluxo de status de `subject_analysis` para 4 estados
 
 ### Arquivos afetados

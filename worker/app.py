@@ -233,9 +233,21 @@ class Worker:
             mapper=self.mapper,
         )
         indicator_dfs = notify_result.get("results", {})
-        if notify_result.get("errors"):
+        indicator_errors = notify_result.get("errors", {})
+
+        for indicator_name in indicator_dfs.keys():
+            self.db_admin.upsert_indicator_status(
+                1, subject_id, "student", indicator_name, "D", engine
+            )
+
+        for indicator_name in indicator_errors.keys():
+            self.db_admin.upsert_indicator_status(
+                1, subject_id, "student", indicator_name, "E", engine
+            )
+
+        if indicator_errors:
             print(
-                f"[students_subject_analysis] actor=student channel={channel} errors={list(notify_result['errors'].keys())}"
+                f"[students_subject_analysis] actor=student channel={channel} errors={list(indicator_errors.keys())}"
             )
         normalized = []
 
@@ -490,12 +502,24 @@ class Worker:
             tutor_ids=tutor_ids,
         )
         indicator_dfs = notify_result.get("results", {})
+        indicator_errors = notify_result.get("errors", {})
+
+        for indicator_name in indicator_dfs.keys():
+            self.db_admin.upsert_indicator_status(
+                1, subject_id, "tutor", indicator_name, "D", engine
+            )
+
+        for indicator_name in indicator_errors.keys():
+            self.db_admin.upsert_indicator_status(
+                1, subject_id, "tutor", indicator_name, "E", engine
+            )
+
         analysis_response_foruns = indicator_dfs.get("response_foruns")
         analysis_feedback_df = indicator_dfs.get("feedback")
         analysis_login_df = indicator_dfs.get("login")
-        if notify_result.get("errors"):
+        if indicator_errors:
             print(
-                f"[tutors_subject_analysis] actor=tutor channel={channel} errors={list(notify_result['errors'].keys())}"
+                f"[tutors_subject_analysis] actor=tutor channel={channel} errors={list(indicator_errors.keys())}"
             )
 
         if (

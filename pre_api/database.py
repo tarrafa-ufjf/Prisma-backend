@@ -237,6 +237,20 @@ class DatabaseAdmin:
             Column("update_type", String(50), nullable=False),
         )
         return table
+
+    def get_subject_indicator_status_table(self):
+        metadata = MetaData()
+        table = Table(
+            "subject_indicator_status",
+            metadata,
+            Column("institution_id", Integer, primary_key=True),
+            Column("subject_id", Integer, primary_key=True),
+            Column("actor", String(20), primary_key=True),
+            Column("indicator_name", String(50), primary_key=True),
+            Column("status", String(1), nullable=False),
+            Column("updated_at", DateTime(timezone=True), nullable=False),
+        )
+        return table
     
     def insert_subject_analysis_status(self, institution_id: int, subject_id: int, status: str, update_type: str = None, engine=None):
         engine = engine or self.get_connector()
@@ -281,6 +295,36 @@ class DatabaseAdmin:
                     update_type=resolved_update_type,
                 )
             )
+
+    def upsert_indicator_status(
+        self,
+        institution_id: int,
+        subject_id: int,
+        actor: str,
+        indicator_name: str,
+        status: str,
+        engine=None,
+    ):
+        engine = engine or self.get_connector()
+        table = self.get_subject_indicator_status_table()
+
+        stmt = pg_insert(table).values(
+            institution_id=institution_id,
+            subject_id=subject_id,
+            actor=actor,
+            indicator_name=indicator_name,
+            status=status,
+            updated_at=func.now(),
+        ).on_conflict_do_update(
+            constraint="subject_indicator_status_pkey",
+            set_={
+                "status": status,
+                "updated_at": func.now(),
+            }
+        )
+
+        with engine.begin() as conn:
+            conn.execute(stmt)
     
     def get_connection_with_config(self, config):
         return pymysql.connect(

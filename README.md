@@ -1,5 +1,11 @@
 # Instalação
 
+Faça uma vez no terminal
+
+```bash
+export PYTHONPATH=..
+```
+
 Primeiramente, rode o comando para inicializar os bancos e serviços com o docker
 
 ```bash

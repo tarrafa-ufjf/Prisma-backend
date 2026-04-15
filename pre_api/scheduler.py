@@ -6,7 +6,7 @@ import time
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 
-from app import scheduled_daily_analysis
+from app import run_scheduled_analysis
 from database import DatabaseAdmin
 
 load_dotenv()
@@ -17,10 +17,11 @@ def _build_scheduler():
     scheduler = BackgroundScheduler(timezone=timezone)
 
     scheduler.add_job(
-        scheduled_daily_analysis,
+        run_scheduled_analysis,
+        kwargs={"channel": "diario"},
         trigger="cron",
         hour=12,
-        minute=4,
+        minute=23,
         id="daily_analysis_03h",
         max_instances=1,
         coalesce=True,
@@ -34,7 +35,7 @@ def main():
     scheduler = _build_scheduler()
     scheduler.start()
     print(
-        "[scheduler] Started. daily_analysis_03h scheduled at 03:00 "
+        "[scheduler] Started. "
         f"timezone={scheduler.timezone}"
     )
 

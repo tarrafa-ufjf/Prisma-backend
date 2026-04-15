@@ -27,7 +27,7 @@ def _build_db_inst_config_from_env():
     }
 
 
-def scheduled_daily_analysis():
+def run_scheduled_analysis(channel="diario"):
     """Daily job entrypoint used by the scheduler process."""
     db_inst_config = _build_db_inst_config_from_env()
     missing = [k for k, v in db_inst_config.items() if v in (None, "")]
@@ -47,10 +47,10 @@ def scheduled_daily_analysis():
         except Exception as e:
             print(f"[scheduler] Erro ao inserir versão na base de dados: {e}")
 
-        processor.set_subjects_analysis(db_config=db_inst_config, channel="diario")
-        print(f"[scheduler] Daily analysis dispatch finished. version={version}")
+        processor.set_subjects_analysis(db_config=db_inst_config, channel=channel)
+        print(f"[scheduler] {channel.capitalize()} analysis dispatch finished. version={version}")
     except Exception as e:
-        print(f"[scheduler] Daily analysis dispatch failed: {e}")
+        print(f"[scheduler] {channel.capitalize()} analysis dispatch failed: {e}")
 
 
 @app.route("/analysis", methods=["PUT"])

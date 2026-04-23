@@ -577,7 +577,7 @@ class Moodle31(Moodle):
                 FROM (
                     SELECT DISTINCT courseid
                     FROM mdl_logstore_standard_log
-                    WHERE timecreated BETWEEN 1740579449 AND 1740665849
+                    WHERE timecreated >= UNIX_TIMESTAMP() - 86400
                         AND courseid > 1
                 ) AS ativos
                 JOIN mdl_course c ON c.id = ativos.courseid

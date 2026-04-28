@@ -15,7 +15,7 @@ Agendamentos dos canais semanal e mensal
 
 ### Resumo
 
-O scheduler passou a registrar jobs separados para os canais `semanal` e `mensal`, ambos usando o entrypoint `run_scheduled_analysis` com o `channel` correspondente. O job semanal executa nas segundas-feiras as 12:58 e o job mensal executa no dia 1 de cada mes as 13:08, mantendo o job diario as 12:48.
+O scheduler passou a registrar jobs separados para os canais `semanal` e `mensal`, ambos usando o entrypoint `run_scheduled_analysis` com o `channel` correspondente.
 
 ### Impacto
 

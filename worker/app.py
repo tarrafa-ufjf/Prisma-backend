@@ -249,6 +249,10 @@ class Worker:
                 continue
 
             df = df.copy()
+            if name == "giv":
+                cols = [c for c in ["user_id", "give_up"] if c in df.columns]
+                df = df[cols    ]
+
             normalized.append(df)
 
         if not normalized:

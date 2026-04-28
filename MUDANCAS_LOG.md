@@ -2,6 +2,25 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-04-28 11:24:20 -03
+
+### Titulo
+
+Filtro de colunas do `give_up` no Worker
+
+### Arquivos afetados
+
+- [`worker/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/app.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+No fluxo `students_subject_analysis`, o DataFrame do indicador `give_up` agora e reduzido para manter apenas as colunas `user_id` e `give_up` antes de entrar na lista `normalized`.
+
+### Impacto
+
+Antes, labels intermediarias acopladas ao calculo de desistencia podiam seguir para o merge e para o upsert dinamico do Worker. Agora, somente o resultado final de desistencia e o identificador do aluno seguem para persistencia, sem alterar o payload sincrono usado pelo Frontend.
+
 ## 2026-04-09
 
 ### Titulo

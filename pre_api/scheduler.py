@@ -21,8 +21,34 @@ def _build_scheduler():
         kwargs={"channel": "diario"},
         trigger="cron",
         hour=12,
-        minute=23,
-        id="daily_analysis_03h",
+        minute=48,
+        id="daily_analysis",
+        max_instances=1,
+        coalesce=True,
+        replace_existing=True,
+    )
+
+    scheduler.add_job(
+        run_scheduled_analysis,
+        kwargs={"channel": "semanal"},
+        trigger="cron",
+        day_of_week="mon",
+        hour=12,
+        minute=58,
+        id="weekly_analysis",
+        max_instances=1,
+        coalesce=True,
+        replace_existing=True,
+    )
+
+    scheduler.add_job(
+        run_scheduled_analysis,
+        kwargs={"channel": "mensal"},
+        trigger="cron",
+        day=1,
+        hour=13,
+        minute=8,
+        id="monthly_analysis",
         max_instances=1,
         coalesce=True,
         replace_existing=True,

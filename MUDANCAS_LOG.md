@@ -2,6 +2,25 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-04-28 13:19:37 -03
+
+### Titulo
+
+Agendamentos dos canais semanal e mensal
+
+### Arquivos afetados
+
+- [`pre_api/scheduler.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/scheduler.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+O scheduler passou a registrar jobs separados para os canais `semanal` e `mensal`, ambos usando o entrypoint `run_scheduled_analysis` com o `channel` correspondente. O job semanal executa nas segundas-feiras as 12:58 e o job mensal executa no dia 1 de cada mes as 13:08, mantendo o job diario as 12:48.
+
+### Impacto
+
+Antes, apenas o canal `diario` era disparado automaticamente pelo processo de scheduler. Agora, os canais `semanal` e `mensal` tambem sao enfileirados automaticamente nas suas respectivas recorrencias, aproveitando os filtros de disciplinas ativas ja existentes para cada periodo.
+
 ## 2026-04-28 11:43:13 -03
 
 ### Titulo

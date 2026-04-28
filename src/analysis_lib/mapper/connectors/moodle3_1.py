@@ -566,7 +566,7 @@ class Moodle31(Moodle):
         df = pd.DataFrame(rows, columns=cols)
         return df
 
-    def get_daily_active_subjects(self, connector, version):
+    def _get_active_subjects_by_interval(self, connector, interval_seconds):
         with connector.cursor() as cur:
             cur.execute('''
                 SELECT
@@ -577,7 +577,7 @@ class Moodle31(Moodle):
                 FROM (
                     SELECT DISTINCT courseid
                     FROM mdl_logstore_standard_log
-                    WHERE timecreated >= UNIX_TIMESTAMP() - 86400
+                    WHERE timecreated >= UNIX_TIMESTAMP() - %s
                         AND courseid > 1
                 ) AS ativos
                 JOIN mdl_course c ON c.id = ativos.courseid
@@ -587,11 +587,20 @@ class Moodle31(Moodle):
                 JOIN mdl_user u ON u.id = ra.userid
                 GROUP BY c.id, c.fullname, c.shortname, c.startdate
                 HAVING COUNT(u.id) >= 10;
-            ''', ())
+            ''', (interval_seconds,))
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
         df = pd.DataFrame(rows, columns=cols)
         return df
+
+    def get_daily_active_subjects(self, connector, version):
+        return self._get_active_subjects_by_interval(connector, 86400)
+
+    def get_week_active_subjects(self, connector, version):
+        return self._get_active_subjects_by_interval(connector, 7 * 86400)
+
+    def get_month_active_subjects(self, connector, version):
+        return self._get_active_subjects_by_interval(connector, 30 * 86400)
     
     '''
         Página de aluno na disciplina

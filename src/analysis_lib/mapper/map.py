@@ -127,6 +127,14 @@ class Mapper:
     def get_daily_active_subjects(self, connector, version):
         moodle = self.get_moodle(connector, version)
         return moodle.get_daily_active_subjects(connector, version)
+
+    def get_week_active_subjects(self, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_week_active_subjects(connector, version)
+
+    def get_month_active_subjects(self, connector, version):
+        moodle = self.get_moodle(connector, version)
+        return moodle.get_month_active_subjects(connector, version)
     
     def fetch_student_summary(self, subject_id, student_id, connector, version):
         moodle = self.get_moodle(connector, version)

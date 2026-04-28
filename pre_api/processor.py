@@ -27,6 +27,10 @@ class Processor:
         if subject_ids is None:
             if channel == "diario":
                 subjects_dict = self.analysis.get_daily_active_subjects(version, connector)
+            elif channel == "semanal":
+                subjects_dict = self.analysis.get_week_active_subjects(version, connector)
+            elif channel == "mensal":
+                subjects_dict = self.analysis.get_month_active_subjects(version, connector)
             else:
                 subjects_dict = self.analysis.get_all_subjects(version, connector)
 
@@ -61,7 +65,7 @@ class Processor:
         # for sid in subjects[1:20]:
         # # for sid in [37, 41, 78, 83, 84, 222, 223, 224]:
         # # for sid in [78, 222, 223, 224]:
-        # for sid in [78]:
+        # for sid in [78, 222]:    
             try:
                 self.db_admin.insert_subject_analysis_status(
                     1,

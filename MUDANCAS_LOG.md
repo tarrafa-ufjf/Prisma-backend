@@ -2,6 +2,31 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-04-28 11:43:13 -03
+
+### Titulo
+
+Disciplinas ativas por canais diario, semanal e mensal
+
+### Arquivos afetados
+
+- [`src/analysis_lib/analysis/analyzer.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/src/analysis_lib/analysis/analyzer.py)
+- [`src/analysis_lib/analysis/Actors/Student/General/subjects.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/src/analysis_lib/analysis/Actors/Student/General/subjects.py)
+- [`src/analysis_lib/mapper/map.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/src/analysis_lib/mapper/map.py)
+- [`src/analysis_lib/mapper/connectors/moodle3_1.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/src/analysis_lib/mapper/connectors/moodle3_1.py)
+- [`pre_api/processor.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/processor.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foram adicionados os metodos `get_week_active_subjects` e `get_month_active_subjects` nas camadas de analise, mapper e conector Moodle, mantendo o mesmo formato de resposta de `get_daily_active_subjects`. A consulta Moodle passou a reutilizar um helper por intervalo em segundos, com janelas moveis de 24 horas, 7 dias e 30 dias.
+
+O `Processor.set_subjects_analysis` agora escolhe a busca de disciplinas ativas conforme o `channel`: `diario`, `semanal` ou `mensal`. Quando `subject_ids` nao e informado, o processor passa a enfileirar a lista calculada de disciplinas em vez de limitar a execucao fixa ao subject `78`.
+
+### Impacto
+
+Antes, somente o canal diario tinha filtro de disciplinas ativas e o enfileiramento sem `subject_ids` ficava preso ao subject `78`. Agora, os canais semanal e mensal tambem podem selecionar disciplinas por atividade recente, e o processamento usa todas as disciplinas retornadas pelo filtro do canal, preservando `subject_ids` como mecanismo explicito de limitacao temporaria.
+
 ## 2026-04-28 11:24:20 -03
 
 ### Titulo

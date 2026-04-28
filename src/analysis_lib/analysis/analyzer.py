@@ -60,6 +60,18 @@ class Analyzer:
         subjects = Subjects(self.mapper)
 
         return subjects.get_daily_active_subjects(version, connector)
+
+    def get_week_active_subjects(self, version, connector):
+        from .Actors.Student.General.subjects import Subjects
+        subjects = Subjects(self.mapper)
+
+        return subjects.get_week_active_subjects(version, connector)
+
+    def get_month_active_subjects(self, version, connector):
+        from .Actors.Student.General.subjects import Subjects
+        subjects = Subjects(self.mapper)
+
+        return subjects.get_month_active_subjects(version, connector)
     
     def general_subjects_indicators(self, version, connector):
         from .Actors.Student.General.general_subjects_indicators import General_subjects_indicators

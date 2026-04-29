@@ -60,6 +60,8 @@ Feito isso, no terminal da **API**, acesse o link disponibilizado pelo Flask.
 
 Deve-se acessar a rota ```/analysis``` pelo Postman/Insomnia onde será necessário inserir as informações de acesso ao banco de dados institucional, como o link do host, a porta, o usuário, etc. Após isso, o sistema irá iniciar a análise global enquanto o usuário pode fazer as análises locais.
 
+Para configurar os canais de analise, observers de indicadores e agendamentos automaticos, consulte [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](CONFIGURACAO_OBSERVERS_SCHEDULER.md).
+
 # Modelo de troca de mensagens
 
 Nesta seção, é mostrada como as tasks são feitas para realizar a comunicação entre todos os sistemas.

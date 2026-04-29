@@ -28,18 +28,6 @@ Atualmente existem os seguintes canais cadastrados no publisher:
 - `semanal`
 - `mensal`
 - `completo`
-- `teste`
-
-Matriz atual de indicadores por canal:
-
-| Canal | Ator | Observers executados |
-| --- | --- | --- |
-| `diario` | `student` | `StudentEngagementObserver` |
-| `semanal` | `student` | `StudentEngagementObserver` |
-| `mensal` | `student` | `StudentEngagementObserver` |
-| `teste` | `student` | `StudentEngagementObserver` |
-| `completo` | `student` | `StudentEngagementObserver`, `StudentPerformanceObserver`, `StudentMotivationObserver`, `StudentCognitiveObserver`, `StudentPedagogicObserver`, `StudentGiveUpObserver` |
-| `completo` | `tutor` | `TutorResponseForumsObserver`, `TutorFeedbackObserver`, `TutorLoginObserver` |
 
 O canal tambem influencia a selecao de disciplinas na `pre_api`:
 
@@ -135,9 +123,9 @@ SCHEDULER_TIMEZONE=America/Sao_Paulo
 
 Jobs atuais:
 
-- `daily_analysis`: roda `run_scheduled_analysis(channel="diario")` todos os dias as 12:48;
-- `weekly_analysis`: roda `run_scheduled_analysis(channel="semanal")` toda segunda-feira as 12:58;
-- `monthly_analysis`: roda `run_scheduled_analysis(channel="mensal")` todo dia 1 do mes as 13:08.
+- `daily_analysis`: roda `run_scheduled_analysis(channel="diario")` todos os dias em um determinado horario;
+- `weekly_analysis`: roda `run_scheduled_analysis(channel="semanal")` um dia na semana  em um determinado horairo;
+- `monthly_analysis`: roda `run_scheduled_analysis(channel="mensal")` um dia no mes em um determinado horario.
 
 Para alterar horario ou recorrencia, edite os parametros do `scheduler.add_job(...)`.
 

@@ -4,7 +4,10 @@ import time
 import traceback
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Any, DefaultDict, Dict, List
+from pathlib import Path
+from typing import Any, DefaultDict, Dict, List, Type
+
+import yaml
 
 
 class BaseIndicatorObserver(ABC):
@@ -105,7 +108,7 @@ class IndicatorPublisher:
 
 class StudentEngagementObserver(BaseIndicatorObserver):
     def __init__(self, analyzer) -> None:
-        super().__init__("eng")
+        super().__init__("engagement")
         self.analyzer = analyzer
 
     def calculate(self, subject_id, version, connector, engine, mapper, **context):
@@ -114,7 +117,7 @@ class StudentEngagementObserver(BaseIndicatorObserver):
 
 class StudentPerformanceObserver(BaseIndicatorObserver):
     def __init__(self, analyzer) -> None:
-        super().__init__("per")
+        super().__init__("performance")
         self.analyzer = analyzer
 
     def calculate(self, subject_id, version, connector, engine, mapper, **context):
@@ -123,7 +126,7 @@ class StudentPerformanceObserver(BaseIndicatorObserver):
 
 class StudentMotivationObserver(BaseIndicatorObserver):
     def __init__(self, analyzer) -> None:
-        super().__init__("mot")
+        super().__init__("motivation")
         self.analyzer = analyzer
 
     def calculate(self, subject_id, version, connector, engine, mapper, **context):
@@ -132,7 +135,7 @@ class StudentMotivationObserver(BaseIndicatorObserver):
 
 class StudentCognitiveObserver(BaseIndicatorObserver):
     def __init__(self, analyzer) -> None:
-        super().__init__("cog")
+        super().__init__("cognitive")
         self.analyzer = analyzer
 
     def calculate(self, subject_id, version, connector, engine, mapper, **context):
@@ -141,7 +144,7 @@ class StudentCognitiveObserver(BaseIndicatorObserver):
 
 class StudentPedagogicObserver(BaseIndicatorObserver):
     def __init__(self, analyzer) -> None:
-        super().__init__("ped")
+        super().__init__("pedagogic")
         self.analyzer = analyzer
 
     def calculate(self, subject_id, version, connector, engine, mapper, **context):
@@ -150,7 +153,7 @@ class StudentPedagogicObserver(BaseIndicatorObserver):
 
 class StudentGiveUpObserver(BaseIndicatorObserver):
     def __init__(self, analyzer) -> None:
-        super().__init__("giv")
+        super().__init__("give_up")
         self.analyzer = analyzer
 
     def calculate(self, subject_id, version, connector, engine, mapper, **context):
@@ -159,7 +162,7 @@ class StudentGiveUpObserver(BaseIndicatorObserver):
 
 class TutorResponseForumsObserver(BaseIndicatorObserver):
     def __init__(self, analyzer) -> None:
-        super().__init__("response_foruns")
+        super().__init__("response_forums")
         self.analyzer = analyzer
 
     def calculate(self, subject_id, version, connector, engine, mapper, **context):
@@ -208,25 +211,73 @@ class TutorLoginObserver(BaseIndicatorObserver):
         )
 
 
-def register_default_indicators(publisher: IndicatorPublisher, analyzer) -> None:
+INDICATOR_OBSERVERS: Dict[str, Type[BaseIndicatorObserver]] = {
+    "engagement": StudentEngagementObserver,
+    "performance": StudentPerformanceObserver,
+    "motivation": StudentMotivationObserver,
+    "cognitive": StudentCognitiveObserver,
+    "pedagogic": StudentPedagogicObserver,
+    "give_up": StudentGiveUpObserver,
+    "response_forums": TutorResponseForumsObserver,
+    "feedback": TutorFeedbackObserver,
+    "login": TutorLoginObserver,
+}
 
-    ## Diario
-    publisher.subscribe("student", "diario", StudentEngagementObserver(analyzer))
-    publisher.subscribe("student", "diario", StudentPerformanceObserver(analyzer))
 
-    publisher.subscribe("tutor", "diario", TutorResponseForumsObserver(analyzer))
+def load_indicator_channel_config(config_path: Path) -> Dict[str, Dict[str, List[str]]]:
+    with config_path.open("r", encoding="utf-8") as config_file:
+        raw_config = yaml.safe_load(config_file) or {}
+
+    if not isinstance(raw_config, dict):
+        raise ValueError(f"Invalid indicator config at {config_path}: expected a mapping.")
+
+    config: Dict[str, Dict[str, List[str]]] = {}
+
+    for actor, channels in raw_config.items():
+        if not isinstance(actor, str) or not isinstance(channels, dict):
+            raise ValueError(
+                f"Invalid indicator config at {config_path}: each actor must map to channels."
+            )
+
+        config[actor] = {}
+
+        for channel, indicators in channels.items():
+            if not isinstance(channel, str) or not isinstance(indicators, list):
+                raise ValueError(
+                    f"Invalid indicator config at {config_path}: "
+                    f"channel '{channel}' must map to a list of indicators."
+                )
+
+            for indicator_name in indicators:
+                if not isinstance(indicator_name, str):
+                    raise ValueError(
+                        f"Invalid indicator config at {config_path}: "
+                        f"channel '{channel}' has a non-text indicator name."
+                    )
+
+            config[actor][channel] = indicators
+
+    return config
 
 
+def register_default_indicators(
+    publisher: IndicatorPublisher,
+    analyzer,
+    config_path: Path | None = None,
+) -> None:
+    indicator_config_path = config_path or Path(__file__).with_name("indicator_channels.yml")
+    channel_config = load_indicator_channel_config(indicator_config_path)
 
+    for actor, channels in channel_config.items():
+        for channel, indicator_names in channels.items():
+            for indicator_name in indicator_names:
+                observer_class = INDICATOR_OBSERVERS.get(indicator_name)
 
-    ## Completo
-    publisher.subscribe("student", "completo", StudentEngagementObserver(analyzer))
-    publisher.subscribe("student", "completo", StudentPerformanceObserver(analyzer))
-    publisher.subscribe("student", "completo", StudentMotivationObserver(analyzer))
-    publisher.subscribe("student", "completo", StudentCognitiveObserver(analyzer))
-    publisher.subscribe("student", "completo", StudentPedagogicObserver(analyzer))
-    publisher.subscribe("student", "completo", StudentGiveUpObserver(analyzer))
+                if observer_class is None:
+                    available = ", ".join(sorted(INDICATOR_OBSERVERS))
+                    raise ValueError(
+                        f"Unknown indicator '{indicator_name}' in {indicator_config_path}. "
+                        f"Available indicators: {available}."
+                    )
 
-    publisher.subscribe("tutor", "completo", TutorResponseForumsObserver(analyzer))
-    publisher.subscribe("tutor", "completo", TutorFeedbackObserver(analyzer))
-    publisher.subscribe("tutor", "completo", TutorLoginObserver(analyzer))
+                publisher.subscribe(actor, channel, observer_class(analyzer))

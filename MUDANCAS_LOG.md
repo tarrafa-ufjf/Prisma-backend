@@ -2,6 +2,54 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-04-30 10:36:26 -03
+
+### Titulo
+
+Nomes completos para indicadores configuraveis
+
+### Arquivos afetados
+
+- [`worker/indicator_publisher.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/indicator_publisher.py)
+- [`worker/indicator_channels.yml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/indicator_channels.yml)
+- [`worker/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/app.py)
+- [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/CONFIGURACAO_OBSERVERS_SCHEDULER.md)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Os identificadores curtos dos indicadores foram substituidos por nomes completos no YAML, no dicionario `INDICATOR_OBSERVERS` e no `name` dos observers. Exemplos: `eng` virou `engagement`, `per` virou `performance`, `mot` virou `motivation`, `giv` virou `give_up` e `response_foruns` virou `response_forums`.
+
+O worker tambem foi ajustado nos pontos que leem os resultados por nome, como o filtro especial de `give_up` e a montagem dos indicadores de tutores.
+
+### Impacto
+
+Antes, os resultados, erros e registros de status por indicador usavam abreviacoes menos claras. Agora, os nomes gravados e configurados ficam mais legiveis e alinhados ao significado de cada indicador.
+
+## 2026-04-30 10:23:46 -03
+
+### Titulo
+
+Configuracao YAML para indicadores por canal
+
+### Arquivos afetados
+
+- [`worker/indicator_publisher.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/indicator_publisher.py)
+- [`worker/indicator_channels.yml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/indicator_channels.yml)
+- [`worker/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/pyproject.toml)
+- [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/CONFIGURACAO_OBSERVERS_SCHEDULER.md)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+O cadastro padrao de indicadores por ator e canal saiu do hard code em `register_default_indicators(...)` e passou a ser carregado de `worker/indicator_channels.yml`. O worker agora valida a estrutura do YAML, resolve cada nome de indicador por meio de `INDICATOR_OBSERVERS` e registra os observers dinamicamente no `IndicatorPublisher`.
+
+Tambem foi adicionada a dependencia explicita `pyyaml` ao pacote do worker e a documentacao de configuracao foi atualizada para orientar alteracoes no arquivo YAML.
+
+### Impacto
+
+Antes, mudar quais indicadores rodam em canais como `diario`, `semanal`, `mensal`, `teste` ou `completo` exigia editar chamadas `publisher.subscribe(...)` no codigo Python. Agora, a associacao pode ser alterada diretamente no YAML, mantendo o codigo responsavel apenas por carregar, validar e instanciar os observers conhecidos.
+
 ## 2026-04-28 13:19:37 -03
 
 ### Titulo

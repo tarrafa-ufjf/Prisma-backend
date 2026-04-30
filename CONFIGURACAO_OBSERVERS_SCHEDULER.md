@@ -57,27 +57,35 @@ Se `channel` nao for informado, o valor padrao sera `diario`.
 
 ## Como configurar quais indicadores rodam em cada canal
 
-O cadastro fica em `worker/indicator_publisher.py`, na funcao `register_default_indicators(...)`.
+O cadastro fica em `worker/indicator_channels.yml`.
 
-Cada inscricao segue o formato:
+Cada ator contem seus canais, e cada canal contem a lista de indicadores que devem rodar:
 
-```python
-publisher.subscribe("student", "diario", StudentEngagementObserver(analyzer))
+```yaml
+student:
+  diario:
+    - engagement
+  semanal:
+    - engagement
+    - performance
 ```
 
-Os parametros significam:
+Os niveis significam:
 
-- primeiro argumento: ator da analise, como `student` ou `tutor`;
-- segundo argumento: canal, como `diario`, `semanal`, `mensal` ou `completo`;
-- terceiro argumento: observer que calcula um indicador.
+- primeiro nivel: ator da analise, como `student` ou `tutor`;
+- segundo nivel: canal, como `diario`, `semanal`, `mensal` ou `completo`;
+- lista do canal: nomes dos indicadores cadastrados no worker.
 
 Exemplo para adicionar desempenho de estudantes ao canal semanal:
 
-```python
-publisher.subscribe("student", "semanal", StudentPerformanceObserver(analyzer))
+```yaml
+student:
+  semanal:
+    - engagement
+    - performance
 ```
 
-Depois dessa alteracao, toda tarefa de disciplina com `channel="semanal"` passara a executar tambem o observer `StudentPerformanceObserver`.
+Depois dessa alteracao, toda tarefa de disciplina com `channel="semanal"` passara a executar tambem o observer associado ao indicador `performance`.
 
 ## Como criar um novo observer
 
@@ -97,11 +105,7 @@ class StudentExampleObserver(BaseIndicatorObserver):
 
 O nome passado para `super().__init__(...)` identifica o resultado no publisher. Esse nome tambem e usado pelo `worker` para buscar o DataFrame retornado e registrar status granular por indicador.
 
-Depois de criar o observer, cadastre-o em `register_default_indicators(...)` no ator e canal desejados:
-
-```python
-publisher.subscribe("student", "completo", StudentExampleObserver(analyzer))
-```
+Depois de criar o observer, adicione-o ao dicionario `INDICATOR_OBSERVERS` em `worker/indicator_publisher.py` e cadastre o nome do indicador em `worker/indicator_channels.yml`, no ator e canal desejados.
 
 Para observers de tutores, o `worker` envia contexto extra no `notify(...)`, como:
 

@@ -249,7 +249,7 @@ class Worker:
                 continue
 
             df = df.copy()
-            if name == "giv":
+            if name == "give_up":
                 cols = [c for c in ["user_id", "give_up"] if c in df.columns]
                 df = df[cols    ]
 
@@ -528,7 +528,7 @@ class Worker:
         indicator_dfs = notify_result.get("results", {})
         indicator_errors = notify_result.get("errors", {})
 
-        analysis_response_foruns = indicator_dfs.get("response_foruns")
+        analysis_response_foruns = indicator_dfs.get("response_forums")
         analysis_feedback_df = indicator_dfs.get("feedback")
         analysis_login_df = indicator_dfs.get("login")
         if indicator_errors:

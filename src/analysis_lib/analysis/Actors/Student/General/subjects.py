@@ -35,7 +35,6 @@ class Subjects(Indicator):
 
     def get_week_active_subjects(self, version, connector):
         all_subjects = self.mapper.get_week_active_subjects(connector, version)
-
         return self._format_subjects(all_subjects)
 
     def get_month_active_subjects(self, version, connector):

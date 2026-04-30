@@ -1,0 +1,17 @@
+jobs:
+  - id: daily_analysis
+    channel: diario
+    hour: 14
+    minute: 04
+
+  - id: weekly_analysis
+    channel: semanal
+    day_of_week: mon
+    hour: 12
+    minute: 58
+
+  - id: monthly_analysis
+    channel: mensal
+    day: 30
+    hour: 14
+    minute: 05

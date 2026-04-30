@@ -125,40 +125,38 @@ O timezone padrao e `America/Sao_Paulo`, mas pode ser alterado pela variavel de 
 SCHEDULER_TIMEZONE=America/Sao_Paulo
 ```
 
-Jobs atuais:
+Os jobs ficam em `pre_api/scheduler_jobs.yml`. Tambem e possivel apontar para outro arquivo pela variavel:
+
+```bash
+SCHEDULER_CONFIG_PATH=/caminho/para/scheduler_jobs.yml
+```
+
+Jobs atuais no YAML:
 
 - `daily_analysis`: roda `run_scheduled_analysis(channel="diario")` todos os dias em um determinado horario;
 - `weekly_analysis`: roda `run_scheduled_analysis(channel="semanal")` um dia na semana  em um determinado horairo;
 - `monthly_analysis`: roda `run_scheduled_analysis(channel="mensal")` um dia no mes em um determinado horario.
 
-Para alterar horario ou recorrencia, edite os parametros do `scheduler.add_job(...)`.
+Para alterar horario ou recorrencia, edite os campos do job no arquivo `pre_api/scheduler_jobs.yml`.
 
 Exemplo:
 
-```python
-scheduler.add_job(
-    run_scheduled_analysis,
-    kwargs={"channel": "diario"},
-    trigger="cron",
-    hour=8,
-    minute=0,
-    id="daily_analysis",
-    max_instances=1,
-    coalesce=True,
-    replace_existing=True,
-)
+```yaml
+jobs:
+  - id: daily_analysis
+    channel: diario
+    hour: 8
+    minute: 0
 ```
 
 Campos mais importantes:
 
-- `kwargs={"channel": "diario"}` define qual canal sera enfileirado;
-- `trigger="cron"` indica agendamento por calendario;
+- `channel: diario` define qual canal sera enfileirado;
 - `hour` e `minute` definem o horario;
-- `day_of_week="mon"` restringe para segunda-feira;
-- `day=1` restringe para o primeiro dia do mes;
-- `max_instances=1` evita execucoes concorrentes do mesmo job;
-- `coalesce=True` junta execucoes perdidas em uma unica execucao;
-- `replace_existing=True` permite recriar o job com o mesmo `id`.
+- `day_of_week: mon` restringe para segunda-feira;
+- `day: 1` restringe para o primeiro dia do mes;
+
+Por padrao, todos os jobs usam `trigger: cron`, `max_instances: 1`, `coalesce: true` e `replace_existing: true`. Esses campos nao precisam ser repetidos no YAML, mas ainda podem ser informados em um job especifico caso seja necessario sobrescrever o padrao.
 
 ## Como adicionar um novo canal agendado
 
@@ -166,23 +164,17 @@ Para criar um canal novo, siga esta ordem:
 
 1. Cadastre os observers do canal em `worker/indicator_publisher.py`.
 2. Garanta que `pre_api/processor.py` sabe escolher as disciplinas para esse canal. Se nenhuma regra especifica for adicionada, ele usara `get_all_subjects(...)`.
-3. Adicione um novo `scheduler.add_job(...)` em `pre_api/scheduler.py`, chamando `run_scheduled_analysis` com o novo `channel`.
+3. Adicione um novo item em `pre_api/scheduler_jobs.yml`, informando o novo `channel`.
 
 Exemplo:
 
-```python
-scheduler.add_job(
-    run_scheduled_analysis,
-    kwargs={"channel": "quinzenal"},
-    trigger="cron",
-    day="1,15",
-    hour=7,
-    minute=30,
-    id="biweekly_analysis",
-    max_instances=1,
-    coalesce=True,
-    replace_existing=True,
-)
+```yaml
+jobs:
+  - id: biweekly_analysis
+    channel: quinzenal
+    day: "1,15"
+    hour: 7
+    minute: 30
 ```
 
 ## Variaveis de ambiente usadas pelo scheduler
@@ -197,6 +189,7 @@ Variaveis necessarias:
 - `MYSQL_PASSWORD`
 - `MYSQL_DATABASE`
 - `SCHEDULER_TIMEZONE` opcional
+- `SCHEDULER_CONFIG_PATH` opcional
 
 Se alguma variavel obrigatoria estiver ausente, `run_scheduled_analysis(...)` registra a falha no terminal e nao enfileira a analise.
 

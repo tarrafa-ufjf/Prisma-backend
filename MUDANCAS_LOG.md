@@ -2,6 +2,53 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-04-30 13:51:55 -03
+
+### Titulo
+
+Defaults comuns dos jobs do scheduler
+
+### Arquivos afetados
+
+- [`pre_api/scheduler.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/scheduler.py)
+- [`pre_api/scheduler_jobs.yml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/scheduler_jobs.yml)
+- [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/CONFIGURACAO_OBSERVERS_SCHEDULER.md)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Os campos comuns `trigger`, `max_instances`, `coalesce` e `replace_existing` foram centralizados em defaults no carregamento dos jobs do scheduler. O arquivo `pre_api/scheduler_jobs.yml` passou a manter apenas os campos especificos de cada job, como `id`, `channel`, `hour`, `minute`, `day_of_week` e `day`.
+
+A documentacao do scheduler foi atualizada para mostrar exemplos sem os campos repetidos e explicar que esses defaults ainda podem ser sobrescritos por job quando necessario.
+
+### Impacto
+
+Antes, cada job precisava repetir a mesma configuracao operacional no YAML. Agora, novos jobs herdam automaticamente os defaults comuns, reduzindo duplicacao e mantendo o comportamento anterior dos agendamentos existentes.
+
+## 2026-04-30 13:32:47 -03
+
+### Titulo
+
+Configuracao YAML para jobs do scheduler
+
+### Arquivos afetados
+
+- [`pre_api/scheduler.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/scheduler.py)
+- [`pre_api/scheduler_jobs.yml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/scheduler_jobs.yml)
+- [`pre_api/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/pyproject.toml)
+- [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/CONFIGURACAO_OBSERVERS_SCHEDULER.md)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Os jobs do scheduler foram movidos do hard code em `_build_scheduler()` para o arquivo `pre_api/scheduler_jobs.yml`. O scheduler agora carrega e valida a lista de jobs via YAML, separando o `channel` usado por `run_scheduled_analysis(...)` dos demais parametros passados ao APScheduler.
+
+Tambem foi adicionada a dependencia explicita `pyyaml` ao pacote `pre_api` e a documentacao passou a orientar alteracoes de horario, recorrencia e novos canais pelo YAML.
+
+### Impacto
+
+Antes, mudar `hour`, `minute`, `day_of_week`, `day` ou adicionar/remover jobs exigia editar `pre_api/scheduler.py`. Agora, essas configuracoes podem ser alteradas diretamente no YAML, mantendo o codigo do scheduler responsavel apenas por carregar e registrar os jobs.
+
 ## 2026-04-30 11:02:07 -03
 
 ### Titulo

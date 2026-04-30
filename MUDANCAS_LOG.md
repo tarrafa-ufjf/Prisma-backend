@@ -2,6 +2,25 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-04-30 11:02:07 -03
+
+### Titulo
+
+Reuso da instancia do Worker no listener
+
+### Arquivos afetados
+
+- [`worker/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/app.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A criacao de `Worker(rabbit_admin)` foi movida de dentro do callback de consumo para o inicio de `continuously_listen()`, mantendo uma unica instancia reutilizada pelas mensagens recebidas pelo processo.
+
+### Impacto
+
+Antes, cada mensagem consumida criava um novo `Worker`, recriando dependencias como analyzer, mapper, engine e publisher. Agora, esses objetos sao inicializados uma vez por listener, reduzindo trabalho repetido a cada callback sem alterar o fluxo de processamento das mensagens.
+
 ## 2026-04-30 10:36:26 -03
 
 ### Titulo

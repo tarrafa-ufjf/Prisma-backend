@@ -1362,9 +1362,9 @@ class Worker:
 
 def continuously_listen():
     rabbit_admin = RabbitMQAdmin()
+    worker = Worker(rabbit_admin)
 
     def callback(ch, method, properties, body):
-        worker = Worker(rabbit_admin)
         try:
             message = json.loads(body.decode())
             analysis_type = message.get("body", {}).get("type")

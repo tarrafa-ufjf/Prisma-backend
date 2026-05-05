@@ -1,12 +1,11 @@
 student:
   diario:
     - engagement
-  teste:
-    - engagement
-  semanal:
-    - engagement
-  mensal:
-    - engagement
+    - performance
+    - motivation
+    - cognitive
+    - pedagogic
+    - give_up
   completo:
     - engagement
     - performance
@@ -16,6 +15,10 @@ student:
     - give_up
 
 tutor:
+  diario:
+    - response_forums
+    - feedback
+    - login
   completo:
     - response_forums
     - feedback

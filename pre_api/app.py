@@ -7,6 +7,8 @@ from flask_cors import CORS
 import atexit
 import os
 
+from auth import authenticate_request
+
 app = Flask(__name__)
 CORS(app)
 load_dotenv()
@@ -15,6 +17,7 @@ atexit.register(DatabaseAdmin.dispose_connector)
 
 app.register_blueprint(student_bp)
 app.register_blueprint(tutors_bp)
+app.before_request(authenticate_request)
 
 
 def _build_db_inst_config_from_env():

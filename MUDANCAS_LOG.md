@@ -2,6 +2,53 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-06 14:13:56 -03
+
+### Titulo
+
+Validacao remota de tokens pelo Supabase Auth
+
+### Arquivos afetados
+
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/auth.py)
+- [`pre_api/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/pyproject.toml)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A autenticacao deixou de validar o JWT localmente via JWKS e passou a consultar o Supabase Auth em `/auth/v1/user` usando o token Bearer recebido. A configuracao agora usa `SUPABASE_URL` e uma chave de API (`SUPABASE_API_KEY`, `SUPABASE_ANON_KEY` ou `SUPABASE_PUBLISHABLE_KEY`) para chamar o Supabase.
+
+Os testes foram atualizados para cobrir token aceito pelo Supabase, token recusado e indisponibilidade do servico de autenticacao.
+
+### Impacto
+
+Antes, o backend validava assinatura, issuer e audience localmente. Agora, a validade do token e confirmada diretamente pelo Supabase Auth, simplificando o codigo e delegando rotacao/revogacao de chaves ao provedor. Caso o Supabase Auth esteja indisponivel, os endpoints protegidos falham fechados com erro 503.
+
+## 2026-05-06 13:56:18 -03
+
+### Titulo
+
+Autenticacao Supabase nos endpoints da API
+
+### Arquivos afetados
+
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/auth.py)
+- [`pre_api/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/app.py)
+- [`pre_api/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/pyproject.toml)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foi adicionada uma camada global de autenticacao para a API Flask usando tokens Bearer do Supabase. O backend agora valida o JWT via JWKS, confere issuer, audience, expiracao e subject, e disponibiliza as claims em `flask.g` para futuras regras de autorizacao.
+
+Tambem foram adicionados testes focados para ausencia de token, header malformado, bypass de `OPTIONS`, rota raiz publica, token valido mockado e falha fechada quando a configuracao Supabase nao existe.
+
+### Impacto
+
+Antes, os endpoints JSON da API podiam ser acessados sem autenticacao. Agora, rotas de API exigem `Authorization: Bearer <token>` valido do Supabase, enquanto `OPTIONS` e a rota raiz continuam liberados. Se `SUPABASE_URL` nao estiver configurada, a API falha fechada nos endpoints protegidos.
+
 ## 2026-04-30 13:51:55 -03
 
 ### Titulo

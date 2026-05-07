@@ -181,6 +181,73 @@ def create_supabase_auth_user(user_data):
     return response_data
 
 
+def list_supabase_auth_users(page=None, per_page=None):
+    config = get_supabase_admin_config()
+    params = {}
+    if page is not None:
+        params["page"] = page
+    if per_page is not None:
+        params["per_page"] = per_page
+
+    try:
+        response = requests.get(
+            config["admin_users_url"],
+            headers=get_supabase_admin_headers(config),
+            params=params,
+            timeout=AUTH_REQUEST_TIMEOUT,
+        )
+    except requests.RequestException as exc:
+        raise AuthServiceError() from exc
+
+    return parse_supabase_admin_response(response)
+
+
+def delete_supabase_auth_user(user_id, should_soft_delete=False):
+    config = get_supabase_admin_config()
+    params = {}
+    if should_soft_delete:
+        params["should_soft_delete"] = "true"
+
+    try:
+        response = requests.delete(
+            f"{config['admin_users_url']}/{user_id}",
+            headers=get_supabase_admin_headers(config),
+            params=params,
+            timeout=AUTH_REQUEST_TIMEOUT,
+        )
+    except requests.RequestException as exc:
+        raise AuthServiceError() from exc
+
+    if response.status_code == 204:
+        return {}
+    return parse_supabase_admin_response(response)
+
+
+def get_supabase_admin_headers(config):
+    return {
+        "Authorization": f"Bearer {config['service_role_key']}",
+        "apikey": config["service_role_key"],
+        "Content-Type": "application/json",
+    }
+
+
+def parse_supabase_admin_response(response):
+    try:
+        response_data = response.json()
+    except ValueError:
+        response_data = {}
+
+    if response.status_code in (400, 404, 409, 422):
+        message = response_data.get("msg") or response_data.get("message") or "supabase admin request failed"
+        raise SupabaseAdminError(message, response.status_code)
+    if response.status_code in (401, 403):
+        raise SupabaseAdminError("supabase admin request was rejected", 502)
+    if not response.ok:
+        raise AuthServiceError()
+
+    return response_data
+
+
 def get_supabase_auth_config():
     supabase_url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
     api_key = (

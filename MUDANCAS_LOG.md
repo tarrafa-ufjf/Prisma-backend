@@ -2,6 +2,27 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-07 10:44:05 -03
+
+### Titulo
+
+Listagem e remocao administrativa de usuarios Supabase
+
+### Arquivos afetados
+
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/auth.py)
+- [`pre_api/routes/auth_routes.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/auth_routes.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foram adicionados os endpoints administrativos `GET /auth/users` e `DELETE /auth/users/<user_id>`, ambos protegidos pela verificacao de perfil admin via tabela `profiles`. A criacao de usuarios foi ajustada para `POST /auth/sign-up`, separando o fluxo de cadastro do recurso administrativo de usuarios.
+
+### Impacto
+
+Antes, o backend permitia apenas criar usuarios pelo endpoint de autenticacao. Agora, administradores tambem podem listar usuarios com paginacao opcional (`page` e `per_page`) e remover usuarios pelo ID usando a Admin API do Supabase, com suporte opcional a `should_soft_delete=true`.
+
 ## 2026-05-07 10:09:26 -03
 
 ### Titulo

@@ -97,7 +97,7 @@ class AuthMiddlewareTest(unittest.TestCase):
         with patch("auth.get_supabase_user", return_value=user):
             with patch("routes.auth_routes.get_current_profile", return_value={"id": "user-123", "role": "student"}):
                 response = self.client.post(
-                    "/auth/users",
+                    "/auth/sign-up",
                     headers={"Authorization": "Bearer valid.jwt"},
                     json={"email": "new@example.com", "password": "secret123"},
                 )
@@ -113,7 +113,7 @@ class AuthMiddlewareTest(unittest.TestCase):
             with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
                 with patch("routes.auth_routes.create_supabase_auth_user", return_value=created_user) as create_user:
                     response = self.client.post(
-                        "/auth/users",
+                        "/auth/sign-up",
                         headers={"Authorization": "Bearer valid.jwt"},
                         json={
                             "email": "new@example.com",
@@ -138,13 +138,69 @@ class AuthMiddlewareTest(unittest.TestCase):
         with patch("auth.get_supabase_user", return_value=user):
             with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
                 response = self.client.post(
-                    "/auth/users",
+                    "/auth/sign-up",
                     headers={"Authorization": "Bearer valid.jwt"},
                     json={"password": "secret123"},
                 )
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {"error": "email is required"})
+
+    def test_admin_can_list_users(self):
+        user = {"sub": "admin-123", "email": "admin@example.com"}
+        users = {"users": [{"id": "user-123", "email": "user@example.com"}]}
+
+        with patch("auth.get_supabase_user", return_value=user):
+            with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
+                with patch("routes.auth_routes.list_supabase_auth_users", return_value=users) as list_users:
+                    response = self.client.get(
+                        "/auth/users?page=2&per_page=25",
+                        headers={"Authorization": "Bearer valid.jwt"},
+                    )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), users)
+        list_users.assert_called_once_with(page=2, per_page=25)
+
+    def test_list_users_validates_pagination(self):
+        user = {"sub": "admin-123", "email": "admin@example.com"}
+
+        with patch("auth.get_supabase_user", return_value=user):
+            with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
+                response = self.client.get(
+                    "/auth/users?page=0",
+                    headers={"Authorization": "Bearer valid.jwt"},
+                )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "page must be a positive integer"})
+
+    def test_admin_can_delete_user(self):
+        user = {"sub": "admin-123", "email": "admin@example.com"}
+
+        with patch("auth.get_supabase_user", return_value=user):
+            with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
+                with patch("routes.auth_routes.delete_supabase_auth_user", return_value={}) as delete_user:
+                    response = self.client.delete(
+                        "/auth/users/user-123?should_soft_delete=true",
+                        headers={"Authorization": "Bearer valid.jwt"},
+                    )
+
+        self.assertEqual(response.status_code, 204)
+        delete_user.assert_called_once_with("user-123", should_soft_delete=True)
+
+    def test_delete_user_requires_admin_profile(self):
+        user = {"sub": "user-123", "email": "user@example.com"}
+
+        with patch("auth.get_supabase_user", return_value=user):
+            with patch("routes.auth_routes.get_current_profile", return_value={"id": "user-123", "role": "student"}):
+                response = self.client.delete(
+                    "/auth/users/other-user-123",
+                    headers={"Authorization": "Bearer valid.jwt"},
+                )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {"error": "admin role required"})
 
 
 if __name__ == "__main__":

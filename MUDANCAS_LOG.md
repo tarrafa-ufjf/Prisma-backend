@@ -2,6 +2,52 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-07 10:09:26 -03
+
+### Titulo
+
+Remocao do upsert manual de profiles na criacao de usuario
+
+### Arquivos afetados
+
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/auth.py)
+- [`pre_api/routes/auth_routes.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/auth_routes.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+O endpoint `POST /auth/users` deixou de criar ou atualizar manualmente a linha da tabela `profiles` apos criar um usuario no Supabase Auth. A funcao auxiliar de upsert em `profiles` foi removida, e os testes foram ajustados para validar apenas a criacao do usuario no Auth.
+
+### Impacto
+
+Antes, o backend podia sobrescrever/criar o `role` do novo usuario em `profiles` quando o payload incluia `role`. Agora, a criacao do perfil fica inteiramente sob responsabilidade do trigger configurado no Supabase, que cria o perfil automaticamente com `role = user`.
+
+## 2026-05-07 09:55:48 -03
+
+### Titulo
+
+Blueprint de autenticacao para criacao de usuarios Supabase
+
+### Arquivos afetados
+
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/auth.py)
+- [`pre_api/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/app.py)
+- [`pre_api/routes/__init__.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/__init__.py)
+- [`pre_api/routes/auth_routes.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/auth_routes.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foi adicionado o blueprint `auth_bp` com o endpoint `POST /auth/users` para criacao de usuarios no Supabase Auth via Admin API. Antes de criar o usuario, o endpoint consulta a tabela `profiles` com o token Bearer do usuario logado e exige que o perfil retornado tenha `role` igual a `admin`.
+
+O endpoint valida `email` e `password`, aceita campos opcionais do Supabase como `email_confirm`, `phone_confirm`, `user_metadata` e `app_metadata`, e pode criar/atualizar o perfil do novo usuario quando o payload incluir `role`.
+
+### Impacto
+
+Antes nao havia grupo de endpoints de autenticacao nem criacao administrativa de usuarios pelo backend. Agora usuarios autenticados so conseguem criar novos usuarios se a propria linha em `profiles` indicar papel de admin, mantendo a verificacao alinhada com as politicas RLS do Supabase.
+
 ## 2026-05-06 14:13:56 -03
 
 ### Titulo

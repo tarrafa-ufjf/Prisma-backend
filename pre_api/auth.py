@@ -21,6 +21,16 @@ class AuthServiceError(Exception):
     pass
 
 
+class SupabaseAdminConfigError(Exception):
+    pass
+
+
+class SupabaseAdminError(Exception):
+    def __init__(self, message, status_code=502):
+        self.message = message
+        self.status_code = status_code
+
+
 def requires_auth():
     if request.method == "OPTIONS":
         return False
@@ -100,6 +110,77 @@ def get_supabase_user(token):
     }
 
 
+def get_current_profile(token, user_id):
+    config = get_supabase_auth_config()
+    try:
+        response = requests.get(
+            config["profiles_url"],
+            headers={
+                "Authorization": f"Bearer {token}",
+                "apikey": config["api_key"],
+            },
+            params={
+                "select": "id,role",
+                "id": f"eq.{user_id}",
+                "limit": "1",
+            },
+            timeout=AUTH_REQUEST_TIMEOUT,
+        )
+    except requests.RequestException as exc:
+        raise AuthServiceError() from exc
+
+    if response.status_code in (401, 403):
+        raise AuthError("invalid or expired token")
+    if not response.ok:
+        raise AuthServiceError()
+
+    try:
+        profiles = response.json()
+    except ValueError as exc:
+        raise AuthServiceError() from exc
+
+    if not profiles:
+        return None
+    return profiles[0]
+
+
+def is_admin_profile(profile):
+    role = (profile or {}).get("role")
+    return isinstance(role, str) and role.lower() == "admin"
+
+
+def create_supabase_auth_user(user_data):
+    config = get_supabase_admin_config()
+    try:
+        response = requests.post(
+            config["admin_users_url"],
+            headers={
+                "Authorization": f"Bearer {config['service_role_key']}",
+                "apikey": config["service_role_key"],
+                "Content-Type": "application/json",
+            },
+            json=user_data,
+            timeout=AUTH_REQUEST_TIMEOUT,
+        )
+    except requests.RequestException as exc:
+        raise AuthServiceError() from exc
+
+    try:
+        response_data = response.json()
+    except ValueError:
+        response_data = {}
+
+    if response.status_code in (400, 409, 422):
+        message = response_data.get("msg") or response_data.get("message") or "could not create user"
+        raise SupabaseAdminError(message, response.status_code)
+    if response.status_code in (401, 403):
+        raise SupabaseAdminError("supabase admin request was rejected", 502)
+    if not response.ok:
+        raise AuthServiceError()
+
+    return response_data
+
+
 def get_supabase_auth_config():
     supabase_url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
     api_key = (
@@ -114,5 +195,20 @@ def get_supabase_auth_config():
 
     return {
         "api_key": api_key,
+        "profiles_url": f"{supabase_url}/rest/v1/profiles",
         "user_url": f"{supabase_url}/auth/v1/user",
+    }
+
+
+def get_supabase_admin_config():
+    supabase_url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+    service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+
+    if not supabase_url or not service_role_key:
+        raise SupabaseAdminConfigError()
+
+    return {
+        "admin_users_url": f"{supabase_url}/auth/v1/admin/users",
+        "profiles_url": f"{supabase_url}/rest/v1/profiles",
+        "service_role_key": service_role_key,
     }

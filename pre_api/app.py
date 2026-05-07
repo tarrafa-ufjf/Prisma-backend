@@ -1,7 +1,7 @@
 from flask import request, jsonify, Flask, send_file
 from processor import Processor
 from database import DatabaseAdmin
-from routes import student_bp, tutors_bp
+from routes import auth_bp, student_bp, tutors_bp
 from dotenv import load_dotenv
 from flask_cors import CORS
 import atexit
@@ -17,6 +17,7 @@ atexit.register(DatabaseAdmin.dispose_connector)
 
 app.register_blueprint(student_bp)
 app.register_blueprint(tutors_bp)
+app.register_blueprint(auth_bp)
 app.before_request(authenticate_request)
 
 

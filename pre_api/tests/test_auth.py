@@ -18,6 +18,7 @@ class AuthMiddlewareTest(unittest.TestCase):
     def setUp(self):
         os.environ["SUPABASE_URL"] = "https://example.supabase.co"
         os.environ["SUPABASE_API_KEY"] = "test-api-key"
+        os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "test-service-role-key"
 
         import app as app_module
 
@@ -27,6 +28,7 @@ class AuthMiddlewareTest(unittest.TestCase):
     def tearDown(self):
         os.environ.pop("SUPABASE_URL", None)
         os.environ.pop("SUPABASE_API_KEY", None)
+        os.environ.pop("SUPABASE_SERVICE_ROLE_KEY", None)
 
     def test_protected_api_without_token_returns_401(self):
         response = self.client.get("/subjects")
@@ -88,6 +90,61 @@ class AuthMiddlewareTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.get_json(), {"error": "authentication is not configured"})
+
+    def test_create_user_requires_admin_profile(self):
+        user = {"sub": "user-123", "email": "admin@example.com"}
+
+        with patch("auth.get_supabase_user", return_value=user):
+            with patch("routes.auth_routes.get_current_profile", return_value={"id": "user-123", "role": "student"}):
+                response = self.client.post(
+                    "/auth/users",
+                    headers={"Authorization": "Bearer valid.jwt"},
+                    json={"email": "new@example.com", "password": "secret123"},
+                )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {"error": "admin role required"})
+
+    def test_admin_can_create_user(self):
+        user = {"sub": "admin-123", "email": "admin@example.com"}
+        created_user = {"id": "new-user-123", "email": "new@example.com"}
+
+        with patch("auth.get_supabase_user", return_value=user):
+            with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
+                with patch("routes.auth_routes.create_supabase_auth_user", return_value=created_user) as create_user:
+                    response = self.client.post(
+                        "/auth/users",
+                        headers={"Authorization": "Bearer valid.jwt"},
+                        json={
+                            "email": "new@example.com",
+                            "password": "secret123",
+                            "email_confirm": True,
+                        },
+                    )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json(), {"user": created_user})
+        create_user.assert_called_once_with(
+            {
+                "email": "new@example.com",
+                "password": "secret123",
+                "email_confirm": True,
+            }
+        )
+
+    def test_create_user_validates_required_fields(self):
+        user = {"sub": "admin-123", "email": "admin@example.com"}
+
+        with patch("auth.get_supabase_user", return_value=user):
+            with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
+                response = self.client.post(
+                    "/auth/users",
+                    headers={"Authorization": "Bearer valid.jwt"},
+                    json={"password": "secret123"},
+                )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "email is required"})
 
 
 if __name__ == "__main__":

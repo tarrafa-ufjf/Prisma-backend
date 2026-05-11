@@ -17,8 +17,8 @@ from auth import (
 auth_bp = Blueprint("auth_routes", __name__, url_prefix="/auth")
 
 
-@auth_bp.route("/sign-up", methods=["POST", "OPTIONS"])
-def sign_up():
+@auth_bp.route("/users", methods=["POST", "OPTIONS"])
+def create_user():
     if request.method == "OPTIONS":
         return "", 200
 

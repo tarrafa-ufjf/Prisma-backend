@@ -97,7 +97,7 @@ class AuthMiddlewareTest(unittest.TestCase):
         with patch("auth.get_supabase_user", return_value=user):
             with patch("routes.auth_routes.get_current_profile", return_value={"id": "user-123", "role": "student"}):
                 response = self.client.post(
-                    "/auth/sign-up",
+                    "/auth/users",
                     headers={"Authorization": "Bearer valid.jwt"},
                     json={"email": "new@example.com", "password": "secret123"},
                 )
@@ -113,7 +113,7 @@ class AuthMiddlewareTest(unittest.TestCase):
             with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
                 with patch("routes.auth_routes.create_supabase_auth_user", return_value=created_user) as create_user:
                     response = self.client.post(
-                        "/auth/sign-up",
+                        "/auth/users",
                         headers={"Authorization": "Bearer valid.jwt"},
                         json={
                             "email": "new@example.com",
@@ -138,7 +138,7 @@ class AuthMiddlewareTest(unittest.TestCase):
         with patch("auth.get_supabase_user", return_value=user):
             with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
                 response = self.client.post(
-                    "/auth/sign-up",
+                    "/auth/users",
                     headers={"Authorization": "Bearer valid.jwt"},
                     json={"password": "secret123"},
                 )

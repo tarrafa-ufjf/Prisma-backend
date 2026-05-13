@@ -1,34 +1,59 @@
 import os
 
 from flask import g, jsonify, request
-import requests
+from flask_login import current_user
+from flask_security import SQLAlchemyUserDatastore, Security
+from flask_security.utils import hash_password
+from sqlalchemy.exc import IntegrityError
+
+from database import db
+from models import Role, User
 
 
-AUTH_EXEMPT_PATHS = {"/"}
-AUTH_REQUEST_TIMEOUT = 5
+AUTH_EXEMPT_PATHS = {"/", "/auth/login"}
+DEFAULT_USER_ROLE = "user"
+ADMIN_ROLE = "admin"
 
-
-class AuthConfigError(Exception):
-    pass
+security = Security()
+user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 
 
 class AuthError(Exception):
-    def __init__(self, message):
-        self.message = message
-
-
-class AuthServiceError(Exception):
-    pass
-
-
-class SupabaseAdminConfigError(Exception):
-    pass
-
-
-class SupabaseAdminError(Exception):
-    def __init__(self, message, status_code=502):
+    def __init__(self, message, status_code=400):
         self.message = message
         self.status_code = status_code
+
+
+def init_auth(app):
+    security.init_app(app, user_datastore)
+
+
+def initialize_auth_storage(app):
+    with app.app_context():
+        db.create_all()
+        ensure_roles()
+        seed_admin_from_env()
+        db.session.commit()
+
+
+def ensure_roles():
+    for role_name in (ADMIN_ROLE, DEFAULT_USER_ROLE):
+        if user_datastore.find_role(role_name) is None:
+            user_datastore.create_role(name=role_name)
+
+
+def seed_admin_from_env():
+    email = (os.getenv("AUTH_ADMIN_EMAIL") or "").strip()
+    password = os.getenv("AUTH_ADMIN_PASSWORD") or ""
+    if not email or not password or user_datastore.find_user(email=email):
+        return
+
+    user_datastore.create_user(
+        email=email,
+        password=hash_password(password),
+        active=True,
+        roles=[ADMIN_ROLE],
+    )
 
 
 def requires_auth():
@@ -41,241 +66,115 @@ def authenticate_request():
     if not requires_auth():
         return None
 
-    try:
-        claims = verify_request_token()
-    except AuthConfigError:
-        return jsonify({"error": "authentication is not configured"}), 500
-    except AuthServiceError:
-        return jsonify({"error": "authentication service unavailable"}), 503
-    except AuthError as exc:
-        return jsonify({"error": exc.message}), 401
+    if not current_user.is_authenticated:
+        return jsonify({"error": "authentication required"}), 401
 
-    g.auth_claims = claims
-    g.current_user = {
-        "id": claims.get("sub"),
-        "email": claims.get("email"),
+    g.current_user = serialize_user(current_user)
+    g.auth_claims = {
+        "sub": str(current_user.id),
+        "email": current_user.email,
+        "roles": get_user_role_names(current_user),
     }
     return None
 
 
-def verify_request_token():
-    authorization = request.headers.get("Authorization", "")
-    token = extract_bearer_token(authorization)
-    return get_supabase_user(token)
-
-
-def extract_bearer_token(authorization):
-    if not authorization:
-        raise AuthError("missing bearer token")
-
-    parts = authorization.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer" or not parts[1]:
-        raise AuthError("invalid authorization header")
-
-    return parts[1]
-
-
-def get_supabase_user(token):
-    config = get_supabase_auth_config()
-    try:
-        response = requests.get(
-            config["user_url"],
-            headers={
-                "Authorization": f"Bearer {token}",
-                "apikey": config["api_key"],
-            },
-            timeout=AUTH_REQUEST_TIMEOUT,
-        )
-    except requests.RequestException as exc:
-        raise AuthServiceError() from exc
-
-    if response.status_code in (401, 403):
-        raise AuthError("invalid or expired token")
-    if not response.ok:
-        raise AuthServiceError()
-
-    try:
-        user = response.json()
-    except ValueError as exc:
-        raise AuthServiceError() from exc
-
-    if not user.get("id"):
-        raise AuthError("invalid or expired token")
-
+def serialize_user(user):
     return {
-        "sub": user.get("id"),
-        "email": user.get("email"),
-        "role": user.get("role"),
-        "user": user,
+        "id": user.id,
+        "email": user.email,
+        "active": bool(user.active),
+        "roles": get_user_role_names(user),
     }
 
 
-def get_current_profile(token, user_id):
-    config = get_supabase_auth_config()
+def get_user_role_names(user):
+    return sorted(role.name for role in getattr(user, "roles", []) if role.name)
+
+
+def is_admin_user(user):
+    return ADMIN_ROLE in get_user_role_names(user)
+
+
+def require_admin_user():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "authentication required"}), 401
+    if not is_admin_user(current_user):
+        return jsonify({"error": "admin role required"}), 403
+    return None
+
+
+def create_local_user(email, password, role_names=None, active=True):
+    resolved_email = (email or "").strip()
+    if not resolved_email:
+        raise AuthError("email is required")
+    if not password:
+        raise AuthError("password is required")
+
+    roles = normalize_role_names(role_names)
+    ensure_roles_exist(roles)
+
     try:
-        response = requests.get(
-            config["profiles_url"],
-            headers={
-                "Authorization": f"Bearer {token}",
-                "apikey": config["api_key"],
-            },
-            params={
-                "select": "id,role",
-                "id": f"eq.{user_id}",
-                "limit": "1",
-            },
-            timeout=AUTH_REQUEST_TIMEOUT,
+        user = user_datastore.create_user(
+            email=resolved_email,
+            password=hash_password(password),
+            active=bool(active),
+            roles=roles,
         )
-    except requests.RequestException as exc:
-        raise AuthServiceError() from exc
+        db.session.commit()
+    except IntegrityError as exc:
+        db.session.rollback()
+        raise AuthError("email already exists", 409) from exc
 
-    if response.status_code in (401, 403):
-        raise AuthError("invalid or expired token")
-    if not response.ok:
-        raise AuthServiceError()
-
-    try:
-        profiles = response.json()
-    except ValueError as exc:
-        raise AuthServiceError() from exc
-
-    if not profiles:
-        return None
-    return profiles[0]
+    return user
 
 
-def is_admin_profile(profile):
-    role = (profile or {}).get("role")
-    return isinstance(role, str) and role.lower() == "admin"
-
-
-def create_supabase_auth_user(user_data):
-    config = get_supabase_admin_config()
-    try:
-        response = requests.post(
-            config["admin_users_url"],
-            headers={
-                "Authorization": f"Bearer {config['service_role_key']}",
-                "apikey": config["service_role_key"],
-                "Content-Type": "application/json",
-            },
-            json=user_data,
-            timeout=AUTH_REQUEST_TIMEOUT,
+def list_local_users(page=None, per_page=None):
+    query = User.query.order_by(User.id)
+    if page is not None or per_page is not None:
+        resolved_page = page or 1
+        resolved_per_page = per_page or 25
+        pagination = query.paginate(
+            page=resolved_page,
+            per_page=resolved_per_page,
+            error_out=False,
         )
-    except requests.RequestException as exc:
-        raise AuthServiceError() from exc
+        return {
+            "users": [serialize_user(user) for user in pagination.items],
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total": pagination.total,
+            "pages": pagination.pages,
+        }
 
-    try:
-        response_data = response.json()
-    except ValueError:
-        response_data = {}
-
-    if response.status_code in (400, 409, 422):
-        message = response_data.get("msg") or response_data.get("message") or "could not create user"
-        raise SupabaseAdminError(message, response.status_code)
-    if response.status_code in (401, 403):
-        raise SupabaseAdminError("supabase admin request was rejected", 502)
-    if not response.ok:
-        raise AuthServiceError()
-
-    return response_data
+    return {"users": [serialize_user(user) for user in query.all()]}
 
 
-def list_supabase_auth_users(page=None, per_page=None):
-    config = get_supabase_admin_config()
-    params = {}
-    if page is not None:
-        params["page"] = page
-    if per_page is not None:
-        params["per_page"] = per_page
+def deactivate_local_user(user_id):
+    user = db.session.get(User, user_id)
+    if user is None:
+        raise AuthError("user not found", 404)
 
-    try:
-        response = requests.get(
-            config["admin_users_url"],
-            headers=get_supabase_admin_headers(config),
-            params=params,
-            timeout=AUTH_REQUEST_TIMEOUT,
-        )
-    except requests.RequestException as exc:
-        raise AuthServiceError() from exc
-
-    return parse_supabase_admin_response(response)
+    user.active = False
+    db.session.commit()
+    return user
 
 
-def delete_supabase_auth_user(user_id, should_soft_delete=False):
-    config = get_supabase_admin_config()
-    params = {}
-    if should_soft_delete:
-        params["should_soft_delete"] = "true"
+def normalize_role_names(role_names):
+    if role_names is None:
+        return [DEFAULT_USER_ROLE]
+    if isinstance(role_names, str):
+        role_names = [role_names]
 
-    try:
-        response = requests.delete(
-            f"{config['admin_users_url']}/{user_id}",
-            headers=get_supabase_admin_headers(config),
-            params=params,
-            timeout=AUTH_REQUEST_TIMEOUT,
-        )
-    except requests.RequestException as exc:
-        raise AuthServiceError() from exc
+    roles = []
+    for role_name in role_names:
+        normalized = (role_name or "").strip().lower()
+        if normalized:
+            roles.append(normalized)
 
-    if response.status_code == 204:
-        return {}
-    return parse_supabase_admin_response(response)
+    return sorted(set(roles)) or [DEFAULT_USER_ROLE]
 
 
-def get_supabase_admin_headers(config):
-    return {
-        "Authorization": f"Bearer {config['service_role_key']}",
-        "apikey": config["service_role_key"],
-        "Content-Type": "application/json",
-    }
-
-
-def parse_supabase_admin_response(response):
-    try:
-        response_data = response.json()
-    except ValueError:
-        response_data = {}
-
-    if response.status_code in (400, 404, 409, 422):
-        message = response_data.get("msg") or response_data.get("message") or "supabase admin request failed"
-        raise SupabaseAdminError(message, response.status_code)
-    if response.status_code in (401, 403):
-        raise SupabaseAdminError("supabase admin request was rejected", 502)
-    if not response.ok:
-        raise AuthServiceError()
-
-    return response_data
-
-
-def get_supabase_auth_config():
-    supabase_url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
-    api_key = (
-        os.getenv("SUPABASE_API_KEY")
-        or os.getenv("SUPABASE_ANON_KEY")
-        or os.getenv("SUPABASE_PUBLISHABLE_KEY")
-        or ""
-    ).strip()
-
-    if not supabase_url or not api_key:
-        raise AuthConfigError()
-
-    return {
-        "api_key": api_key,
-        "profiles_url": f"{supabase_url}/rest/v1/profiles",
-        "user_url": f"{supabase_url}/auth/v1/user",
-    }
-
-
-def get_supabase_admin_config():
-    supabase_url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
-    service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
-
-    if not supabase_url or not service_role_key:
-        raise SupabaseAdminConfigError()
-
-    return {
-        "admin_users_url": f"{supabase_url}/auth/v1/admin/users",
-        "profiles_url": f"{supabase_url}/rest/v1/profiles",
-        "service_role_key": service_role_key,
-    }
+def ensure_roles_exist(role_names):
+    for role_name in role_names:
+        if user_datastore.find_role(role_name) is None:
+            user_datastore.create_role(name=role_name)

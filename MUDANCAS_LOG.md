@@ -2,6 +2,52 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-13 10:45:55 -03
+
+### Titulo
+
+Inicializacao manual das tabelas de autenticacao
+
+### Arquivos afetados
+
+- [`pre_api/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/app.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A `pre_api` deixou de executar `initialize_auth_storage(app)` automaticamente ao iniciar a aplicacao. A criacao das tabelas, roles e admin inicial da autenticacao local fica concentrada no comando manual `poetry run python install_auth.py`.
+
+### Impacto
+
+Antes, subir a API podia criar ou ajustar tabelas de autenticacao como efeito colateral. Agora, a API apenas usa as tabelas ja existentes; ambientes novos precisam executar explicitamente o instalador de auth antes de autenticar usuarios.
+
+## 2026-05-13 10:32:59 -03
+
+### Titulo
+
+Migracao para autenticacao local por sessao
+
+### Arquivos afetados
+
+- [`pre_api/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/app.py)
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/auth.py)
+- [`pre_api/models.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/models.py)
+- [`pre_api/routes/auth_routes.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/auth_routes.py)
+- [`pre_api/install_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/install_auth.py)
+- [`pre_api/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/pyproject.toml)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A autenticacao da `pre_api` deixou de depender do Supabase Auth e passou a usar usuarios locais com Flask-Security-Too, Flask-SQLAlchemy e cookies de sessao. Foram adicionados modelos locais de usuario/papel, bootstrap de tabelas/roles, seed opcional de admin por `AUTH_ADMIN_EMAIL` e `AUTH_ADMIN_PASSWORD`, endpoints JSON de login/logout/me e administracao local de usuarios.
+
+Os testes de autenticacao foram reescritos para validar login por sessao, protecao de endpoints, logout, permissoes de admin e desativacao de usuarios usando SQLite em memoria.
+
+### Impacto
+
+Antes, endpoints protegidos exigiam `Authorization: Bearer <token>` validado no Supabase e as rotas administrativas manipulavam usuarios via Supabase Admin API/perfil remoto. Agora, o frontend deve autenticar em `POST /auth/login`, enviar cookies de sessao nas chamadas protegidas e usar roles locais para autorizacao; `DELETE /auth/users/<id>` desativa o usuario local em vez de remover usuario no Supabase.
+
 ## 2026-05-07 10:44:05 -03
 
 ### Titulo

@@ -1,20 +1,58 @@
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, jsonify, request
+from flask_login import current_user, login_user, logout_user
+from flask_security.utils import verify_password
 
 from auth import (
     AuthError,
-    AuthServiceError,
-    SupabaseAdminConfigError,
-    SupabaseAdminError,
-    create_supabase_auth_user,
-    delete_supabase_auth_user,
-    extract_bearer_token,
-    get_current_profile,
-    is_admin_profile,
-    list_supabase_auth_users,
+    create_local_user,
+    deactivate_local_user,
+    list_local_users,
+    require_admin_user,
+    serialize_user,
+    user_datastore,
 )
 
 
 auth_bp = Blueprint("auth_routes", __name__, url_prefix="/auth")
+
+
+@auth_bp.route("/login", methods=["POST", "OPTIONS"])
+def login():
+    if request.method == "OPTIONS":
+        return "", 200
+
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip()
+    password = payload.get("password") or ""
+
+    if not email or not password:
+        return jsonify({"error": "email and password are required"}), 400
+
+    user = user_datastore.find_user(email=email)
+    if user is None or not user.active or not verify_password(password, user.password):
+        return jsonify({"error": "invalid email or password"}), 401
+
+    login_user(user)
+    return jsonify({"user": serialize_user(user)}), 200
+
+
+@auth_bp.route("/logout", methods=["POST", "OPTIONS"])
+def logout():
+    if request.method == "OPTIONS":
+        return "", 200
+
+    logout_user()
+    return "", 204
+
+
+@auth_bp.route("/me", methods=["GET", "OPTIONS"])
+def me():
+    if request.method == "OPTIONS":
+        return "", 200
+
+    if not current_user.is_authenticated:
+        return jsonify({"error": "authentication required"}), 401
+    return jsonify({"user": serialize_user(current_user)}), 200
 
 
 @auth_bp.route("/users", methods=["POST", "OPTIONS"])
@@ -22,25 +60,22 @@ def create_user():
     if request.method == "OPTIONS":
         return "", 200
 
-    admin_error_response = require_admin_profile()
+    admin_error_response = require_admin_user()
     if admin_error_response is not None:
         return admin_error_response
 
     payload = request.get_json(silent=True) or {}
-    user_data, validation_error = build_create_user_payload(payload)
-    if validation_error:
-        return jsonify({"error": validation_error}), 400
-
     try:
-        user = create_supabase_auth_user(user_data)
-    except SupabaseAdminConfigError:
-        return jsonify({"error": "supabase admin is not configured"}), 500
-    except SupabaseAdminError as exc:
+        user = create_local_user(
+            payload.get("email"),
+            payload.get("password"),
+            role_names=payload.get("roles") or payload.get("role"),
+            active=payload.get("active", True),
+        )
+    except AuthError as exc:
         return jsonify({"error": exc.message}), exc.status_code
-    except AuthServiceError:
-        return jsonify({"error": "supabase admin service unavailable"}), 503
 
-    return jsonify({"user": user}), 201
+    return jsonify({"user": serialize_user(user)}), 201
 
 
 @auth_bp.route("/users", methods=["GET", "OPTIONS"])
@@ -48,7 +83,7 @@ def list_users():
     if request.method == "OPTIONS":
         return "", 200
 
-    admin_error_response = require_admin_profile()
+    admin_error_response = require_admin_user()
     if admin_error_response is not None:
         return admin_error_response
 
@@ -56,82 +91,24 @@ def list_users():
     if validation_error:
         return jsonify({"error": validation_error}), 400
 
-    try:
-        users = list_supabase_auth_users(page=page, per_page=per_page)
-    except SupabaseAdminConfigError:
-        return jsonify({"error": "supabase admin is not configured"}), 500
-    except SupabaseAdminError as exc:
-        return jsonify({"error": exc.message}), exc.status_code
-    except AuthServiceError:
-        return jsonify({"error": "supabase admin service unavailable"}), 503
-
-    return jsonify(users), 200
+    return jsonify(list_local_users(page=page, per_page=per_page)), 200
 
 
-@auth_bp.route("/users/<user_id>", methods=["DELETE", "OPTIONS"])
+@auth_bp.route("/users/<int:user_id>", methods=["DELETE", "OPTIONS"])
 def delete_user(user_id):
     if request.method == "OPTIONS":
         return "", 200
 
-    admin_error_response = require_admin_profile()
+    admin_error_response = require_admin_user()
     if admin_error_response is not None:
         return admin_error_response
 
-    should_soft_delete = parse_bool_query_param("should_soft_delete")
-
     try:
-        delete_supabase_auth_user(user_id, should_soft_delete=should_soft_delete)
-    except SupabaseAdminConfigError:
-        return jsonify({"error": "supabase admin is not configured"}), 500
-    except SupabaseAdminError as exc:
+        deactivate_local_user(user_id)
+    except AuthError as exc:
         return jsonify({"error": exc.message}), exc.status_code
-    except AuthServiceError:
-        return jsonify({"error": "supabase admin service unavailable"}), 503
 
     return "", 204
-
-
-def require_admin_profile():
-    token = extract_bearer_token(request.headers.get("Authorization", ""))
-    user_id = g.current_user.get("id")
-
-    try:
-        profile = get_current_profile(token, user_id)
-    except AuthError as exc:
-        return jsonify({"error": exc.message}), 401
-    except AuthServiceError:
-        return jsonify({"error": "authentication service unavailable"}), 503
-
-    if not is_admin_profile(profile):
-        return jsonify({"error": "admin role required"}), 403
-    return None
-
-
-def build_create_user_payload(payload):
-    email = (payload.get("email") or "").strip()
-    password = payload.get("password")
-
-    if not email:
-        return None, "email is required"
-    if not password:
-        return None, "password is required"
-
-    user_data = {
-        "email": email,
-        "password": password,
-    }
-
-    for optional_key in (
-        "phone",
-        "email_confirm",
-        "phone_confirm",
-        "user_metadata",
-        "app_metadata",
-    ):
-        if optional_key in payload:
-            user_data[optional_key] = payload[optional_key]
-
-    return user_data, None
 
 
 def parse_pagination_params():
@@ -159,8 +136,3 @@ def parse_positive_int_query_param(name):
     if value < 1:
         return None, f"{name} must be a positive integer"
     return value, None
-
-
-def parse_bool_query_param(name):
-    raw_value = (request.args.get(name) or "").strip().lower()
-    return raw_value in {"1", "true", "yes"}

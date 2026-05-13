@@ -1,5 +1,4 @@
 import os
-import requests
 import sys
 import unittest
 from pathlib import Path
@@ -13,34 +12,97 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(PRE_API_DIR) not in sys.path:
     sys.path.insert(0, str(PRE_API_DIR))
 
+os.environ["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+os.environ["SECRET_KEY"] = "test-secret-key"
+os.environ["SECURITY_PASSWORD_SALT"] = "test-password-salt"
+os.environ["AUTH_AUTO_CREATE_TABLES"] = "true"
 
-class AuthMiddlewareTest(unittest.TestCase):
+import app as app_module
+from auth import create_local_user, ensure_roles
+from database import db
+
+
+class AuthSessionTest(unittest.TestCase):
     def setUp(self):
-        os.environ["SUPABASE_URL"] = "https://example.supabase.co"
-        os.environ["SUPABASE_API_KEY"] = "test-api-key"
-        os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "test-service-role-key"
-
-        import app as app_module
-
         self.app_module = app_module
-        self.client = app_module.app.test_client()
+        self.app = app_module.app
+        self.app.config.update(TESTING=True)
+        self.client = self.app.test_client()
+
+        with self.app.app_context():
+            db.drop_all()
+            db.create_all()
+            ensure_roles()
+            db.session.commit()
 
     def tearDown(self):
-        os.environ.pop("SUPABASE_URL", None)
-        os.environ.pop("SUPABASE_API_KEY", None)
-        os.environ.pop("SUPABASE_SERVICE_ROLE_KEY", None)
+        with self.app.app_context():
+            db.session.remove()
+            db.drop_all()
 
-    def test_protected_api_without_token_returns_401(self):
+    def create_user(self, email="user@example.com", password="secret123", roles=None):
+        with self.app.app_context():
+            user = create_local_user(email, password, role_names=roles)
+            return user.id
+
+    def login(self, email="user@example.com", password="secret123"):
+        return self.client.post(
+            "/auth/login",
+            json={"email": email, "password": password},
+        )
+
+    def test_protected_api_without_session_returns_401(self):
         response = self.client.get("/subjects")
 
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.get_json(), {"error": "missing bearer token"})
+        self.assertEqual(response.get_json(), {"error": "authentication required"})
 
-    def test_malformed_authorization_header_returns_401(self):
-        response = self.client.get("/subjects", headers={"Authorization": "Token abc"})
+    def test_login_succeeds_and_sets_session_cookie(self):
+        self.create_user()
+
+        response = self.login()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("session=", response.headers.get("Set-Cookie", ""))
+        self.assertEqual(response.get_json()["user"]["email"], "user@example.com")
+
+    def test_login_rejects_invalid_password(self):
+        self.create_user()
+
+        response = self.login(password="wrong")
 
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.get_json(), {"error": "invalid authorization header"})
+        self.assertEqual(response.get_json(), {"error": "invalid email or password"})
+
+    def test_me_returns_current_user_when_logged_in(self):
+        self.create_user()
+        self.login()
+
+        response = self.client.get("/auth/me")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["user"]["email"], "user@example.com")
+
+    def test_logout_invalidates_session(self):
+        self.create_user()
+        self.login()
+
+        logout_response = self.client.post("/auth/logout")
+        me_response = self.client.get("/auth/me")
+
+        self.assertEqual(logout_response.status_code, 204)
+        self.assertEqual(me_response.status_code, 401)
+        self.assertEqual(me_response.get_json(), {"error": "authentication required"})
+
+    def test_valid_session_allows_protected_request(self):
+        self.create_user()
+        self.login()
+
+        with patch("routes.student_routes.build_all_subjects", return_value=[{"id": 1}]):
+            response = self.client.get("/subjects")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"data": [{"id": 1}]})
 
     def test_options_request_bypasses_auth(self):
         response = self.client.open("/subjects", method="OPTIONS")
@@ -55,149 +117,81 @@ class AuthMiddlewareTest(unittest.TestCase):
         finally:
             response.close()
 
-    def test_valid_token_verified_by_supabase_allows_request(self):
-        user = {"sub": "user-123", "email": "user@example.com"}
+    def test_non_admin_cannot_create_user(self):
+        self.create_user()
+        self.login()
 
-        with patch("auth.get_supabase_user", return_value=user):
-            with patch("routes.student_routes.build_all_subjects", return_value=[{"id": 1}]):
-                response = self.client.get("/subjects", headers={"Authorization": "Bearer valid.jwt"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json(), {"data": [{"id": 1}]})
-
-    def test_invalid_token_rejected_by_supabase_returns_401(self):
-        class Response:
-            status_code = 401
-            ok = False
-
-        with patch("auth.requests.get", return_value=Response()):
-            response = self.client.get("/subjects", headers={"Authorization": "Bearer invalid.jwt"})
-
-        self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.get_json(), {"error": "invalid or expired token"})
-
-    def test_supabase_auth_unavailable_fails_closed(self):
-        with patch("auth.requests.get", side_effect=requests.RequestException("boom")):
-            response = self.client.get("/subjects", headers={"Authorization": "Bearer valid.jwt"})
-
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.get_json(), {"error": "authentication service unavailable"})
-
-    def test_missing_supabase_env_fails_closed(self):
-        os.environ.pop("SUPABASE_URL", None)
-
-        response = self.client.get("/subjects", headers={"Authorization": "Bearer token"})
-
-        self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.get_json(), {"error": "authentication is not configured"})
-
-    def test_create_user_requires_admin_profile(self):
-        user = {"sub": "user-123", "email": "admin@example.com"}
-
-        with patch("auth.get_supabase_user", return_value=user):
-            with patch("routes.auth_routes.get_current_profile", return_value={"id": "user-123", "role": "student"}):
-                response = self.client.post(
-                    "/auth/users",
-                    headers={"Authorization": "Bearer valid.jwt"},
-                    json={"email": "new@example.com", "password": "secret123"},
-                )
+        response = self.client.post(
+            "/auth/users",
+            json={"email": "new@example.com", "password": "secret123"},
+        )
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.get_json(), {"error": "admin role required"})
 
     def test_admin_can_create_user(self):
-        user = {"sub": "admin-123", "email": "admin@example.com"}
-        created_user = {"id": "new-user-123", "email": "new@example.com"}
+        self.create_user(email="admin@example.com", roles=["admin"])
+        self.login(email="admin@example.com")
 
-        with patch("auth.get_supabase_user", return_value=user):
-            with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
-                with patch("routes.auth_routes.create_supabase_auth_user", return_value=created_user) as create_user:
-                    response = self.client.post(
-                        "/auth/users",
-                        headers={"Authorization": "Bearer valid.jwt"},
-                        json={
-                            "email": "new@example.com",
-                            "password": "secret123",
-                            "email_confirm": True,
-                        },
-                    )
-
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.get_json(), {"user": created_user})
-        create_user.assert_called_once_with(
-            {
+        response = self.client.post(
+            "/auth/users",
+            json={
                 "email": "new@example.com",
                 "password": "secret123",
-                "email_confirm": True,
-            }
+                "roles": ["user"],
+            },
         )
 
-    def test_create_user_validates_required_fields(self):
-        user = {"sub": "admin-123", "email": "admin@example.com"}
-
-        with patch("auth.get_supabase_user", return_value=user):
-            with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
-                response = self.client.post(
-                    "/auth/users",
-                    headers={"Authorization": "Bearer valid.jwt"},
-                    json={"password": "secret123"},
-                )
-
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json(), {"error": "email is required"})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.get_json()["user"],
+            {
+                "id": 2,
+                "email": "new@example.com",
+                "active": True,
+                "roles": ["user"],
+            },
+        )
 
     def test_admin_can_list_users(self):
-        user = {"sub": "admin-123", "email": "admin@example.com"}
-        users = {"users": [{"id": "user-123", "email": "user@example.com"}]}
+        self.create_user(email="admin@example.com", roles=["admin"])
+        self.create_user(email="user@example.com")
+        self.login(email="admin@example.com")
 
-        with patch("auth.get_supabase_user", return_value=user):
-            with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
-                with patch("routes.auth_routes.list_supabase_auth_users", return_value=users) as list_users:
-                    response = self.client.get(
-                        "/auth/users?page=2&per_page=25",
-                        headers={"Authorization": "Bearer valid.jwt"},
-                    )
+        response = self.client.get("/auth/users?page=1&per_page=10")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json(), users)
-        list_users.assert_called_once_with(page=2, per_page=25)
+        payload = response.get_json()
+        self.assertEqual(payload["total"], 2)
+        self.assertEqual([user["email"] for user in payload["users"]], ["admin@example.com", "user@example.com"])
 
     def test_list_users_validates_pagination(self):
-        user = {"sub": "admin-123", "email": "admin@example.com"}
+        self.create_user(email="admin@example.com", roles=["admin"])
+        self.login(email="admin@example.com")
 
-        with patch("auth.get_supabase_user", return_value=user):
-            with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
-                response = self.client.get(
-                    "/auth/users?page=0",
-                    headers={"Authorization": "Bearer valid.jwt"},
-                )
+        response = self.client.get("/auth/users?page=0")
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {"error": "page must be a positive integer"})
 
-    def test_admin_can_delete_user(self):
-        user = {"sub": "admin-123", "email": "admin@example.com"}
+    def test_admin_can_deactivate_user(self):
+        self.create_user(email="admin@example.com", roles=["admin"])
+        target_id = self.create_user(email="user@example.com")
+        self.login(email="admin@example.com")
 
-        with patch("auth.get_supabase_user", return_value=user):
-            with patch("routes.auth_routes.get_current_profile", return_value={"id": "admin-123", "role": "admin"}):
-                with patch("routes.auth_routes.delete_supabase_auth_user", return_value={}) as delete_user:
-                    response = self.client.delete(
-                        "/auth/users/user-123?should_soft_delete=true",
-                        headers={"Authorization": "Bearer valid.jwt"},
-                    )
+        response = self.client.delete(f"/auth/users/{target_id}")
 
         self.assertEqual(response.status_code, 204)
-        delete_user.assert_called_once_with("user-123", should_soft_delete=True)
+        users_response = self.client.get("/auth/users")
+        users = {user["email"]: user for user in users_response.get_json()["users"]}
+        self.assertFalse(users["user@example.com"]["active"])
 
-    def test_delete_user_requires_admin_profile(self):
-        user = {"sub": "user-123", "email": "user@example.com"}
+    def test_delete_user_requires_admin(self):
+        target_id = self.create_user(email="target@example.com")
+        self.create_user(email="user@example.com")
+        self.login(email="user@example.com")
 
-        with patch("auth.get_supabase_user", return_value=user):
-            with patch("routes.auth_routes.get_current_profile", return_value={"id": "user-123", "role": "student"}):
-                response = self.client.delete(
-                    "/auth/users/other-user-123",
-                    headers={"Authorization": "Bearer valid.jwt"},
-                )
+        response = self.client.delete(f"/auth/users/{target_id}")
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.get_json(), {"error": "admin role required"})

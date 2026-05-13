@@ -2,6 +2,27 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-13 [DATA-HORA-AGORA]
+
+### Titulo
+
+Implementacao de suporte a "Remember Me" no login
+
+### Arquivos afetados
+
+- [`pre_api/app.py`]
+- [`pre_api/routes/auth_routes.py`]
+
+### Resumo
+
+Adicionado suporte ao parametro `remember_me` no endpoint `POST /auth/login`. Quando `remember_me: true` eh enviado no payload, o Flask-Login cria um cookie persistente (remember me cookie) que dura 30 dias por padrao. Configuradas opcoes `REMEMBER_COOKIE_SECURE` e `REMEMBER_COOKIE_DURATION` para controlar a seguranca e duracao do cookie via variaveis de ambiente.
+
+### Impacto
+
+**Antes**: Usuario voltava para login ao fechar o navegador inteiro, pois a sessao era efemera (session cookie apagado ao fechar navegador).
+
+**Agora**: Se marcar "manter logado" no login, o usuario permanece autenticado por 30 dias (ou valor configurado em `REMEMBER_COOKIE_DURATION`). Deslogar (`POST /auth/logout`) ainda invalida a sessao imediatamente.
+
 ## 2026-05-13 10:45:55 -03
 
 ### Titulo

@@ -34,6 +34,8 @@ app.config.update(
     SESSION_COOKIE_SAMESITE=os.getenv("SESSION_COOKIE_SAMESITE", "Lax"),
     SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true",
     REMEMBER_COOKIE_SAMESITE=os.getenv("REMEMBER_COOKIE_SAMESITE", "Lax"),
+    REMEMBER_COOKIE_SECURE=os.getenv("REMEMBER_COOKIE_SECURE", "false").lower() == "true",
+    REMEMBER_COOKIE_DURATION=int(os.getenv("REMEMBER_COOKIE_DURATION", 30)),
     SQLALCHEMY_DATABASE_URI=os.getenv("SQLALCHEMY_DATABASE_URI") or _build_local_database_uri(),
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     SQLALCHEMY_ENGINE_OPTIONS={"pool_pre_ping": True},
@@ -118,4 +120,4 @@ def hello():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0",debug=True)

@@ -24,6 +24,7 @@ def login():
     payload = request.get_json(silent=True) or {}
     email = (payload.get("email") or "").strip()
     password = payload.get("password") or ""
+    remember_me = payload.get("remember_me", False)
 
     if not email or not password:
         return jsonify({"error": "email and password are required"}), 400
@@ -32,7 +33,7 @@ def login():
     if user is None or not user.active or not verify_password(password, user.password):
         return jsonify({"error": "invalid email or password"}), 401
 
-    login_user(user)
+    login_user(user, remember=remember_me)
     return jsonify({"user": serialize_user(user)}), 200
 
 

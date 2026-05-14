@@ -2,6 +2,27 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-14 13:07:39 -03
+
+### Titulo
+
+Exclusao do admin logado na listagem de usuarios
+
+### Arquivos afetados
+
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/auth.py)
+- [`pre_api/routes/auth_routes.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/auth_routes.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A rota `GET /auth/users` passou a excluir da listagem o usuario autenticado que fez a requisicao, alem de continuar retornando apenas usuarios ativos. A paginacao e o total tambem consideram essa exclusao.
+
+### Impacto
+
+Antes, o admin logado aparecia na propria lista administrativa de usuarios, podendo ser editado ou removido acidentalmente pelo painel. Agora, a conta atual nao aparece nesse retorno.
+
 ## 2026-05-14 10:49:58 -03
 
 ### Titulo

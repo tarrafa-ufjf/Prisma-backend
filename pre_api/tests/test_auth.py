@@ -164,9 +164,9 @@ class AuthSessionTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
-        self.assertEqual(payload["total"], 2)
-        self.assertEqual([user["email"] for user in payload["users"]], ["admin@example.com", "user@example.com"])
-        self.assertEqual([user["id"] for user in payload["users"]], [1, active_user_id])
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual([user["email"] for user in payload["users"]], ["user@example.com"])
+        self.assertEqual([user["id"] for user in payload["users"]], [active_user_id])
 
     def test_list_users_validates_pagination(self):
         self.create_user(email="admin@example.com", roles=["admin"])

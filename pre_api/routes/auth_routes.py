@@ -93,7 +93,13 @@ def list_users():
     if validation_error:
         return jsonify({"error": validation_error}), 400
 
-    return jsonify(list_local_users(page=page, per_page=per_page)), 200
+    return jsonify(
+        list_local_users(
+            page=page,
+            per_page=per_page,
+            exclude_user_id=current_user.id,
+        )
+    ), 200
 
 
 @auth_bp.route("/users/<int:user_id>", methods=["PATCH", "OPTIONS"])

@@ -129,8 +129,11 @@ def create_local_user(email, password, role_names=None, active=True):
     return user
 
 
-def list_local_users(page=None, per_page=None):
+def list_local_users(page=None, per_page=None, exclude_user_id=None):
     query = User.query.filter(User.active.is_(True)).order_by(User.id)
+    if exclude_user_id is not None:
+        query = query.filter(User.id != exclude_user_id)
+
     if page is not None or per_page is not None:
         resolved_page = page or 1
         resolved_per_page = per_page or 25

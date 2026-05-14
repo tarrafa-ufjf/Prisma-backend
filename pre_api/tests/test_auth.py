@@ -155,8 +155,10 @@ class AuthSessionTest(unittest.TestCase):
 
     def test_admin_can_list_users(self):
         self.create_user(email="admin@example.com", roles=["admin"])
-        self.create_user(email="user@example.com")
+        active_user_id = self.create_user(email="user@example.com")
+        inactive_user_id = self.create_user(email="inactive@example.com")
         self.login(email="admin@example.com")
+        self.client.delete(f"/auth/users/{inactive_user_id}")
 
         response = self.client.get("/auth/users?page=1&per_page=10")
 
@@ -164,6 +166,7 @@ class AuthSessionTest(unittest.TestCase):
         payload = response.get_json()
         self.assertEqual(payload["total"], 2)
         self.assertEqual([user["email"] for user in payload["users"]], ["admin@example.com", "user@example.com"])
+        self.assertEqual([user["id"] for user in payload["users"]], [1, active_user_id])
 
     def test_list_users_validates_pagination(self):
         self.create_user(email="admin@example.com", roles=["admin"])
@@ -173,6 +176,85 @@ class AuthSessionTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {"error": "page must be a positive integer"})
+
+    def test_admin_can_update_user(self):
+        self.create_user(email="admin@example.com", roles=["admin"])
+        target_id = self.create_user(email="user@example.com")
+        self.login(email="admin@example.com")
+
+        response = self.client.patch(
+            f"/auth/users/{target_id}",
+            json={
+                "email": "updated@example.com",
+                "roles": ["admin"],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.get_json()["user"],
+            {
+                "id": target_id,
+                "email": "updated@example.com",
+                "active": True,
+                "roles": ["admin"],
+            },
+        )
+
+        self.client.post("/auth/logout")
+        old_login_response = self.login(email="updated@example.com", password="secret123")
+
+        self.assertEqual(old_login_response.status_code, 200)
+
+    def test_update_user_rejects_unsupported_fields(self):
+        self.create_user(email="admin@example.com", roles=["admin"])
+        target_id = self.create_user(email="user@example.com")
+        self.login(email="admin@example.com")
+
+        response = self.client.patch(
+            f"/auth/users/{target_id}",
+            json={"active": False, "password": "newsecret123"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "unsupported fields: active, password"})
+
+    def test_update_user_only_accepts_patch(self):
+        self.create_user(email="admin@example.com", roles=["admin"])
+        target_id = self.create_user(email="user@example.com")
+        self.login(email="admin@example.com")
+
+        response = self.client.put(
+            f"/auth/users/{target_id}",
+            json={"email": "updated@example.com"},
+        )
+
+        self.assertEqual(response.status_code, 405)
+
+    def test_update_user_requires_admin(self):
+        target_id = self.create_user(email="target@example.com")
+        self.create_user(email="user@example.com")
+        self.login(email="user@example.com")
+
+        response = self.client.patch(
+            f"/auth/users/{target_id}",
+            json={"email": "updated@example.com"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {"error": "admin role required"})
+
+    def test_update_user_returns_404_for_missing_user(self):
+        self.create_user(email="admin@example.com", roles=["admin"])
+        self.login(email="admin@example.com")
+
+        response = self.client.patch(
+            "/auth/users/999",
+            json={"email": "updated@example.com"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.get_json(), {"error": "user not found"})
 
     def test_admin_can_deactivate_user(self):
         self.create_user(email="admin@example.com", roles=["admin"])
@@ -184,7 +266,7 @@ class AuthSessionTest(unittest.TestCase):
         self.assertEqual(response.status_code, 204)
         users_response = self.client.get("/auth/users")
         users = {user["email"]: user for user in users_response.get_json()["users"]}
-        self.assertFalse(users["user@example.com"]["active"])
+        self.assertNotIn("user@example.com", users)
 
     def test_delete_user_requires_admin(self):
         target_id = self.create_user(email="target@example.com")

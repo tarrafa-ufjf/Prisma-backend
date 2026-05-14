@@ -13,6 +13,7 @@ from models import Role, User
 AUTH_EXEMPT_PATHS = {"/", "/auth/login"}
 DEFAULT_USER_ROLE = "user"
 ADMIN_ROLE = "admin"
+UNSET = object()
 
 security = Security()
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
@@ -129,7 +130,7 @@ def create_local_user(email, password, role_names=None, active=True):
 
 
 def list_local_users(page=None, per_page=None):
-    query = User.query.order_by(User.id)
+    query = User.query.filter(User.active.is_(True)).order_by(User.id)
     if page is not None or per_page is not None:
         resolved_page = page or 1
         resolved_per_page = per_page or 25
@@ -156,6 +157,38 @@ def deactivate_local_user(user_id):
 
     user.active = False
     db.session.commit()
+    return user
+
+
+def update_local_user(
+    user_id,
+    email=UNSET,
+    role_names=UNSET,
+):
+    user = db.session.get(User, user_id)
+    if user is None:
+        raise AuthError("user not found", 404)
+
+    if all(value is UNSET for value in (email, role_names)):
+        raise AuthError("no editable fields provided")
+
+    if email is not UNSET:
+        resolved_email = (email or "").strip()
+        if not resolved_email:
+            raise AuthError("email is required")
+        user.email = resolved_email
+
+    if role_names is not UNSET:
+        roles = normalize_role_names(role_names)
+        ensure_roles_exist(roles)
+        user.roles = [user_datastore.find_role(role_name) for role_name in roles]
+
+    try:
+        db.session.commit()
+    except IntegrityError as exc:
+        db.session.rollback()
+        raise AuthError("email already exists", 409) from exc
+
     return user
 
 

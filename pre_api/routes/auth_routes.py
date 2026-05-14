@@ -9,6 +9,7 @@ from auth import (
     list_local_users,
     require_admin_user,
     serialize_user,
+    update_local_user,
     user_datastore,
 )
 
@@ -95,8 +96,40 @@ def list_users():
     return jsonify(list_local_users(page=page, per_page=per_page)), 200
 
 
+@auth_bp.route("/users/<int:user_id>", methods=["PATCH", "OPTIONS"])
+def update_user(user_id):
+    if request.method == "OPTIONS":
+        return "", 200
+
+    admin_error_response = require_admin_user()
+    if admin_error_response is not None:
+        return admin_error_response
+
+    payload = request.get_json(silent=True) or {}
+    allowed_fields = {"email", "role", "roles"}
+    unsupported_fields = sorted(set(payload) - allowed_fields)
+    if unsupported_fields:
+        return jsonify({"error": f"unsupported fields: {', '.join(unsupported_fields)}"}), 400
+
+    updates = {}
+    if "email" in payload:
+        updates["email"] = payload["email"]
+    if "roles" in payload:
+        updates["role_names"] = payload["roles"]
+    elif "role" in payload:
+        updates["role_names"] = payload["role"]
+
+    try:
+        user = update_local_user(user_id, **updates)
+    except AuthError as exc:
+        return jsonify({"error": exc.message}), exc.status_code
+
+    return jsonify({"user": serialize_user(user)}), 200
+
+
 @auth_bp.route("/users/<int:user_id>", methods=["DELETE", "OPTIONS"])
 def delete_user(user_id):
+    print("Opa")
     if request.method == "OPTIONS":
         return "", 200
 

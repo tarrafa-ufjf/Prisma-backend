@@ -2,6 +2,68 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-14 10:49:58 -03
+
+### Titulo
+
+Listagem obrigatoria apenas de usuarios ativos
+
+### Arquivos afetados
+
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/auth.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A consulta usada por `GET /auth/users` passou a filtrar obrigatoriamente `User.active = true`, sem parametro opcional. O teste de listagem foi ajustado para garantir que usuarios desativados nao aparecem nem entram no total paginado.
+
+### Impacto
+
+Antes, usuarios desativados pelo endpoint `DELETE /auth/users/<id>` continuavam aparecendo na listagem administrativa com `active: false`. Agora, a listagem retorna apenas usuarios ativos.
+
+## 2026-05-14 10:18:04 -03
+
+### Titulo
+
+Restricao do endpoint de edicao de usuarios
+
+### Arquivos afetados
+
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/auth.py)
+- [`pre_api/routes/auth_routes.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/auth_routes.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+O endpoint administrativo de edicao de usuarios passou a aceitar apenas `PATCH /auth/users/<user_id>` e agora permite alterar somente `email`, `role` ou `roles`. Campos como `password` e `active` sao rejeitados com erro 400.
+
+### Impacto
+
+Antes, a edicao administrativa tambem aceitava `PUT` e podia alterar senha e status ativo. Agora, o contrato fica mais restrito: edicao de usuario cobre apenas email e permissoes, mantendo senha e ativacao/desativacao fora desse endpoint.
+
+## 2026-05-14 10:15:29 -03
+
+### Titulo
+
+Endpoint administrativo para edicao de usuarios locais
+
+### Arquivos afetados
+
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/auth.py)
+- [`pre_api/routes/auth_routes.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/auth_routes.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Adicionado o endpoint administrativo `PATCH/PUT /auth/users/<user_id>` para editar usuarios locais. Administradores podem atualizar email, senha, roles e status ativo do usuario; o backend valida usuario inexistente, campos obrigatorios e conflito de email.
+
+### Impacto
+
+Antes, administradores podiam criar, listar e desativar usuarios locais, mas nao editar dados existentes. Agora, a administracao de usuarios tambem permite alterar credenciais, permissoes e reativar/desativar usuarios pelo mesmo recurso `/auth/users`.
+
 ## 2026-05-13 [DATA-HORA-AGORA]
 
 ### Titulo

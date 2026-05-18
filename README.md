@@ -56,9 +56,11 @@ No diretório **pre_api** é necessário rodar apenas:
 poetry run python app.py
 ```
 
-Feito isso, no terminal da **API**, acesse o link disponibilizado pelo Flask. 
+Feito isso, no terminal da **API**, acesse o link disponibilizado pelo Flask.
 
-Deve-se acessar a rota ```/analysis``` pelo Postman/Insomnia onde será necessário inserir as informações de acesso ao banco de dados institucional, como o link do host, a porta, o usuário, etc. Após isso, o sistema irá iniciar a análise global enquanto o usuário pode fazer as análises locais.
+A configuracao de conexao com o banco Moodle deve ser cadastrada por um usuario administrador em `PUT /admin/moodle-config`. O backend testa a conexao, detecta a versao do Moodle e salva a configuracao no PostgreSQL local. A rota `GET /admin/moodle-config` retorna os dados cadastrados sem expor a senha, e `POST /admin/moodle-config/test` testa uma configuracao sem salvar.
+
+Depois que a configuracao estiver salva, a rota `PUT /analysis` inicia a analise usando a configuracao persistida. O corpo da requisicao deve conter apenas opcoes operacionais, como `{"channel": "diario"}`.
 
 Para configurar os canais de analise, observers de indicadores e agendamentos automaticos, consulte [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](CONFIGURACAO_OBSERVERS_SCHEDULER.md).
 

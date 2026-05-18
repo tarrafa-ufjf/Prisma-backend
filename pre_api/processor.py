@@ -21,6 +21,9 @@ class Processor:
         batch_size=1,
         channel="diario",
     ):
+        if db_config is None:
+            raise ValueError("moodle config not found")
+
         connector = self.connector_inst.get_connection_with_config(db_config)
         version = self.get_version(institution_id=1, db_config=db_config)
 
@@ -61,11 +64,11 @@ class Processor:
             print("Nenhuma turma encontrada para enfileirar.")
             return
     
-        # for sid in subjects:
+        for sid in subjects:
         # for sid in subjects[1:20]:
         # # for sid in [37, 41, 78, 83, 84, 222, 223, 224]:
         # # for sid in [78, 222, 223, 224]:
-        for sid in [78]:    
+        #for sid in [78]:    
             try:
                 self.db_admin.insert_subject_analysis_status(
                     1,
@@ -94,6 +97,8 @@ class Processor:
     def get_version(self, institution_id=1, db_config=None):
         version = self.db_admin.get_version_in_database(institution_id)
         if version is None:
+            if db_config is None:
+                raise ValueError("moodle config not found")
             connector = self.connector_inst.get_connection_with_config(db_config)
             version = self.analysis.get_moodle_version(connector)
         return version

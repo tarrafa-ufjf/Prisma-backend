@@ -2,6 +2,35 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-15 10:42:48 -03
+
+### Titulo
+
+Configuracao Moodle administrada pelo banco local
+
+### Arquivos afetados
+
+- [`pre_api/app.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/app.py)
+- [`pre_api/database.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/database.py)
+- [`pre_api/processor.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/processor.py)
+- [`pre_api/routes/admin_routes.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/admin_routes.py)
+- [`pre_api/services/moodle_config_service.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/services/moodle_config_service.py)
+- [`pre_api/tests/test_moodle_config.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_moodle_config.py)
+- [`worker/database.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/database.py)
+- [`worker/install.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/install.py)
+- [`.env.example`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/.env.example)
+- [`README.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/README.md)
+- [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/CONFIGURACAO_OBSERVERS_SCHEDULER.md)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foi adicionada uma API administrativa para consultar, testar e salvar a configuracao de conexao Moodle no PostgreSQL local. A rota `PUT /analysis` e o scheduler passaram a usar obrigatoriamente a configuracao salva, e o schema de `configs` foi alinhado para uma configuracao atual por instituicao.
+
+### Impacto
+
+Antes, o disparo de analise podia receber credenciais Moodle no corpo da requisicao e o scheduler lia variaveis `MYSQL_*` do `.env`. Agora, administradores devem cadastrar a conexao por `/admin/moodle-config`; a senha nunca e retornada pela API, e analises falham com erro claro quando a configuracao ainda nao foi salva.
+
 ## 2026-05-14 13:07:39 -03
 
 ### Titulo

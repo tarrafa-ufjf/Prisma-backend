@@ -38,17 +38,14 @@ O canal tambem influencia a selecao de disciplinas na `pre_api`:
 
 ## Como disparar uma analise manual por canal
 
-A rota `PUT /analysis` aceita as configuracoes do banco Moodle no corpo da requisicao e tambem aceita o campo opcional `channel`.
+A conexao com o banco Moodle deve ser cadastrada antes por um usuario administrador em `PUT /admin/moodle-config`. O endpoint testa a conexao, detecta a versao do Moodle e salva a configuracao no PostgreSQL local. O endpoint `GET /admin/moodle-config` retorna a configuracao sem expor a senha, e `POST /admin/moodle-config/test` testa uma configuracao sem salvar.
+
+A rota `PUT /analysis` usa sempre a configuracao Moodle salva no banco e aceita apenas opcoes operacionais no corpo da requisicao, como o campo opcional `channel`.
 
 Exemplo:
 
 ```json
 {
-  "host": "localhost",
-  "port": 3306,
-  "user": "usuario",
-  "password": "senha",
-  "database": "moodle",
   "channel": "diario"
 }
 ```
@@ -177,21 +174,16 @@ jobs:
     minute: 30
 ```
 
-## Variaveis de ambiente usadas pelo scheduler
+## Configuracao usada pelo scheduler
 
-O scheduler monta a configuracao do banco Moodle a partir do `.env` usando `pre_api/app.py`.
+O scheduler busca a configuracao do banco Moodle na tabela `configs`, a mesma mantida por `PUT /admin/moodle-config`.
 
-Variaveis necessarias:
+Variaveis de ambiente relacionadas ao scheduler:
 
-- `MYSQL_HOST`
-- `MYSQL_GRAD_PORT`
-- `MYSQL_USER`
-- `MYSQL_PASSWORD`
-- `MYSQL_DATABASE`
 - `SCHEDULER_TIMEZONE` opcional
 - `SCHEDULER_CONFIG_PATH` opcional
 
-Se alguma variavel obrigatoria estiver ausente, `run_scheduled_analysis(...)` registra a falha no terminal e nao enfileira a analise.
+Se nao houver configuracao Moodle salva, `run_scheduled_analysis(...)` registra a falha no terminal e nao enfileira a analise.
 
 ## Como executar
 

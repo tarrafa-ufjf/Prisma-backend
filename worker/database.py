@@ -150,18 +150,29 @@ class DatabaseAdmin:
         metadata = MetaData()
         configs = Table("configs", metadata, autoload_with=engine)
 
-        with engine.connect() as conn:
-            insert_stmt = configs.insert().values(
-                institution_id=user,
-                version=version,
-                host=db_config['host'],
-                port=db_config['port'],
-                database=db_config['database'],
-                user=db_config['user'],
-                password=db_config['password']
-            )
-            conn.execute(insert_stmt)
-            conn.commit()
+        values = {
+            "institution_id": user,
+            "version": version,
+            "host": db_config['host'],
+            "port": db_config['port'],
+            "database": db_config['database'],
+            "user": db_config['user'],
+            "password": db_config['password'],
+        }
+
+        with engine.begin() as conn:
+            existing = conn.execute(
+                select(configs.c.institution_id).where(configs.c.institution_id == user)
+            ).first()
+
+            if existing:
+                conn.execute(
+                    configs.update()
+                    .where(configs.c.institution_id == user)
+                    .values(**values)
+                )
+            else:
+                conn.execute(configs.insert().values(**values))
     
     def global_analysis_status(self, indicator, institution_id=1, engine=None):
         engine = engine or self.get_connector()

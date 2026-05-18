@@ -1,7 +1,8 @@
 from flask import request, jsonify, Flask, send_file
 from processor import Processor
 from database import DatabaseAdmin, db
-from routes import auth_bp, student_bp, tutors_bp
+from routes import admin_bp, auth_bp, student_bp, tutors_bp
+from services.moodle_config_service import MoodleConfigError, require_saved_moodle_config
 from dotenv import load_dotenv
 from flask_cors import CORS
 import atexit
@@ -35,7 +36,7 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true",
     REMEMBER_COOKIE_SAMESITE=os.getenv("REMEMBER_COOKIE_SAMESITE", "Lax"),
     REMEMBER_COOKIE_SECURE=os.getenv("REMEMBER_COOKIE_SECURE", "false").lower() == "true",
-    REMEMBER_COOKIE_DURATION=int(os.getenv("REMEMBER_COOKIE_DURATION", 30)),
+    REMEMBER_COOKIE_DURATION=int(os.getenv("REMEMBER_COOKIE_DURATION", 2592000)),
     SQLALCHEMY_DATABASE_URI=os.getenv("SQLALCHEMY_DATABASE_URI") or _build_local_database_uri(),
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     SQLALCHEMY_ENGINE_OPTIONS={"pool_pre_ping": True},
@@ -50,41 +51,20 @@ init_auth(app)
 app.register_blueprint(student_bp)
 app.register_blueprint(tutors_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(admin_bp)
 app.before_request(authenticate_request)
-
-
-def _build_db_inst_config_from_env():
-    return {
-        "host": os.getenv("MYSQL_HOST", "localhost"),
-        "port": int(os.getenv("MYSQL_GRAD_PORT")),
-        "user": os.getenv("MYSQL_USER"),
-        "password": os.getenv("MYSQL_PASSWORD"),
-        "database": os.getenv("MYSQL_DATABASE"),
-    }
 
 
 def run_scheduled_analysis(channel="diario"):
     """Daily job entrypoint used by the scheduler process."""
-    db_inst_config = _build_db_inst_config_from_env()
-    missing = [k for k, v in db_inst_config.items() if v in (None, "")]
-    if missing:
-        print(
-            "[scheduler] Missing required environment variables for db_inst_config: "
-            f"{', '.join(missing)}"
-        )
-        return
-
     try:
+        db_inst_config = require_saved_moodle_config()
         processor = Processor(user=1)
         version = processor.get_version(institution_id=1, db_config=db_inst_config)
-
-        try:
-            processor.db_admin.insert_version_in_database(1, version, db_inst_config)
-        except Exception as e:
-            print(f"[scheduler] Erro ao inserir versão na base de dados: {e}")
-
         processor.set_subjects_analysis(db_config=db_inst_config, channel=channel)
         print(f"[scheduler] {channel.capitalize()} analysis dispatch finished. version={version}")
+    except MoodleConfigError as e:
+        print(f"[scheduler] {channel.capitalize()} analysis dispatch skipped: {e.message}")
     except Exception as e:
         print(f"[scheduler] {channel.capitalize()} analysis dispatch failed: {e}")
 
@@ -95,17 +75,15 @@ def analysis():
         return "", 200
 
     payload = request.get_json() or {}
-    channel = payload.pop("channel", "diario")
+    channel = payload.get("channel", "diario")
     print("channel:", channel)
-    db_inst_config = payload
+    try:
+        db_inst_config = require_saved_moodle_config()
+    except MoodleConfigError as e:
+        return jsonify({"error": e.message}), e.status_code
+
     processor = Processor(user=1)
     version = processor.get_version(institution_id=1, db_config=db_inst_config)
-
-    try:
-        processor.db_admin.insert_version_in_database(1, version, db_inst_config)
-    except Exception as e:
-        print(f"Erro ao inserir versão na base de dados: {e}")
-
     processor.set_subjects_analysis(db_config=db_inst_config, channel=channel)
 
     result = {"message": "Análises iniciadas com sucesso", "version": version}

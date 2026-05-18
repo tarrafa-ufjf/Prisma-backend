@@ -71,7 +71,7 @@ if __name__ == "__main__":
         "password": String
     }
 
-    primary_keys = ["institution_id", "version"]
+    primary_keys = ["institution_id"]
     create_table("configs", columns_configs, primary_key=primary_keys)
 
     columns_subjects_status = {

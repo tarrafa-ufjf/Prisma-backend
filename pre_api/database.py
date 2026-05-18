@@ -54,12 +54,16 @@ class DatabaseAdmin:
     @classmethod
     def get_connector(cls):
         if cls._engine is None:
+            database_uri = os.getenv("SQLALCHEMY_DATABASE_URI")
+            if database_uri:
+                cls._engine = create_engine(database_uri)
+                return cls._engine
+
             DB_USER = os.getenv("DB_USER")
             DB_PASSWORD = os.getenv("DB_PASSWORD")
             DB_HOST = os.getenv("DB_HOST", "localhost")
             DB_PORT = int(os.getenv("DB_PORT", 5432))
             DB_NAME = os.getenv("DB_DATABASE")
-
             cls._engine = create_engine(
                 f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
             )
@@ -151,28 +155,29 @@ class DatabaseAdmin:
         metadata = MetaData()
         configs = Table("configs", metadata, autoload_with=engine)
 
-        stmt = pg_insert(configs).values(
-                institution_id=user,
-                version=version,
-                host=db_config['host'],
-                port=db_config['port'],
-                database=db_config['database'],
-                user=db_config['user'],
-                password=db_config['password']
-            ).on_conflict_do_update(
-                constraint="configs_pkey",
-                set_={
-                    "version": version,
-                    "host": db_config['host'],
-                    "port": db_config['port'],
-                    "database": db_config['database'],
-                    "user": db_config['user'],
-                    "password": db_config['password'],
-                }
-            )
+        values = {
+            "institution_id": user,
+            "version": version,
+            "host": db_config['host'],
+            "port": db_config['port'],
+            "database": db_config['database'],
+            "user": db_config['user'],
+            "password": db_config['password'],
+        }
 
         with engine.begin() as conn:
-            conn.execute(stmt)
+            existing = conn.execute(
+                select(configs.c.institution_id).where(configs.c.institution_id == user)
+            ).first()
+
+            if existing:
+                conn.execute(
+                    configs.update()
+                    .where(configs.c.institution_id == user)
+                    .values(**values)
+                )
+            else:
+                conn.execute(configs.insert().values(**values))
     
     def global_analysis_status(self, indicator, institution_id=1, engine=None):
         engine = engine or self.get_connector()

@@ -2,6 +2,32 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-18 09:32:32 -03
+
+### Titulo
+
+Criptografia da senha de configuracao Moodle
+
+### Arquivos afetados
+
+- [`src/analysis_lib/config_crypto.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/src/analysis_lib/config_crypto.py)
+- [`pre_api/database.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/database.py)
+- [`worker/database.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/database.py)
+- [`worker/install.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/install.py)
+- [`worker/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/pyproject.toml)
+- [`worker/poetry.lock`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/poetry.lock)
+- [`.env.example`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/.env.example)
+- [`pre_api/tests/test_moodle_config.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_moodle_config.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foi adicionada criptografia reversivel para a senha da tabela `configs`, usando `MOODLE_CONFIG_ENCRYPTION_KEY` ou `SECRET_KEY` como segredo da aplicacao. As leituras descriptografam automaticamente a senha para manter o fluxo de conexao com o Moodle, valores antigos em texto puro continuam legiveis, e o salvamento em PostgreSQL amplia a coluna `password` para `VARCHAR(512)` antes de gravar.
+
+### Impacto
+
+Antes, a senha do banco Moodle era persistida em texto puro. Agora, novas gravacoes salvam um valor com prefixo `enc:v1:` e a API/worker continuam recebendo a senha original apenas em memoria ao montar a conexao.
+
 ## 2026-05-15 10:42:48 -03
 
 ### Titulo

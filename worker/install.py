@@ -68,7 +68,7 @@ if __name__ == "__main__":
         "port": Integer,
         "database": String,
         "user": String,
-        "password": String
+        "password": String(512)
     }
 
     primary_keys = ["institution_id"]

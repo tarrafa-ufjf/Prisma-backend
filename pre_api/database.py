@@ -3,9 +3,11 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 import pandas as pd
 import pymysql
-from sqlalchemy import and_,create_engine, select, MetaData, Table, Column, Integer, String, Date, DateTime, DECIMAL, func
+from sqlalchemy import and_,create_engine, select, MetaData, Table, Column, Integer, String, Date, DateTime, DECIMAL, func, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from dotenv import load_dotenv
+
+from src.analysis_lib.config_crypto import decrypt_config_secret, encrypt_config_secret
 
 load_dotenv()
 
@@ -96,7 +98,7 @@ class DatabaseAdmin:
             Column('port', Integer, nullable=False),
             Column('database', String(100), nullable=False),
             Column('user', String(100), nullable=False),
-            Column('password', String(100), nullable=False)
+            Column('password', String(512), nullable=False)
         )
         return configs
     
@@ -162,10 +164,11 @@ class DatabaseAdmin:
             "port": db_config['port'],
             "database": db_config['database'],
             "user": db_config['user'],
-            "password": db_config['password'],
+            "password": encrypt_config_secret(db_config['password']),
         }
 
         with engine.begin() as conn:
+            self._ensure_config_password_column_size(conn)
             existing = conn.execute(
                 select(configs.c.institution_id).where(configs.c.institution_id == user)
             ).first()
@@ -178,6 +181,10 @@ class DatabaseAdmin:
                 )
             else:
                 conn.execute(configs.insert().values(**values))
+
+    def _ensure_config_password_column_size(self, conn):
+        if conn.dialect.name == "postgresql":
+            conn.execute(text("ALTER TABLE configs ALTER COLUMN password TYPE VARCHAR(512)"))
     
     def global_analysis_status(self, indicator, institution_id=1, engine=None):
         engine = engine or self.get_connector()
@@ -224,7 +231,9 @@ class DatabaseAdmin:
         with engine.connect() as conn:
             result = conn.execute(query).mappings().fetchone()
             if result:
-                return dict(result)
+                config = dict(result)
+                config["password"] = decrypt_config_secret(config.get("password"))
+                return config
             else:
                 return None
             

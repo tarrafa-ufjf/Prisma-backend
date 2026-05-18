@@ -16,10 +16,12 @@ os.environ["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
 os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["SECURITY_PASSWORD_SALT"] = "test-password-salt"
 os.environ["AUTH_AUTO_CREATE_TABLES"] = "true"
+os.environ["MOODLE_CONFIG_ENCRYPTION_KEY"] = "test-moodle-config-encryption-key"
 
 import app as app_module
 from auth import create_local_user, ensure_roles
 from database import DatabaseAdmin, db
+from src.analysis_lib.config_crypto import ENCRYPTED_VALUE_PREFIX
 
 
 class MoodleConfigTest(unittest.TestCase):
@@ -154,6 +156,30 @@ class MoodleConfigTest(unittest.TestCase):
         self.assertEqual(config["version"], "3.1")
         self.assertTrue(config["has_password"])
         self.assertEqual(DatabaseAdmin().get_db_config_from_database(1)["password"], "secret")
+        with self.app.app_context():
+            with db.engine.connect() as conn:
+                raw_password = conn.execute(self.configs_table.select()).mappings().first()["password"]
+        self.assertNotEqual(raw_password, "secret")
+        self.assertTrue(raw_password.startswith(ENCRYPTED_VALUE_PREFIX))
+
+    def test_saved_plaintext_moodle_config_remains_readable(self):
+        with self.app.app_context():
+            with db.engine.begin() as conn:
+                conn.execute(
+                    self.configs_table.insert().values(
+                        institution_id=1,
+                        version="3.1",
+                        host="moodle-db",
+                        port=3306,
+                        database="moodle",
+                        user="moodle_user",
+                        password="legacy-secret",
+                    )
+                )
+
+        config = DatabaseAdmin().get_db_config_from_database(1)
+
+        self.assertEqual(config["password"], "legacy-secret")
 
     def test_admin_can_test_moodle_config_without_saving(self):
         self.login_admin()

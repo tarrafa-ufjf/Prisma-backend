@@ -131,6 +131,24 @@ class MoodleConfigTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("missing required fields", response.get_json()["error"])
 
+    def test_admin_put_moodle_config_requires_password_even_with_saved_config(self):
+        self.login_admin()
+        self.save_config()
+
+        payload_without_password = self.valid_payload()
+        payload_without_password.pop("password")
+        response = self.client.put("/admin/moodle-config", json=payload_without_password)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "missing required fields: password"})
+
+        payload_with_empty_password = self.valid_payload()
+        payload_with_empty_password["password"] = ""
+        response = self.client.put("/admin/moodle-config", json=payload_with_empty_password)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "missing required fields: password"})
+
     def test_admin_put_moodle_config_invalid_connection_does_not_save(self):
         self.login_admin()
 
@@ -141,7 +159,8 @@ class MoodleConfigTest(unittest.TestCase):
             response = self.client.put("/admin/moodle-config", json=self.valid_payload())
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("could not connect", response.get_json()["error"])
+        self.assertEqual(response.get_json(), {"error": "could not connect to moodle database"})
+        self.assertNotIn("connection refused", response.get_data(as_text=True))
         self.assertIsNone(DatabaseAdmin().get_db_config_from_database(1))
 
     def test_admin_put_moodle_config_saves_without_exposing_password(self):
@@ -190,6 +209,24 @@ class MoodleConfigTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"ok": True, "version": "3.1"})
         self.assertIsNone(DatabaseAdmin().get_db_config_from_database(1))
+
+    def test_admin_test_moodle_config_requires_password_even_with_saved_config(self):
+        self.login_admin()
+        self.save_config()
+
+        payload_without_password = self.valid_payload()
+        payload_without_password.pop("password")
+        response = self.client.post("/admin/moodle-config/test", json=payload_without_password)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "missing required fields: password"})
+
+        payload_with_empty_password = self.valid_payload()
+        payload_with_empty_password["password"] = ""
+        response = self.client.post("/admin/moodle-config/test", json=payload_with_empty_password)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "missing required fields: password"})
 
     def test_analysis_without_saved_config_returns_400(self):
         self.create_user()

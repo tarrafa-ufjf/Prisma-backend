@@ -2,6 +2,67 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-19 12:32:09 -03
+
+### Titulo
+
+Senha obrigatoria nos fluxos de configuracao Moodle
+
+### Arquivos afetados
+
+- [`pre_api/routes/admin_routes.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/admin_routes.py)
+- [`pre_api/services/moodle_config_service.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/services/moodle_config_service.py)
+- [`pre_api/tests/test_moodle_config.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_moodle_config.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A rota `POST /admin/moodle-config/test` deixou de reaproveitar a senha previamente salva ao testar uma configuracao enviada no payload. O fallback por configuracao existente tambem foi removido do servico que monta a configuracao Moodle. O teste automatizado passou a cobrir `password` ausente e `password` vazio nessa rota mesmo quando ja existe configuracao salva.
+
+### Impacto
+
+Antes, o teste de configuracao podia validar uma requisicao incompleta usando a senha antiga em memoria. Agora, os fluxos de teste e edicao exigem todos os campos da configuracao, incluindo senha nao vazia.
+
+## 2026-05-19 12:29:16 -03
+
+### Titulo
+
+Erro generico ao falhar teste da conexao Moodle
+
+### Arquivos afetados
+
+- [`pre_api/services/moodle_config_service.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/services/moodle_config_service.py)
+- [`pre_api/tests/test_moodle_config.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_moodle_config.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Falhas ao testar a conexao com o banco Moodle passaram a retornar uma mensagem generica na API, enquanto o detalhe tecnico da excecao fica registrado no log do servidor. O teste de configuracao Moodle foi ajustado para garantir que a resposta nao exponha a mensagem original do banco/driver.
+
+### Impacto
+
+Antes, a resposta de erro concatenava a excecao original do banco, podendo revelar detalhes de infraestrutura ou credenciais. Agora, o cliente recebe apenas `could not connect to moodle database`, reduzindo vazamento de informacoes sensiveis.
+
+## 2026-05-19 12:22:43 -03
+
+### Titulo
+
+Senha obrigatoria ao editar configuracao Moodle
+
+### Arquivos afetados
+
+- [`pre_api/services/moodle_config_service.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/services/moodle_config_service.py)
+- [`pre_api/tests/test_moodle_config.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_moodle_config.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A rota `PUT /admin/moodle-config` deixou de reaproveitar a senha previamente salva quando o payload nao informa `password` ou informa `password` vazio. O teste da configuracao Moodle passou a cobrir a obrigatoriedade de senha mesmo quando ja existe configuracao salva.
+
+### Impacto
+
+Antes, uma edicao da configuracao Moodle sem senha mantinha silenciosamente a senha antiga. Agora, o endpoint de edicao exige que todos os campos da configuracao sejam enviados, incluindo uma senha nao vazia, e retorna `400` quando `password` estiver ausente ou vazio.
+
 ## 2026-05-18 09:32:32 -03
 
 ### Titulo

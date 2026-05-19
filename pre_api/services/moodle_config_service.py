@@ -1,9 +1,13 @@
+import logging
+
 from database import Database, DatabaseAdmin
 from src.analysis_lib.analysis.analyzer import Analyzer
 
 
 INSTITUTION_ID = 1
 REQUIRED_CONFIG_FIELDS = ("host", "port", "database", "user")
+MOODLE_CONNECTION_ERROR_MESSAGE = "could not connect to moodle database"
+logger = logging.getLogger(__name__)
 
 
 class MoodleConfigError(Exception):
@@ -37,7 +41,7 @@ def require_saved_moodle_config(institution_id=INSTITUTION_ID):
     return config
 
 
-def build_config_from_payload(payload, existing_config=None):
+def build_config_from_payload(payload):
     payload = payload or {}
     config = {}
     missing = []
@@ -67,8 +71,6 @@ def build_config_from_payload(payload, existing_config=None):
 
     if password:
         config["password"] = password
-    elif existing_config and existing_config.get("password"):
-        config["password"] = existing_config["password"]
     else:
         missing.append("password")
 
@@ -88,20 +90,20 @@ def detect_moodle_version(config):
             connector.close()
 
 
-def test_moodle_config(payload, existing_config=None):
-    config = build_config_from_payload(payload, existing_config=existing_config)
+def test_moodle_config(payload):
+    config = build_config_from_payload(payload)
     try:
         version = detect_moodle_version(config)
     except Exception as exc:
-        raise MoodleConfigError(f"could not connect to moodle database: {exc}") from exc
+        logger.exception("could not connect to moodle database")
+        raise MoodleConfigError(MOODLE_CONNECTION_ERROR_MESSAGE) from exc
 
     return version, config
 
 
 def save_moodle_config(payload, institution_id=INSTITUTION_ID):
     db_admin = DatabaseAdmin()
-    existing_config = db_admin.get_db_config_from_database(institution_id)
-    version, config = test_moodle_config(payload, existing_config=existing_config)
+    version, config = test_moodle_config(payload)
     db_admin.insert_version_in_database(institution_id, version, config)
     saved_config = db_admin.get_db_config_from_database(institution_id)
     return saved_config

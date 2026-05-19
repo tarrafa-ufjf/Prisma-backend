@@ -58,7 +58,7 @@ def test_moodle_config_route():
 
     payload = request.get_json(silent=True) or {}
     try:
-        version, _config = test_moodle_config(payload, existing_config=get_saved_moodle_config())
+        version, _config = test_moodle_config(payload)
     except MoodleConfigError as exc:
         return jsonify({"error": exc.message}), exc.status_code
 

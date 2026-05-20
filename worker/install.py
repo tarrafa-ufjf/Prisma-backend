@@ -100,6 +100,24 @@ if __name__ == "__main__":
         columns_subject_indicator_status,
         primary_key=primary_keys,
     )
+
+    columns_scheduler_status = {
+        "job_id": String(100),
+        "channel": (String(50), {"nullable": False}),
+        "process_id": Integer,
+        "next_run_at": DateTime(timezone=True),
+        "heartbeat_at": DateTime(timezone=True),
+        "last_started_at": DateTime(timezone=True),
+        "last_finished_at": DateTime(timezone=True),
+        "last_status": String(20),
+        "last_error": String(1000),
+        "updated_at": (DateTime(timezone=True), {"nullable": False}),
+    }
+    create_table(
+        "scheduler_status",
+        columns_scheduler_status,
+        primary_key=["job_id"],
+    )
     
     
     # columns_subjects_tutors = {

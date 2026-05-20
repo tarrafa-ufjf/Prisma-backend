@@ -2,7 +2,9 @@ import atexit
 import os
 import signal
 import time
+from datetime import datetime, timezone as datetime_timezone
 from pathlib import Path
+from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_SUBMITTED
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 import yaml
@@ -16,6 +18,76 @@ DEFAULT_JOB_OPTIONS = {
     "coalesce": True,
     "replace_existing": True,
 }
+HEARTBEAT_INTERVAL_SECONDS = int(os.getenv("SCHEDULER_HEARTBEAT_INTERVAL_SECONDS", 15))
+
+
+def _now_utc():
+    return datetime.now(datetime_timezone.utc)
+
+
+def _get_job_channel(job):
+    return (job.kwargs or {}).get("channel", job.id)
+
+
+def _record_scheduler_jobs(scheduler):
+    database = DatabaseAdmin()
+    heartbeat_at = _now_utc()
+    for job in scheduler.get_jobs():
+        database.upsert_scheduler_status(
+            job_id=job.id,
+            channel=_get_job_channel(job),
+            process_id=os.getpid(),
+            next_run_at=job.next_run_time,
+            heartbeat_at=heartbeat_at,
+        )
+
+
+def _record_job_event(scheduler, event):
+    job = scheduler.get_job(event.job_id)
+    if job is None:
+        return
+
+    database = DatabaseAdmin()
+    channel = _get_job_channel(job)
+    if event.code == EVENT_JOB_SUBMITTED:
+        database.upsert_scheduler_status(
+            job_id=job.id,
+            channel=channel,
+            process_id=os.getpid(),
+            next_run_at=job.next_run_time,
+            heartbeat_at=_now_utc(),
+            last_started_at=_now_utc(),
+            last_status="running",
+            last_error="",
+        )
+        return
+
+    if event.code == EVENT_JOB_EXECUTED:
+        database.upsert_scheduler_status(
+            job_id=job.id,
+            channel=channel,
+            process_id=os.getpid(),
+            next_run_at=job.next_run_time,
+            heartbeat_at=_now_utc(),
+            last_finished_at=_now_utc(),
+            last_status="success",
+            last_error="",
+        )
+        return
+
+    if event.code == EVENT_JOB_ERROR:
+        database.upsert_scheduler_status(
+            job_id=job.id,
+            channel=channel,
+            process_id=os.getpid(),
+            next_run_at=job.next_run_time,
+            heartbeat_at=_now_utc(),
+            last_finished_at=_now_utc(),
+            last_status="failed",
+            last_error=str(event.exception)[:1000],
+        )
+
+
 def _load_scheduler_jobs(config_path):
     with config_path.open("r", encoding="utf-8") as config_file:
         raw_config = yaml.safe_load(config_file) or {}
@@ -69,7 +141,12 @@ def _build_scheduler():
     return scheduler
 def main():
     scheduler = _build_scheduler()
+    scheduler.add_listener(
+        lambda event: _record_job_event(scheduler, event),
+        EVENT_JOB_SUBMITTED | EVENT_JOB_EXECUTED | EVENT_JOB_ERROR,
+    )
     scheduler.start()
+    _record_scheduler_jobs(scheduler)
     print(
         "[scheduler] Started. "
         f"timezone={scheduler.timezone}"
@@ -88,7 +165,8 @@ def main():
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGINT, _signal_handler)
     while True:
-        time.sleep(1)
+        _record_scheduler_jobs(scheduler)
+        time.sleep(HEARTBEAT_INTERVAL_SECONDS)
         
 if __name__ == "__main__":
     main()

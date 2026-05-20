@@ -2,6 +2,48 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-05-20 09:55:30 -03
+
+### Titulo
+
+Criacao manual da tabela de status do scheduler via install
+
+### Arquivos afetados
+
+- [`pre_api/database.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/database.py)
+- [`worker/install.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/worker/install.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A criacao automatica da tabela `scheduler_status` foi removida dos metodos usados em runtime pela API e pelo scheduler. A tabela passou a ser criada pelo fluxo de instalacao em `worker/install.py`, junto das demais tabelas operacionais do projeto.
+
+### Impacto
+
+Antes, chamar `GET /admin/scheduler/status` ou iniciar o scheduler podia criar a tabela automaticamente se ela nao existisse. Agora, a tabela precisa ser criada antes pelo install; caso contrario, o acesso ao status do scheduler depende do schema ainda nao aplicado e falhara como as outras tabelas ausentes.
+
+## 2026-05-20 09:50:32 -03
+
+### Titulo
+
+Status do processo do scheduler para o frontend
+
+### Arquivos afetados
+
+- [`pre_api/database.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/database.py)
+- [`pre_api/scheduler.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/scheduler.py)
+- [`pre_api/routes/admin_routes.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/routes/admin_routes.py)
+- [`pre_api/tests/test_moodle_config.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/tests/test_moodle_config.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foi adicionada a tabela `scheduler_status`, atualizada pelo processo `pre_api/scheduler.py` com heartbeat, PID e `next_run_at` dos jobs. A API administrativa ganhou a rota `GET /admin/scheduler/status`, que retorna se o processo do scheduler esta rodando com base no heartbeat recente e lista o proximo disparo por channel. Testes cobrem ausencia de heartbeat, heartbeat recente e heartbeat expirado.
+
+### Impacto
+
+Antes, o frontend nao tinha como distinguir se o processo do scheduler estava ativo nem consultar o proximo horario de ativacao de cada channel. Agora, a tela pode consultar uma rota administrativa unica para exibir `running` do processo e `next_run_at` dos jobs agendados.
+
 ## 2026-05-19 12:32:09 -03
 
 ### Titulo

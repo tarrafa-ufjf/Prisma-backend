@@ -56,22 +56,85 @@ Se `channel` nao for informado, o valor padrao sera `diario`.
 
 O cadastro fica em `worker/indicator_channels.yml`.
 
-Cada ator contem seus canais, e cada canal contem a lista de indicadores que devem rodar:
+Cada ator contem seus canais, e cada canal contem a lista de indicadores que devem rodar. A estrutura sempre segue este formato:
 
 ```yaml
-student:
-  diario:
-    - engagement
-  semanal:
-    - engagement
-    - performance
+ator:
+  canal:
+    - indicador
 ```
 
 Os niveis significam:
 
 - primeiro nivel: ator da analise, como `student` ou `tutor`;
-- segundo nivel: canal, como `diario`, `semanal`, `mensal` ou `completo`;
+- segundo nivel: canal, como `diario`, `semanal`, `mensal`, `completo` ou outro nome textual criado para o projeto;
 - lista do canal: nomes dos indicadores cadastrados no worker.
+
+Campos aceitos no primeiro nivel:
+
+- `student`: executa observers de estudantes;
+- `tutor`: executa observers de tutores.
+
+Indicadores aceitos para `student`:
+
+- `engagement`
+- `performance`
+- `motivation`
+- `cognitive`
+- `pedagogic`
+- `give_up`
+
+Indicadores aceitos para `tutor`:
+
+- `response_forums`
+- `feedback`
+- `login`
+
+Campos aceitos no segundo nivel:
+
+- `diario`: canal padrao das execucoes diarias;
+- `semanal`: canal usado para execucoes semanais, se configurado;
+- `mensal`: canal usado para execucoes mensais, se configurado;
+- `completo`: canal usado para executar o conjunto completo de indicadores configurado;
+- qualquer outro nome textual, como `quinzenal` ou `diagnostico`, desde que o mesmo nome seja usado no disparo manual ou no scheduler.
+
+Regras importantes:
+
+- o nome do ator precisa existir como chave no YAML;
+- cada canal precisa apontar para uma lista, mesmo que tenha apenas um indicador;
+- o nome do indicador precisa existir em `INDICATOR_OBSERVERS`, em `worker/indicator_publisher.py`;
+- se um canal nao estiver cadastrado para um ator, aquele ator nao executara indicadores naquele canal;
+- repetir o mesmo indicador no mesmo canal fara o observer ser registrado mais de uma vez, entao evite duplicatas.
+
+Exemplo atual, com canais diarios e completos:
+
+```yaml
+student:
+  diario:
+    - engagement
+    - performance
+    - motivation
+    - cognitive
+    - pedagogic
+    - give_up
+  completo:
+    - engagement
+    - performance
+    - motivation
+    - cognitive
+    - pedagogic
+    - give_up
+
+tutor:
+  diario:
+    - response_forums
+    - feedback
+    - login
+  completo:
+    - response_forums
+    - feedback
+    - login
+```
 
 Exemplo para adicionar desempenho de estudantes ao canal semanal:
 
@@ -128,15 +191,62 @@ Os jobs ficam em `pre_api/scheduler_jobs.yml`. Tambem e possivel apontar para ou
 SCHEDULER_CONFIG_PATH=/caminho/para/scheduler_jobs.yml
 ```
 
-Jobs atuais no YAML:
+O arquivo sempre precisa ter a chave `jobs`, que aponta para uma lista de agendamentos:
 
-- `daily_analysis`: roda `run_scheduled_analysis(channel="diario")` todos os dias em um determinado horario;
-- `weekly_analysis`: roda `run_scheduled_analysis(channel="semanal")` um dia na semana  em um determinado horairo;
-- `monthly_analysis`: roda `run_scheduled_analysis(channel="mensal")` um dia no mes em um determinado horario.
+```yaml
+jobs:
+  - id: daily_analysis
+    channel: diario
+    hour: 0
+    minute: 30
+```
 
-Para alterar horario ou recorrencia, edite os campos do job no arquivo `pre_api/scheduler_jobs.yml`.
+Cada item da lista representa um job do APScheduler. O projeto usa `trigger: cron` por padrao, entao os campos de calendario seguem a sintaxe de cron do APScheduler.
 
-Exemplo:
+Campos obrigatorios:
+
+- `id`: identificador unico do job, como `daily_analysis`; precisa ser texto e nao pode repetir outro job;
+- `channel`: canal que sera enviado para `run_scheduled_analysis(channel=...)`, como `diario`, `semanal`, `mensal`, `completo` ou um canal novo criado no projeto.
+
+Campos de horario e recorrencia mais usados:
+
+- `hour`: hora do dia, de `0` a `23`;
+- `minute`: minuto da hora, de `0` a `59`;
+- `second`: segundo do minuto, de `0` a `59`;
+- `day_of_week`: dia da semana, como `mon`, `tue`, `wed`, `thu`, `fri`, `sat`, `sun`;
+- `day`: dia do mes, de `1` a `31`;
+- `month`: mes, de `1` a `12`, ou nomes como `jan`, `feb`, `mar`;
+- `year`: ano especifico;
+- `week`: semana ISO do ano;
+- `start_date`: data/hora minima para o job comecar a valer;
+- `end_date`: data/hora maxima para o job continuar valendo;
+- `timezone`: timezone especifico do job, se precisar sobrescrever o timezone geral.
+
+Formatos aceitos nos campos de cron:
+
+- numero simples: `hour: 8` roda as 08h;
+- texto com lista: `day: "1,15"` roda nos dias 1 e 15;
+- intervalo: `hour: "8-18"` permite horas de 8 ate 18;
+- passo: `minute: "*/15"` roda a cada 15 minutos;
+- combinacao com dias da semana: `day_of_week: "mon-fri"` roda de segunda a sexta;
+- asterisco: `hour: "*"` aceita qualquer hora.
+
+Opcoes operacionais do job:
+
+- `trigger`: por padrao e `cron`; normalmente nao precisa ser informado;
+- `max_instances`: por padrao e `1`, evitando duas execucoes simultaneas do mesmo job;
+- `coalesce`: por padrao e `true`; se o scheduler perder horarios enquanto estiver parado, junta execucoes pendentes em uma unica execucao;
+- `replace_existing`: por padrao e `true`; se um job com o mesmo `id` ja existir no scheduler, ele sera substituido.
+
+Campos proibidos:
+
+- `func`
+- `args`
+- `kwargs`
+
+Esses campos sao bloqueados porque o scheduler sempre chama internamente `run_scheduled_analysis(...)` e monta o `channel` com seguranca pelo proprio codigo.
+
+Exemplo de job diario:
 
 ```yaml
 jobs:
@@ -146,12 +256,36 @@ jobs:
     minute: 0
 ```
 
-Campos mais importantes:
+Exemplo de job semanal, toda segunda-feira as 07h30:
 
-- `channel: diario` define qual canal sera enfileirado;
-- `hour` e `minute` definem o horario;
-- `day_of_week: mon` restringe para segunda-feira;
-- `day: 1` restringe para o primeiro dia do mes;
+```yaml
+jobs:
+  - id: weekly_analysis
+    channel: semanal
+    day_of_week: mon
+    hour: 7
+    minute: 30
+```
+
+Exemplo de job mensal, no primeiro dia do mes as 06h:
+
+```yaml
+jobs:
+  - id: monthly_analysis
+    channel: mensal
+    day: 1
+    hour: 6
+    minute: 0
+```
+
+Exemplo de job a cada 15 minutos:
+
+```yaml
+jobs:
+  - id: frequent_analysis
+    channel: diario
+    minute: "*/15"
+```
 
 Por padrao, todos os jobs usam `trigger: cron`, `max_instances: 1`, `coalesce: true` e `replace_existing: true`. Esses campos nao precisam ser repetidos no YAML, mas ainda podem ser informados em um job especifico caso seja necessario sobrescrever o padrao.
 

@@ -101,6 +101,71 @@ class DatabaseAdmin:
             Column('password', String(512), nullable=False)
         )
         return configs
+
+    def get_scheduler_status_table(self):
+        metadata = MetaData()
+        table = Table(
+            "scheduler_status",
+            metadata,
+            Column("job_id", String(100), primary_key=True),
+            Column("channel", String(50), nullable=False),
+            Column("process_id", Integer, nullable=True),
+            Column("next_run_at", DateTime(timezone=True), nullable=True),
+            Column("heartbeat_at", DateTime(timezone=True), nullable=True),
+            Column("last_started_at", DateTime(timezone=True), nullable=True),
+            Column("last_finished_at", DateTime(timezone=True), nullable=True),
+            Column("last_status", String(20), nullable=True),
+            Column("last_error", String(1000), nullable=True),
+            Column("updated_at", DateTime(timezone=True), nullable=False),
+        )
+        return table
+
+    def upsert_scheduler_status(
+        self,
+        job_id: str,
+        channel: str,
+        process_id: int = None,
+        next_run_at=None,
+        heartbeat_at=None,
+        last_started_at=None,
+        last_finished_at=None,
+        last_status: str = None,
+        last_error: str = None,
+        engine=None,
+    ):
+        engine = engine or self.get_connector()
+        table = self.get_scheduler_status_table()
+        values = {
+            "channel": channel,
+            "process_id": process_id,
+            "next_run_at": next_run_at,
+            "heartbeat_at": heartbeat_at,
+            "last_started_at": last_started_at,
+            "last_finished_at": last_finished_at,
+            "last_status": last_status,
+            "last_error": last_error,
+            "updated_at": func.now(),
+        }
+        clean_values = {key: value for key, value in values.items() if value is not None}
+
+        with engine.begin() as conn:
+            existing = conn.execute(
+                select(table.c.job_id).where(table.c.job_id == job_id)
+            ).first()
+            if existing:
+                conn.execute(
+                    table.update()
+                    .where(table.c.job_id == job_id)
+                    .values(**clean_values)
+                )
+            else:
+                conn.execute(table.insert().values(job_id=job_id, **clean_values))
+
+    def get_scheduler_status_rows(self, engine=None):
+        engine = engine or self.get_connector()
+        table = self.get_scheduler_status_table()
+        with engine.connect() as conn:
+            return conn.execute(select(table).order_by(table.c.job_id)).mappings().all()
     
     def update_global_analysis_status(self, institution_id: int, indicator: int, status: str, engine=None):
         engine = engine or self.get_connector()

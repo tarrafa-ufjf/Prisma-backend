@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -37,6 +38,9 @@ class MoodleConfigTest(unittest.TestCase):
             self.configs_table = DatabaseAdmin().get_configs_table()
             self.configs_table.drop(db.engine, checkfirst=True)
             self.configs_table.create(db.engine, checkfirst=True)
+            self.scheduler_status_table = DatabaseAdmin().get_scheduler_status_table()
+            self.scheduler_status_table.drop(db.engine, checkfirst=True)
+            self.scheduler_status_table.create(db.engine, checkfirst=True)
             DatabaseAdmin._engine = db.engine
             ensure_roles()
             db.session.commit()
@@ -44,6 +48,7 @@ class MoodleConfigTest(unittest.TestCase):
     def tearDown(self):
         with self.app.app_context():
             db.session.remove()
+            self.scheduler_status_table.drop(db.engine, checkfirst=True)
             self.configs_table.drop(db.engine, checkfirst=True)
             db.drop_all()
             DatabaseAdmin._engine = None
@@ -279,6 +284,61 @@ class MoodleConfigTest(unittest.TestCase):
             db_config=saved_config,
             channel="mensal",
         )
+
+    def test_admin_scheduler_status_without_heartbeat_returns_not_running(self):
+        self.login_admin()
+
+        response = self.client.get("/admin/scheduler/status")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.get_json(),
+            {
+                "running": False,
+                "last_heartbeat_at": None,
+                "heartbeat_timeout_seconds": 60,
+                "jobs": [],
+            },
+        )
+
+    def test_admin_scheduler_status_returns_running_and_next_run_by_channel(self):
+        self.login_admin()
+        now = datetime.now(timezone.utc)
+        next_run_at = now + timedelta(hours=2)
+        DatabaseAdmin().upsert_scheduler_status(
+            job_id="daily_analysis",
+            channel="diario",
+            process_id=123,
+            next_run_at=next_run_at,
+            heartbeat_at=now,
+        )
+
+        response = self.client.get("/admin/scheduler/status")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["running"])
+        self.assertIsNotNone(payload["last_heartbeat_at"])
+        self.assertEqual(len(payload["jobs"]), 1)
+        self.assertEqual(payload["jobs"][0]["id"], "daily_analysis")
+        self.assertEqual(payload["jobs"][0]["channel"], "diario")
+        self.assertIsNotNone(payload["jobs"][0]["next_run_at"])
+
+    def test_admin_scheduler_status_with_stale_heartbeat_returns_not_running(self):
+        self.login_admin()
+        heartbeat_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+        DatabaseAdmin().upsert_scheduler_status(
+            job_id="daily_analysis",
+            channel="diario",
+            process_id=123,
+            next_run_at=datetime.now(timezone.utc) + timedelta(hours=2),
+            heartbeat_at=heartbeat_at,
+        )
+
+        response = self.client.get("/admin/scheduler/status")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.get_json()["running"])
 
 
 if __name__ == "__main__":

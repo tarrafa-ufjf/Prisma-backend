@@ -4,22 +4,22 @@ services:
   postgres:
     image: postgres:17.6-alpine
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     environment:
-      - POSTGRES_USER=tarrafa
-      - POSTGRES_PASSWORD=tarrafa123
-      - POSTGRES_DB=tarrafa_db
+      - POSTGRES_USER=${DB_USER:-tarrafa}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-tarrafa123}
+      - POSTGRES_DB=${DB_DATABASE:-tarrafa_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:3.13.7-management
     ports:
-      - "5672:5672"
+      - "${RABBITMQ_PORT:-5672}:5672"
       - "15672:15672"
     environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 

@@ -59,7 +59,7 @@ Crie o arquivo `.env` na raiz do projeto a partir do exemplo:
 cp .env.example .env
 ```
 
-O `.env.example` já vem com os valores padrão usados pelo ambiente local do `docker-compose.yml`. Assim, após copiar o arquivo, a aplicação já aponta para o PostgreSQL e o RabbitMQ locais:
+O `.env.example` já vem com os valores padrão usados pelo ambiente local. Após copiar o arquivo, tanto a aplicação quanto o `docker-compose.yml` usam essas variáveis para configurar PostgreSQL e RabbitMQ:
 
 ```env
 DB_HOST=localhost
@@ -87,12 +87,12 @@ AUTH_ADMIN_PASSWORD=change_me_admin_password
 SCHEDULER_TIMEZONE=America/Sao_Paulo
 ```
 
-Importante: o `docker-compose.yml` atual não usa as variáveis `DB_USER`, `DB_PASSWORD` e `DB_DATABASE` do `.env` para criar o container do PostgreSQL. Ele define diretamente `POSTGRES_USER=tarrafa`, `POSTGRES_PASSWORD=tarrafa123` e `POSTGRES_DB=tarrafa_db`. O mesmo vale para o RabbitMQ, que usa `guest/guest` diretamente no Compose. Por isso, o `.env.example` repete esses valores para facilitar a execução local.
+Importante: o Docker Compose carrega automaticamente o arquivo `.env` da raiz do projeto para interpolar variáveis como `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`, `DB_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD` e `RABBITMQ_PORT`. Se o `.env` não existir, o `docker-compose.yml` ainda possui valores padrão para a execução local.
 
 Observações:
 
 - O recomendado é trocar credenciais, segredos e senha do administrador antes de usar o projeto em ambientes compartilhados, homologação ou produção.
-- Se alterar credenciais do PostgreSQL ou RabbitMQ, atualize os dois lugares: o `.env` usado pela aplicação e o serviço correspondente no `docker-compose.yml`.
+- Se alterar credenciais ou portas do PostgreSQL ou RabbitMQ, atualize o `.env` antes de subir os containers.
 - A configuração do Moodle não deve ser colocada diretamente no `.env`; ela é cadastrada pela rota administrativa `PUT /admin/moodle-config`.
 - Se executar os comandos fora da raiz do projeto e houver erro de importação, exporte o `PYTHONPATH`:
 

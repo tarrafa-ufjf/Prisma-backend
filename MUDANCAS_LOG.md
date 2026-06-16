@@ -2,6 +2,26 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-06-16 10:29:45 -03
+
+### Titulo
+
+Docker Compose lendo variaveis do env
+
+### Arquivos afetados
+
+- [`docker-compose.yml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/docker-compose.yml)
+- [`README.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/README.md)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Atualizado o `docker-compose.yml` para interpolar variaveis do `.env` nas configuracoes de PostgreSQL e RabbitMQ, incluindo credenciais, banco local e portas principais. O README foi ajustado para explicar que o `.env.example` alimenta tanto a aplicacao quanto o Docker Compose, mantendo defaults no Compose para execucao local.
+
+### Impacto
+
+Antes, mudar credenciais ou portas exigia atualizar o `.env` da aplicacao e tambem valores fixos no `docker-compose.yml`. Agora, o `.env` passa a ser a fonte principal desses parametros para execucao local, reduzindo duplicacao e risco de configuracoes divergentes.
+
 ## 2026-06-16 09:38:43 -03
 
 ### Titulo

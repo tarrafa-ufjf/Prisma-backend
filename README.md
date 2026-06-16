@@ -59,7 +59,7 @@ Crie o arquivo `.env` na raiz do projeto a partir do exemplo:
 cp .env.example .env
 ```
 
-Preencha as variáveis do PostgreSQL com os dados do banco que a aplicação deve acessar. Para o ambiente local criado pelo `docker-compose.yml`, use os valores fixos definidos no serviço `postgres` e `rabbitmq`:
+O `.env.example` já vem com os valores padrão usados pelo ambiente local do `docker-compose.yml`. Assim, após copiar o arquivo, a aplicação já aponta para o PostgreSQL e o RabbitMQ locais:
 
 ```env
 DB_HOST=localhost
@@ -67,6 +67,11 @@ DB_PORT=5432
 DB_USER=tarrafa
 DB_PASSWORD=tarrafa123
 DB_DATABASE=tarrafa_db
+
+RABBITMQ_HOST=localhost
+RABBITMQ_PORT=5672
+RABBITMQ_USER=guest
+RABBITMQ_PASSWORD=guest
 
 SECRET_KEY=change_me_to_a_long_random_secret
 MOODLE_CONFIG_ENCRYPTION_KEY=change_me_to_a_different_long_random_secret
@@ -77,19 +82,17 @@ REMEMBER_COOKIE_SAMESITE=Lax
 AUTH_ADMIN_EMAIL=admin@example.com
 AUTH_ADMIN_PASSWORD=change_me_admin_password
 
-RABBITMQ_HOST=localhost
-RABBITMQ_PORT=5672
-RABBITMQ_USER=guest
-RABBITMQ_PASSWORD=guest
+
 
 SCHEDULER_TIMEZONE=America/Sao_Paulo
 ```
 
-Importante: o `docker-compose.yml` atual não usa as variáveis `DB_USER`, `DB_PASSWORD` e `DB_DATABASE` do `.env` para criar o container do PostgreSQL. Ele define diretamente `POSTGRES_USER=tarrafa`, `POSTGRES_PASSWORD=tarrafa123` e `POSTGRES_DB=tarrafa_db`. Por isso, no ambiente local padrão, o `.env` da aplicação precisa repetir esses mesmos valores. Se você quiser usar outras credenciais, altere tanto o `.env` quanto o serviço `postgres` no `docker-compose.yml`.
+Importante: o `docker-compose.yml` atual não usa as variáveis `DB_USER`, `DB_PASSWORD` e `DB_DATABASE` do `.env` para criar o container do PostgreSQL. Ele define diretamente `POSTGRES_USER=tarrafa`, `POSTGRES_PASSWORD=tarrafa123` e `POSTGRES_DB=tarrafa_db`. O mesmo vale para o RabbitMQ, que usa `guest/guest` diretamente no Compose. Por isso, o `.env.example` repete esses valores para facilitar a execução local.
 
 Observações:
 
-- Troque os segredos e a senha do administrador antes de usar o projeto em ambientes compartilhados ou de produção.
+- O recomendado é trocar credenciais, segredos e senha do administrador antes de usar o projeto em ambientes compartilhados, homologação ou produção.
+- Se alterar credenciais do PostgreSQL ou RabbitMQ, atualize os dois lugares: o `.env` usado pela aplicação e o serviço correspondente no `docker-compose.yml`.
 - A configuração do Moodle não deve ser colocada diretamente no `.env`; ela é cadastrada pela rota administrativa `PUT /admin/moodle-config`.
 - Se executar os comandos fora da raiz do projeto e houver erro de importação, exporte o `PYTHONPATH`:
 

@@ -59,7 +59,7 @@ Crie o arquivo `.env` na raiz do projeto a partir do exemplo:
 cp .env.example .env
 ```
 
-Preencha as variáveis do PostgreSQL com os dados do banco que a aplicação deve acessar. Para o ambiente local criado pelo `docker-compose.yml`, use os valores fixos definidos no serviço `postgres`:
+Preencha as variáveis do PostgreSQL com os dados do banco que a aplicação deve acessar. Para o ambiente local criado pelo `docker-compose.yml`, use os valores fixos definidos no serviço `postgres` e `rabbitmq`:
 
 ```env
 DB_HOST=localhost

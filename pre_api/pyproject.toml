@@ -2,10 +2,9 @@
 name = "tarrafa"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "Yan-Fonseca",email = "yanfonseca2002@gmail.com"}
-]
+authors = [{ name = "Yan-Fonseca", email = "yanfonseca2002@gmail.com" }]
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.10,<4.0"
 dependencies = [
     "pymysql (>=1.1.1,<2.0.0)",
@@ -28,7 +27,7 @@ dependencies = [
 [tool.poetry]
 packages = [
     { include = "tarrafa", from = "." },
-    { include = "src", from = ".." } # Isso adiciona o diretório 'raiz/src'
+    { include = "src", from = ".." },    # Isso adiciona o diretório 'raiz/src'
 ]
 
 

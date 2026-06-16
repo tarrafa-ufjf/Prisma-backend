@@ -14,6 +14,7 @@ Backend do Tarrafa para coleta, processamento e disponibilização de indicadore
 - [Endpoints principais](#endpoints-principais)
 - [Modelo de mensagens](#modelo-de-mensagens)
 - [Solução de problemas](#solução-de-problemas)
+- [Licença](#licença)
 
 ## Arquitetura
 
@@ -346,3 +347,7 @@ Erros comuns:
 - **Erro ao iniciar análise**: confirme se `PUT /admin/moodle-config` já foi executado com uma conexão Moodle válida.
 - **Erro de importação de `src`**: execute os comandos a partir de `pre_api/` ou `worker/` com as dependências instaladas pelo Poetry; se necessário, exporte `PYTHONPATH=..`.
 - **Rotas protegidas retornando erro de autenticação**: execute `poetry run python install_auth.py` dentro de `pre_api/` e confira `AUTH_ADMIN_EMAIL` e `AUTH_ADMIN_PASSWORD` no `.env`.
+
+## Licença
+
+Este projeto segue a licenca MIT. Consulte a referencia de licenca em [LICENSE](https://github.com/tarrafa-ufjf/Tarrafa-backend/blob/master/LICENSE).

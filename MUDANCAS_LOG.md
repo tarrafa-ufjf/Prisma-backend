@@ -2,6 +2,25 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-06-16 09:38:43 -03
+
+### Titulo
+
+Melhorias no README principal
+
+### Arquivos afetados
+
+- [`README.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/README.md)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Reestruturado o README principal com visao geral do projeto, arquitetura, pre-requisitos, configuracao de ambiente, primeira execucao, comandos de execucao da API e do worker, configuracao do Moodle, scheduler, testes, endpoints principais, modelo de mensagens e solucao de problemas.
+
+### Impacto
+
+A documentacao de entrada do projeto ficou mais profissional e completa. Antes, o README tinha instrucoes mais curtas e concentradas em instalacao/execucao; agora tambem orienta configuracao de `.env`, inicializacao da autenticacao local, uso do scheduler, rotas principais e diagnostico de erros comuns.
+
 ## 2026-05-20 09:55:30 -03
 
 ### Titulo

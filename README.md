@@ -14,53 +14,53 @@
 
 # Tarrafa Backend
 
-Backend do Tarrafa para coleta, processamento e disponibilização de indicadores educacionais a partir de dados do Moodle. O projeto combina uma API Flask, um worker assíncrono e uma biblioteca de análise compartilhada para executar análises de estudantes, tutores, disciplinas e indicadores globais.
+Tarrafa backend for collecting, processing, and serving educational indicators from Moodle data. The project combines a Flask API, an asynchronous worker, and a shared analysis library to run analyses for students, tutors, courses, and global indicators.
 
-## Arquitetura
+## Architecture
 
-O repositório é organizado em três blocos principais:
+The repository is organized into three main blocks:
 
-| Caminho | Responsabilidade |
+| Path | Responsibility |
 | --- | --- |
-| `pre_api/` | API Flask, autenticação local, rotas administrativas e rotas de consulta dos indicadores. |
-| `worker/` | Consumidor RabbitMQ responsável por processar tarefas de análise e persistir resultados no PostgreSQL local. |
-| `src/analysis_lib/` | Biblioteca compartilhada com mapeadores e analisadores usados pela API e pelo worker. |
+| `pre_api/` | Flask API, local authentication, administrative routes, and indicator query routes. |
+| `worker/` | RabbitMQ consumer responsible for processing analysis tasks and persisting results in the local PostgreSQL database. |
+| `src/analysis_lib/` | Shared library with mappers and analyzers used by the API and the worker. |
 
-Serviços de apoio:
+Supporting services:
 
-- **PostgreSQL**: banco local da aplicação, usado para configuração, status e resultados consolidados.
-- **RabbitMQ**: fila de tarefas entre API e worker.
-- **pgAdmin**: interface opcional para inspecionar o PostgreSQL local.
-- **Moodle/MySQL institucional**: fonte externa de dados, configurada via API administrativa.
+- **PostgreSQL**: local application database, used for configuration, status, and consolidated results.
+- **RabbitMQ**: task queue between the API and the worker.
+- **pgAdmin**: optional interface for inspecting the local PostgreSQL database.
+- **Institutional Moodle/MySQL**: external data source, configured through the administrative API.
 
-Fluxo resumido:
+Summary flow:
 
-1. A API recebe uma solicitação de análise.
-2. A API lê a configuração salva do Moodle e publica tarefas na fila `tasks_to_process`.
-3. O worker consome as tarefas, executa os analisadores e grava os resultados no PostgreSQL.
-4. A API consulta o PostgreSQL para entregar os indicadores ao frontend ou a consumidores externos.
+1. The API receives an analysis request.
+2. The API reads the saved Moodle configuration and publishes tasks to the `tasks_to_process` queue.
+3. The worker consumes the tasks, runs the analyzers, and writes the results to PostgreSQL.
+4. The API queries PostgreSQL to deliver indicators to the frontend or to external consumers.
 
-## Pré-requisitos
+## Requirements
 
 - Python `>= 3.10`
 - Poetry
-- Docker e Docker Compose
-- Acesso ao banco Moodle/MySQL institucional
-- Portas locais livres:
-  - `5432` para PostgreSQL
-  - `5672` para RabbitMQ
-  - `15672` para painel do RabbitMQ
-  - `8080` para pgAdmin
+- Docker and Docker Compose
+- Access to the institutional Moodle/MySQL database
+- Available local ports:
+  - `5432` for PostgreSQL
+  - `5672` for RabbitMQ
+  - `15672` for the RabbitMQ management panel
+  - `8080` for pgAdmin
 
-## Configuração do ambiente
+## Environment Configuration
 
-Crie o arquivo `.env` na raiz do projeto a partir do exemplo:
+Create a `.env` file in the project root from the example:
 
 ```bash
 cp .env.example .env
 ```
 
-O `.env.example` já vem com os valores padrão usados pelo ambiente local. Após copiar o arquivo, tanto a aplicação quanto o `docker-compose.yml` usam essas variáveis para configurar PostgreSQL e RabbitMQ:
+The `.env.example` file already includes the default values used by the local environment. After copying the file, both the application and `docker-compose.yml` use these variables to configure PostgreSQL and RabbitMQ:
 
 ```env
 DB_HOST=localhost
@@ -88,34 +88,34 @@ AUTH_ADMIN_PASSWORD=change_me_admin_password
 SCHEDULER_TIMEZONE=America/Sao_Paulo
 ```
 
-Importante: o Docker Compose carrega automaticamente o arquivo `.env` da raiz do projeto para interpolar variáveis como `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`, `DB_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD` e `RABBITMQ_PORT`. Se o `.env` não existir, o `docker-compose.yml` ainda possui valores padrão para a execução local.
+Important: Docker Compose automatically loads the `.env` file from the project root to interpolate variables such as `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`, `DB_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, and `RABBITMQ_PORT`. If `.env` does not exist, `docker-compose.yml` still includes default values for local execution.
 
-Observações:
+Notes:
 
-- O recomendado é trocar credenciais, segredos e senha do administrador antes de usar o projeto em ambientes compartilhados, homologação ou produção.
-- Se alterar credenciais ou portas do PostgreSQL ou RabbitMQ, atualize o `.env` antes de subir os containers.
-- A configuração do Moodle não deve ser colocada diretamente no `.env`; ela é cadastrada pela rota administrativa `PUT /admin/moodle-config`.
-- Se executar os comandos fora da raiz do projeto e houver erro de importação, exporte o `PYTHONPATH`:
+- It is recommended to replace credentials, secrets, and the administrator password before using the project in shared, staging, or production environments.
+- If you change PostgreSQL or RabbitMQ credentials or ports, update `.env` before starting the containers.
+- The Moodle configuration should not be placed directly in `.env`; it is registered through the `PUT /admin/moodle-config` administrative route.
+- If you run commands outside the project root and encounter import errors, export `PYTHONPATH`:
 
 ```bash
 export PYTHONPATH=..
 ```
 
-## Primeira execução
+## First Run
 
-Suba os serviços locais:
+Start the local services:
 
 ```bash
 docker compose up -d
 ```
 
-Se sua instalação usar o binário legado:
+If your installation uses the legacy binary:
 
 ```bash
 docker-compose up -d
 ```
 
-Instale as dependências do worker e crie as tabelas principais:
+Install the worker dependencies and create the main tables:
 
 ```bash
 cd worker
@@ -123,7 +123,7 @@ poetry install
 poetry run python install.py
 ```
 
-Instale as dependências da API e inicialize a autenticação local:
+Install the API dependencies and initialize local authentication:
 
 ```bash
 cd ../pre_api
@@ -131,11 +131,11 @@ poetry install
 poetry run python install_auth.py
 ```
 
-Ao final, o banco local terá as tabelas de configuração, status, indicadores e autenticação necessárias para iniciar a aplicação.
+After this, the local database will have the configuration, status, indicator, and authentication tables required to start the application.
 
-## Como executar o projeto
+## Running the Project
 
-Abra dois terminais, um para a API e outro para o worker.
+Open two terminals, one for the API and one for the worker.
 
 Terminal 1, API:
 
@@ -144,7 +144,7 @@ cd pre_api
 poetry run python app.py
 ```
 
-Por padrão, o Flask disponibiliza a aplicação em:
+By default, Flask serves the application at:
 
 ```text
 http://localhost:5000
@@ -157,9 +157,9 @@ cd worker
 poetry run python app.py
 ```
 
-O worker ficará aguardando mensagens na fila `tasks_to_process`.
+The worker will wait for messages in the `tasks_to_process` queue.
 
-Para limpar os dados locais do worker e recriar a estrutura antes de iniciar:
+To clear the worker's local data and recreate the structure before starting:
 
 ```bash
 cd worker
@@ -168,17 +168,17 @@ poetry run python install.py
 poetry run python app.py
 ```
 
-## Configuração do Moodle
+## Moodle Configuration
 
-A conexão com o banco Moodle/MySQL institucional é cadastrada por um usuário administrador.
+The connection to the institutional Moodle/MySQL database is registered by an administrator user.
 
-Rotas administrativas:
+Administrative routes:
 
-- `PUT /admin/moodle-config`: salva a configuração do Moodle no PostgreSQL local.
-- `GET /admin/moodle-config`: retorna a configuração cadastrada sem expor a senha.
-- `POST /admin/moodle-config/test`: testa uma configuração sem salvá-la.
+- `PUT /admin/moodle-config`: saves the Moodle configuration in the local PostgreSQL database.
+- `GET /admin/moodle-config`: returns the registered configuration without exposing the password.
+- `POST /admin/moodle-config/test`: tests a configuration without saving it.
 
-Depois que a configuração estiver salva, a análise pode ser iniciada por:
+After the configuration has been saved, an analysis can be started with:
 
 ```http
 PUT /analysis
@@ -189,37 +189,36 @@ Content-Type: application/json
 }
 ```
 
-O corpo da requisição deve conter apenas opções operacionais, como o canal de análise. A conexão Moodle usada na análise vem da configuração persistida.
+The request body should contain only operational options, such as the analysis channel. The Moodle connection used in the analysis comes from the persisted configuration.
 
-## Scheduler e canais de análise
+## Scheduler and Analysis Channels
 
-O projeto possui suporte a agendamentos automáticos via APScheduler.
+The project supports automatic scheduling through APScheduler.
 
-Para executar o scheduler:
+To run the scheduler:
 
 ```bash
 cd pre_api
 poetry run python scheduler.py
 ```
 
-Os jobs são configurados em:
+Jobs are configured in:
 
 ```text
 pre_api/scheduler_jobs.yml
 ```
 
-O status do scheduler pode ser consultado em:
+The scheduler status can be checked at:
 
 ```http
 GET /admin/scheduler/status
 ```
 
-Para configurar canais de análise, observers de indicadores e agendamentos automáticos, consulte [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](CONFIGURACAO_OBSERVERS_SCHEDULER.md).
+To configure analysis channels, indicator observers, and automatic schedules, see [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](CONFIGURACAO_OBSERVERS_SCHEDULER.md).
 
+## Main Endpoints
 
-## Endpoints principais
-
-Autenticação:
+Authentication:
 
 - `POST /auth/login`
 - `POST /auth/logout`
@@ -229,18 +228,18 @@ Autenticação:
 - `PATCH /auth/users/<user_id>`
 - `DELETE /auth/users/<user_id>`
 
-Administração:
+Administration:
 
 - `GET /admin/moodle-config`
 - `PUT /admin/moodle-config`
 - `POST /admin/moodle-config/test`
 - `GET /admin/scheduler/status`
 
-Análise:
+Analysis:
 
 - `PUT /analysis`
 
-Consultas de estudantes:
+Student queries:
 
 - `GET /subjects`
 - `GET /analysis/subject/<id>/summary`
@@ -254,7 +253,7 @@ Consultas de estudantes:
 - `GET /analysis/general/rankings`
 - `GET /analysis/general/subjects/indicators`
 
-Consultas de tutores:
+Tutor queries:
 
 - `GET /subjects/tutors`
 - `GET /analysis/tutors/subject/<id>/summary`
@@ -270,20 +269,20 @@ Consultas de tutores:
 - `GET /analysis/tutors/general/rankings`
 - `GET /analysis/tutors/general/subjects/indicators`
 
-## Modelo de mensagens
+## Message Model
 
-As tarefas são publicadas na fila `tasks_to_process` e possuem prioridade conforme o tipo de operação. Tarefas solicitadas pelo usuário tendem a ter prioridade maior, enquanto tarefas internas ou derivadas do worker podem ter prioridade menor.
+Tasks are published to the `tasks_to_process` queue and have priority according to the operation type. Tasks requested by the user tend to have higher priority, while internal or worker-derived tasks may have lower priority.
 
-Quando uma análise é grande, o worker pode dividi-la em subtarefas para evitar que uma execução longa bloqueie análises menores. Esse comportamento permite que o sistema continue responsivo durante processamentos globais.
+When an analysis is large, the worker can split it into subtasks to prevent a long execution from blocking smaller analyses. This behavior allows the system to remain responsive during global processing.
 
-Modelo geral de processamento:
+General processing model:
 
-1. A API publica uma tarefa em `tasks_to_process`.
-2. O worker inicia a execução da tarefa.
-3. O worker persiste os resultados no PostgreSQL local.
-4. A API passa a disponibilizar os dados pelas rotas de consulta.
+1. The API publishes a task to `tasks_to_process`.
+2. The worker starts executing the task.
+3. The worker persists the results in the local PostgreSQL database.
+4. The API makes the data available through the query routes.
 
-Exemplo de tarefa:
+Example task:
 
 ```json
 {
@@ -306,48 +305,48 @@ Exemplo de tarefa:
 }
 ```
 
-## Solução de problemas
+## Troubleshooting
 
-Verificar containers:
+Check containers:
 
 ```bash
 docker compose ps
 ```
 
-Ver logs dos serviços:
+View service logs:
 
 ```bash
 docker compose logs -f postgres
 docker compose logs -f rabbitmq
 ```
 
-Testar se o RabbitMQ está acessível:
+Test whether RabbitMQ is reachable:
 
 ```text
 http://localhost:15672
 ```
 
-Credenciais padrão do painel RabbitMQ local:
+Default credentials for the local RabbitMQ panel:
 
 ```text
 guest / guest
 ```
 
-Credenciais padrão do pgAdmin local:
+Default credentials for the local pgAdmin instance:
 
 ```text
 http://localhost:8080
 admin@admin.com / admin
 ```
 
-Erros comuns:
+Common errors:
 
-- **Erro de conexão com PostgreSQL**: confirme se `docker compose up -d` foi executado e se as variáveis `DB_*` do `.env` batem com o `docker-compose.yml`.
-- **Erro de conexão com RabbitMQ**: confirme se o serviço `rabbitmq` está saudável e se `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER` e `RABBITMQ_PASSWORD` estão corretos.
-- **Erro ao iniciar análise**: confirme se `PUT /admin/moodle-config` já foi executado com uma conexão Moodle válida.
-- **Erro de importação de `src`**: execute os comandos a partir de `pre_api/` ou `worker/` com as dependências instaladas pelo Poetry; se necessário, exporte `PYTHONPATH=..`.
-- **Rotas protegidas retornando erro de autenticação**: execute `poetry run python install_auth.py` dentro de `pre_api/` e confira `AUTH_ADMIN_EMAIL` e `AUTH_ADMIN_PASSWORD` no `.env`.
+- **PostgreSQL connection error**: confirm that `docker compose up -d` has been run and that the `DB_*` variables in `.env` match `docker-compose.yml`.
+- **RabbitMQ connection error**: confirm that the `rabbitmq` service is healthy and that `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, and `RABBITMQ_PASSWORD` are correct.
+- **Error starting an analysis**: confirm that `PUT /admin/moodle-config` has already been run with a valid Moodle connection.
+- **`src` import error**: run commands from `pre_api/` or `worker/` with dependencies installed through Poetry; if necessary, export `PYTHONPATH=..`.
+- **Protected routes return an authentication error**: run `poetry run python install_auth.py` inside `pre_api/` and check `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD` in `.env`.
 
-## Licença
+## License
 
-Este projeto segue a licenca MIT. Consulte a referencia de licenca em [LICENSE](./LICENSE).
+This project is licensed under the MIT license. See the license reference in [LICENSE](./LICENSE).

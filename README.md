@@ -1,3 +1,17 @@
+<p align="center">
+  <img src="docs/assets/prisma_banner.png" alt="Prisma Banner" width="75%">
+</p>
+
+<p align="center">
+  A web interface for academic monitoring through dashboards, indicators, and educational data visualizations.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.1.0-004b8d" alt="Version">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-2fb594" alt="License"></a>
+  <img src="https://img.shields.io/badge/Research-Tool-orange" alt="Tool">
+</p>
+
 # Tarrafa Backend
 
 Backend do Tarrafa para coleta, processamento e disponibilização de indicadores educacionais a partir de dados do Moodle. O projeto combina uma API Flask, um worker assíncrono e uma biblioteca de análise compartilhada para executar análises de estudantes, tutores, disciplinas e indicadores globais.
@@ -350,4 +364,4 @@ Erros comuns:
 
 ## Licença
 
-Este projeto segue a licenca MIT. Consulte a referencia de licenca em [LICENSE](https://github.com/tarrafa-ufjf/Tarrafa-backend/blob/master/LICENSE).
+Este projeto segue a licenca MIT. Consulte a referencia de licenca em [LICENSE](./LICENSE).

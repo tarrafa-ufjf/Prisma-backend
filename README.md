@@ -16,20 +16,6 @@
 
 Backend do Tarrafa para coleta, processamento e disponibilização de indicadores educacionais a partir de dados do Moodle. O projeto combina uma API Flask, um worker assíncrono e uma biblioteca de análise compartilhada para executar análises de estudantes, tutores, disciplinas e indicadores globais.
 
-## Sumário
-
-- [Arquitetura](#arquitetura)
-- [Pré-requisitos](#pré-requisitos)
-- [Configuração do ambiente](#configuração-do-ambiente)
-- [Primeira execução](#primeira-execução)
-- [Como executar o projeto](#como-executar-o-projeto)
-- [Configuração do Moodle](#configuração-do-moodle)
-- [Scheduler e canais de análise](#scheduler-e-canais-de-análise)
-- [Endpoints principais](#endpoints-principais)
-- [Modelo de mensagens](#modelo-de-mensagens)
-- [Solução de problemas](#solução-de-problemas)
-- [Licença](#licença)
-
 ## Arquitetura
 
 O repositório é organizado em três blocos principais:

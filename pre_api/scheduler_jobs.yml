@@ -1,5 +1,9 @@
 jobs:
   - id: daily_analysis
     channel: diario
-    hour: 00
-    minute: 30
+    hour: 13
+    minute: 39
+  - id: daily_analysis2
+    channel: diario
+    hour: 14
+    minute: 50

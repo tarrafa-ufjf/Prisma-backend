@@ -10,7 +10,7 @@ from database import db
 from models import Role, User
 
 
-AUTH_EXEMPT_PATHS = {"/", "/auth/login"}
+AUTH_EXEMPT_PATHS = {"/", "/auth/login", "/chatbot"}
 DEFAULT_USER_ROLE = "user"
 ADMIN_ROLE = "admin"
 UNSET = object()

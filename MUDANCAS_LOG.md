@@ -2,44 +2,174 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
-## 2026-06-16 10:29:45 -03
+## 2026-06-10 10:21:44 -03
 
 ### Titulo
 
-Docker Compose lendo variaveis do env
+Configuracao NL2SQL no ambiente local
 
 ### Arquivos afetados
 
-- [`docker-compose.yml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/docker-compose.yml)
-- [`README.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/README.md)
+- .env
+- MUDANCAS_LOG.md
+
+### Resumo
+
+Foram adicionadas ao `.env` as variaveis consumidas por `pre_api/services/nl2sql/config.py`: quantidade de execucoes, modelo e chave OpenRouter, dialeto SQL, trabalhadores, amostragem de linhas e configuracoes de geracao Vega-Lite.
+
+### Impacto
+
+As configuracoes do pipeline NL2SQL passam a ficar explicitas no ambiente local, mantendo os mesmos valores padrao que antes eram usados diretamente pelo codigo quando as variaveis nao existiam.
+
+## 2026-06-08 14:56:27 -03
+
+### Titulo
+
+Refatoracao modular do pipeline NL2SQL
+
+### Arquivos afetados
+
+- pre_api/services/nl2sql_pipeline.py
+- pre_api/services/nl2sql/__init__.py
+- pre_api/services/nl2sql/config.py
+- pre_api/services/nl2sql/prompts.py
+- pre_api/services/nl2sql/db.py
+- pre_api/services/nl2sql/sql_processing.py
+- pre_api/services/nl2sql/candidates.py
+- pre_api/services/nl2sql/judge.py
+- pre_api/services/nl2sql/execution.py
+- pre_api/services/nl2sql/visualization.py
+- pre_api/services/nl2sql/answer.py
+- pre_api/services/nl2sql/graph.py
+- MUDANCAS_LOG.md
+
+### Resumo
+
+O antigo arquivo monolitico services/nl2sql_pipeline.py foi convertido em uma fachada de compatibilidade que exporta run_nl2sql_pipeline. A implementacao foi separada em modulos por responsabilidade: configuracao, prompts, conexao Moodle, processamento SQLGlot, geracao de candidatos, adjudicacao, execucao SQL, geracao Vega-Lite, resposta final e orquestracao LangGraph.
+
+### Impacto
+
+O contrato externo usado pelo chatbot permanece o mesmo, mas a manutencao fica mais simples: cada etapa do pipeline agora pode ser alterada ou testada em isolamento. O comportamento funcional esperado do endpoint /chatbot nao muda com esta refatoracao.
+
+## 2026-06-08 14:25:57 -03
+
+### Titulo
+
+Atualizacao do schema Vega-Lite para v6
+
+### Arquivos afetados
+
+- pre_api/services/nl2sql_pipeline.py
+- MUDANCAS_LOG.md
+
+### Resumo
+
+A geracao de especificacoes Vega-Lite passou a usar o schema https://vega.github.io/schema/vega-lite/v6.json em vez da versao v5, centralizado na constante VEGA_LITE_SCHEMA.
+
+### Impacto
+
+Antes, o frontend receberia specs marcados como Vega-Lite v5. Agora, os specs gerados pelo endpoint /chatbot ja apontam para Vega-Lite v6, alinhando o contrato com a versao atual esperada.
+
+## 2026-06-08 14:22:57 -03
+
+### Titulo
+
+Geracao de Vega-Lite no pipeline NL2SQL
+
+### Arquivos afetados
+
+- pre_api/services/nl2sql_pipeline.py
+- pre_api/services/chatbot/build_chatbot_response.py
+- MUDANCAS_LOG.md
+
+### Resumo
+
+O LangGraph do pipeline NL2SQL ganhou etapas separadas para executar o SQL vencedor, gerar uma especificacao Vega-Lite a partir do JSON retornado e depois montar a resposta textual. O retorno do pipeline e do endpoint /chatbot agora inclui o campo vega. A geracao pode ser desativada com NL2SQL_GENERATE_VEGA=false e limita os dados enviados ao gerador por NL2SQL_VEGA_MAX_ROWS.
+
+### Impacto
+
+Antes, o endpoint retornava apenas resposta textual e JSON estruturado, sem especificacao de grafico. Agora, quando os dados forem adequados para visualizacao, a resposta tambem traz um spec Vega-Lite renderizavel pelo frontend; em resultados vazios ou pouco grafaveis, vega retorna null.
+
+## 2026-06-08 13:14:52 -03
+
+### Titulo
+
+Retorno enxuto no endpoint do chatbot
+
+### Arquivos afetados
+
+- pre_api/services/chatbot/build_chatbot_response.py
+- MUDANCAS_LOG.md
+
+### Resumo
+
+O retorno de sucesso do endpoint /chatbot passou a expor por padrao apenas success, question, answer e json. Os campos tecnicos sql, confidence, candidate_sqls e adjudication foram movidos para um bloco debug, incluido somente quando CHATBOT_DEBUG_RESPONSE estiver habilitado.
+
+### Impacto
+
+Antes, a API retornava metadados internos do pipeline em toda resposta, aumentando o payload e expondo detalhes de depuracao. Agora, o contrato padrao fica mais limpo para o frontend e os detalhes tecnicos continuam disponiveis em ambiente de desenvolvimento via configuracao.
+
+## 2026-06-03 13:44:35 -03
+
+### Titulo
+
+JSON final deterministico no pipeline NL2SQL
+
+### Arquivos afetados
+
+- [`pre_api/services/nl2sql_pipeline.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/services/nl2sql_pipeline.py)
+- [`pre_api/services/chatbot/build_chatbot_response.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/services/chatbot/build_chatbot_response.py)
 - [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
 
 ### Resumo
 
-Atualizado o `docker-compose.yml` para interpolar variaveis do `.env` nas configuracoes de PostgreSQL e RabbitMQ, incluindo credenciais, banco local e portas principais. O README foi ajustado para explicar que o `.env.example` alimenta tanto a aplicacao quanto o Docker Compose, mantendo defaults no Compose para execucao local.
+O JSON final deixou de depender de extracao a partir do texto gerado pela LLM. O pipeline agora executa diretamente o SQL vencedor no backend, converte as linhas retornadas para uma lista de dicionarios serializavel em JSON e usa esse resultado para gerar a resposta textual.
 
 ### Impacto
 
-Antes, mudar credenciais ou portas exigia atualizar o `.env` da aplicacao e tambem valores fixos no `docker-compose.yml`. Agora, o `.env` passa a ser a fonte principal desses parametros para execucao local, reduzindo duplicacao e risco de configuracoes divergentes.
+Antes, o campo estruturado dependia de a LLM escrever um bloco JSON corretamente no texto final. Agora, a rota `/chatbot` retorna `json` a partir do resultado real da query executada, reduzindo margem de erro de parse e divergencia entre texto e dados.
 
-## 2026-06-16 09:38:43 -03
+## 2026-06-03 12:28:24 -03
 
 ### Titulo
 
-Melhorias no README principal
+Restauracao do LangGraph no pipeline NL2SQL
 
 ### Arquivos afetados
 
-- [`README.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/README.md)
+- [`pre_api/services/nl2sql_pipeline.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/services/nl2sql_pipeline.py)
+- [`pre_api/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/pyproject.toml)
 - [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
 
 ### Resumo
 
-Reestruturado o README principal com visao geral do projeto, arquitetura, pre-requisitos, configuracao de ambiente, primeira execucao, comandos de execucao da API e do worker, configuracao do Moodle, scheduler, testes, endpoints principais, modelo de mensagens e solucao de problemas.
+O `LangGraph` voltou a orquestrar o fluxo do `nl2sql_pipeline`, mantendo `run_nl2sql_pipeline` como ponto de entrada usado pelo chatbot. O grafo recomposto possui os nos de geracao de candidatos, validacao SQLGlot, agrupamento AST, adjudicacao e geracao da resposta final. A dependencia direta `langgraph` foi adicionada novamente ao `pyproject.toml`.
 
 ### Impacto
 
-A documentacao de entrada do projeto ficou mais profissional e completa. Antes, o README tinha instrucoes mais curtas e concentradas em instalacao/execucao; agora tambem orienta configuracao de `.env`, inicializacao da autenticacao local, uso do scheduler, rotas principais e diagnostico de erros comuns.
+O comportamento funcional do chatbot permanece o mesmo, mas o pipeline volta a ter uma estrutura de grafo pronta para evoluir com branches, retries, fallback de modelo ou etapas condicionais sem reescrever a integracao da rota.
+
+## 2026-06-03 12:08:32 -03
+
+### Titulo
+
+Integracao do chatbot com o pipeline NL2SQL
+
+### Arquivos afetados
+
+- [`pre_api/services/nl2sql_pipeline.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/services/nl2sql_pipeline.py)
+- [`pre_api/services/chatbot/build_chatbot_response.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/services/chatbot/build_chatbot_response.py)
+- [`pre_api/services/sql_generator.py`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/services/sql_generator.py)
+- [`pre_api/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/pre_api/pyproject.toml)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Tarrafa-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+O chatbot passou a chamar `run_nl2sql_pipeline`, que executa o fluxo de candidatos NL2SQL, validacao SQLGlot, agrupamento, adjudicacao e resposta final. O pipeline deixou de depender de Hydra e LangGraph como entrypoint experimental, ganhou funcao reutilizavel pela API e passou a montar a conexao Moodle a partir de `NL2SQL_DB_URI`, da configuracao Moodle salva ou das variaveis `MYSQL_*`. O antigo `sql_generator.py` foi removido por nao ser mais usado, e as dependencias diretas `hydra-core`, `langgraph` e `onnxruntime` foram removidas do `pyproject.toml`.
+
+### Impacto
+
+Antes, `POST /chatbot` delegava para o gerador simples em `sql_generator.py`, com LLM e banco fixos no codigo. Agora, a rota usa o pipeline novo com selecao de SQL vencedor e retorna tambem metadados de confianca, candidatos e adjudicacao. A chave do OpenRouter deve vir de `OPENROUTER_API_KEY`, e o modelo pode ser ajustado por `OPENROUTER_MODEL`.
 
 ## 2026-05-20 09:55:30 -03
 

@@ -1,7 +1,7 @@
 from flask import request, jsonify, Flask, send_file
 from processor import Processor
 from database import DatabaseAdmin, db
-from routes import admin_bp, auth_bp, student_bp, tutors_bp
+from routes import admin_bp, auth_bp, student_bp, tutors_bp, chatbot_bp
 from services.moodle_config_service import MoodleConfigError, require_saved_moodle_config
 from dotenv import load_dotenv
 from flask_cors import CORS
@@ -52,6 +52,7 @@ app.register_blueprint(student_bp)
 app.register_blueprint(tutors_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(chatbot_bp)
 app.before_request(authenticate_request)
 
 

@@ -14,6 +14,8 @@
 
 # Tarrafa Backend
 
+📝 **Available in other languages:** [Português (Brasil)](./README.pt-BR.md)
+
 Tarrafa backend for collecting, processing, and serving educational indicators from Moodle data. The project combines a Flask API, an asynchronous worker, and a shared analysis library to run analyses for students, tutors, courses, and global indicators.
 
 ## Architecture
@@ -42,7 +44,7 @@ Summary flow:
 
 ## Requirements
 
-- Python `>= 3.10`
+- Python `>= 3.11`
 - uv
 - Docker and Docker Compose
 - Access to the institutional Moodle/MySQL database

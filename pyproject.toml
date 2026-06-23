@@ -2,7 +2,7 @@
 name = "prisma-backend-shared"
 version = "0.1.0"
 description = "Shared analysis package for Prisma backend services"
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.11"
 dependencies = []
 
 [build-system]

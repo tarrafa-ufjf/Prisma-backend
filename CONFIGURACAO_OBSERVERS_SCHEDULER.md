@@ -325,21 +325,21 @@ Em um terminal, execute o worker:
 
 ```bash
 cd worker
-poetry run python app.py
+uv run python app.py
 ```
 
 Em outro terminal, execute a API:
 
 ```bash
 cd pre_api
-poetry run python app.py
+uv run python app.py
 ```
 
 Para ativar os agendamentos automaticos, execute tambem:
 
 ```bash
 cd pre_api
-poetry run python scheduler.py
+uv run python scheduler.py
 ```
 
 O scheduler e um processo separado da API Flask. Se ele nao estiver rodando, a rota manual `/analysis` continua funcionando, mas os disparos automaticos nao acontecem.

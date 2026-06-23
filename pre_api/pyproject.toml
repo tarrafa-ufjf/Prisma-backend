@@ -5,32 +5,28 @@ description = ""
 authors = [{ name = "Yan-Fonseca", email = "yanfonseca2002@gmail.com" }]
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.10"
 dependencies = [
-    "pymysql (>=1.1.1,<2.0.0)",
-    "flask-sqlalchemy (>=3.1.1,<4.0.0)",
-    "flask-script (>=2.0.6,<3.0.0)",
-    "python-dotenv (>=1.1.1,<2.0.0)",
-    "pika (>=1.3.2,<2.0.0)",
-    "flask (>=3.1.2,<4.0.0)",
-    "psycopg[binary] (>=3.2.9,<4.0.0)",
-    "requests (>=2.32.5,<3.0.0)",
-    "pandas (>=2.3.3,<3.0.0)",
-    "flasgger (>=0.9.7.1,<0.10.0.0)",
-    "flask-cors (>=6.0.1,<7.0.0)",
-    "cryptography (>=46.0.3,<47.0.0)",
-    "apscheduler (>=3.11.2,<4.0.0)",
-    "pyyaml (>=6.0.3,<7.0.0)",
-    "flask-security-too[fsqla,common] (>=5.8.0,<6.0.0)",
+    "prisma-backend-shared",
+    "pymysql>=1.1.1,<2.0.0",
+    "flask-sqlalchemy>=3.1.1,<4.0.0",
+    "flask-script>=2.0.6,<3.0.0",
+    "python-dotenv>=1.1.1,<2.0.0",
+    "pika>=1.3.2,<2.0.0",
+    "flask>=3.1.2,<4.0.0",
+    "psycopg[binary]>=3.2.9,<4.0.0",
+    "requests>=2.32.5,<3.0.0",
+    "pandas>=2.3.3,<3.0.0",
+    "flasgger>=0.9.7.1,<0.10.0.0",
+    "flask-cors>=6.0.1,<7.0.0",
+    "cryptography>=46.0.3,<47.0.0",
+    "apscheduler>=3.11.2,<4.0.0",
+    "pyyaml>=6.0.3,<7.0.0",
+    "flask-security-too[fsqla,common]>=5.8.0,<6.0.0",
 ]
 
-[tool.poetry]
-packages = [
-    { include = "tarrafa", from = "." },
-    { include = "src", from = ".." },    # Isso adiciona o diretório 'raiz/src'
-]
+[tool.uv]
+package = false
 
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv.sources]
+prisma-backend-shared = { path = "..", editable = true }

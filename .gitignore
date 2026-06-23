@@ -2,6 +2,7 @@
 /dist
 poetry.lock
 __pycache__/
+*.egg-info/
 *.csv
 /*.json
 *.db

@@ -2,6 +2,55 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-06-23 11:17:24 -03
+
+### Titulo
+
+Pacote compartilhado instalado pelo uv
+
+### Arquivos afetados
+
+- [`pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pyproject.toml)
+- [`.gitignore`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/.gitignore)
+- [`pre_api/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/pyproject.toml)
+- [`pre_api/uv.lock`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/uv.lock)
+- [`worker/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/worker/pyproject.toml)
+- [`worker/uv.lock`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/worker/uv.lock)
+- [`README.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/README.md)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Adicionado um `pyproject.toml` na raiz para empacotar o modulo compartilhado `src` como `prisma-backend-shared`. `pre_api` e `worker` passaram a declarar essa dependencia local editavel via `[tool.uv.sources]`, e os locks foram regenerados para instalar o pacote compartilhado nos ambientes criados pelo uv. O `.gitignore` passou a ignorar metadados locais `*.egg-info/` gerados pelo build editavel.
+
+### Impacto
+
+Antes, `uv run python app.py` dentro de `worker` nao encontrava o modulo `src` e falhava com `ModuleNotFoundError`. Agora, `uv sync` instala a biblioteca compartilhada no ambiente virtual de cada subprojeto, permitindo que os imports `src.analysis_lib...` funcionem sem depender de `PYTHONPATH`.
+
+## 2026-06-23 11:06:05 -03
+
+### Titulo
+
+Migracao dos ambientes Python para uv
+
+### Arquivos afetados
+
+- [`pre_api/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/pyproject.toml)
+- [`pre_api/uv.lock`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/uv.lock)
+- [`worker/pyproject.toml`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/worker/pyproject.toml)
+- [`worker/uv.lock`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/worker/uv.lock)
+- [`README.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/README.md)
+- [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/CONFIGURACAO_OBSERVERS_SCHEDULER.md)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Os manifests de `pre_api` e `worker` foram ajustados para uso com uv: as dependencias passaram para formato PEP 508, a configuracao `[tool.poetry]` e o backend `poetry-core` foram removidos, e os projetos foram marcados como `package = false` em `[tool.uv]`. Foram gerados locks `uv.lock` para os dois subprojetos e a documentacao passou a orientar `uv sync` e `uv run`.
+
+### Impacto
+
+Antes, a instalacao e execucao locais dependiam de Poetry e dos comandos `poetry install`/`poetry run`. Agora, cada subprojeto e sincronizado com `uv sync` e executado com `uv run`, com dependencias travadas nos respectivos arquivos `uv.lock`.
+
 ## 2026-06-16 10:29:45 -03
 
 ### Titulo

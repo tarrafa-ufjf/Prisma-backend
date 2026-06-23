@@ -43,7 +43,7 @@ Summary flow:
 ## Requirements
 
 - Python `>= 3.10`
-- Poetry
+- uv
 - Docker and Docker Compose
 - Access to the institutional Moodle/MySQL database
 - Available local ports:
@@ -95,11 +95,7 @@ Notes:
 - It is recommended to replace credentials, secrets, and the administrator password before using the project in shared, staging, or production environments.
 - If you change PostgreSQL or RabbitMQ credentials or ports, update `.env` before starting the containers.
 - The Moodle configuration should not be placed directly in `.env`; it is registered through the `PUT /admin/moodle-config` administrative route.
-- If you run commands outside the project root and encounter import errors, export `PYTHONPATH`:
-
-```bash
-export PYTHONPATH=..
-```
+- Run Python commands from inside `pre_api/` or `worker/`; `uv sync` installs the shared `src/` package as a local editable dependency.
 
 ## First Run
 
@@ -119,16 +115,16 @@ Install the worker dependencies and create the main tables:
 
 ```bash
 cd worker
-poetry install
-poetry run python install.py
+uv sync
+uv run python install.py
 ```
 
 Install the API dependencies and initialize local authentication:
 
 ```bash
 cd ../pre_api
-poetry install
-poetry run python install_auth.py
+uv sync
+uv run python install_auth.py
 ```
 
 After this, the local database will have the configuration, status, indicator, and authentication tables required to start the application.
@@ -141,7 +137,7 @@ Terminal 1, API:
 
 ```bash
 cd pre_api
-poetry run python app.py
+uv run python app.py
 ```
 
 By default, Flask serves the application at:
@@ -154,7 +150,7 @@ Terminal 2, worker:
 
 ```bash
 cd worker
-poetry run python app.py
+uv run python app.py
 ```
 
 The worker will wait for messages in the `tasks_to_process` queue.
@@ -163,9 +159,9 @@ To clear the worker's local data and recreate the structure before starting:
 
 ```bash
 cd worker
-poetry run python clear.py
-poetry run python install.py
-poetry run python app.py
+uv run python clear.py
+uv run python install.py
+uv run python app.py
 ```
 
 ## Moodle Configuration
@@ -199,7 +195,7 @@ To run the scheduler:
 
 ```bash
 cd pre_api
-poetry run python scheduler.py
+uv run python scheduler.py
 ```
 
 Jobs are configured in:
@@ -344,8 +340,8 @@ Common errors:
 - **PostgreSQL connection error**: confirm that `docker compose up -d` has been run and that the `DB_*` variables in `.env` match `docker-compose.yml`.
 - **RabbitMQ connection error**: confirm that the `rabbitmq` service is healthy and that `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, and `RABBITMQ_PASSWORD` are correct.
 - **Error starting an analysis**: confirm that `PUT /admin/moodle-config` has already been run with a valid Moodle connection.
-- **`src` import error**: run commands from `pre_api/` or `worker/` with dependencies installed through Poetry; if necessary, export `PYTHONPATH=..`.
-- **Protected routes return an authentication error**: run `poetry run python install_auth.py` inside `pre_api/` and check `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD` in `.env`.
+- **`src` import error**: run `uv sync` again inside `pre_api/` or `worker/` so the shared local package is installed in that environment.
+- **Protected routes return an authentication error**: run `uv run python install_auth.py` inside `pre_api/` and check `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD` in `.env`.
 
 ## License
 

@@ -2,9 +2,13 @@
 /dist
 poetry.lock
 __pycache__/
+.venv/
+*.egg-info/
 *.csv
 /*.json
 *.db
 /data
 run.sh
 .codex
+venv
+.venv

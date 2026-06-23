@@ -212,7 +212,7 @@ The scheduler status can be checked at:
 GET /admin/scheduler/status
 ```
 
-To configure analysis channels, indicator observers, and automatic schedules, see [`CONFIGURACAO_OBSERVERS_SCHEDULER.md`](CONFIGURACAO_OBSERVERS_SCHEDULER.md).
+To configure analysis channels, indicator observers, and automatic schedules, see [`CONFIGURATION_OBSERVERS_SCHEDULER.md`](CONFIGURATION_OBSERVERS_SCHEDULER.md).
 
 ## Main Endpoints
 

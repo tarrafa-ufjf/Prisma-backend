@@ -21,17 +21,17 @@ docker-compose up -d
 Após todos os containers estarem executando, entre no diretório **worker** e rode os comando:
 
 ```bash
-poetry install
+uv sync
 ```
 
 ```bash
-poetry run python install.py
+uv run python install.py
 ```
 
 Feito isso, entre no diretório da **pre_api** e rode o comando:
 
 ```bash
-poetry install
+uv sync
 ```
 
 # Como executar o sistema
@@ -45,13 +45,13 @@ No diretório **worker**, caso seja a primeira vez que roda o sistema, digite:
 Caso já tenha rodado mais vezes e seja necessário limpar os dados salvos no banco, rode:
 
 ```bash
-poetry run python clear.py ; poetry run python install.py ; clear ; poetry run python app.py
+uv run python clear.py ; uv run python install.py ; clear ; uv run python app.py
 ```
 
 No diretório **pre_api** é necessário rodar apenas:
 
 ```bash
-poetry run python app.py
+uv run python app.py
 ```
 
 Feito isso, no terminal da **API**, acesse o link disponibilizado pelo Flask.

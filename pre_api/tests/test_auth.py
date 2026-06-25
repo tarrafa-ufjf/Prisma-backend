@@ -57,6 +57,25 @@ class AuthSessionTest(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.get_json(), {"error": "authentication required"})
 
+    def test_chatbot_without_session_returns_401(self):
+        response = self.client.post("/chatbot", json={"question": "Olá"})
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.get_json(), {"error": "authentication required"})
+
+    def test_valid_session_allows_chatbot_request(self):
+        self.create_user()
+        self.login()
+
+        with patch(
+            "routes.chatbot.build_chatbot_response",
+            return_value={"answer": "Olá"},
+        ):
+            response = self.client.post("/chatbot", json={"question": "Olá"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"answer": "Olá"})
+
     def test_login_succeeds_and_sets_session_cookie(self):
         self.create_user()
 

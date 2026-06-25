@@ -2,6 +2,28 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-06-25 11:09:27 -03
+
+### Titulo
+
+Remocao da rota raiz obsoleta
+
+### Arquivos afetados
+
+- [`pre_api/app.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/app.py)
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/auth.py)
+- [`pre_api/pages/app.html`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/pages/app.html)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Removidos o endpoint `GET /`, sua excecao de autenticacao e o formulario HTML obsoleto de configuracao do Moodle. O teste anterior de acesso publico foi substituido por uma verificacao de que a rota nao existe.
+
+### Impacto
+
+Antes, a raiz da API exibia publicamente um formulario incompatível com o fluxo atual de configuracao. Agora, usuarios autenticados recebem HTTP 404 ao acessar `/`, e a configuracao do Moodle permanece disponivel apenas pelos endpoints administrativos atuais.
+
 ## 2026-06-25 11:01:51 -03
 
 ### Titulo

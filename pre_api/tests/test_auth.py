@@ -128,13 +128,13 @@ class AuthSessionTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    def test_root_route_remains_public(self):
+    def test_root_route_does_not_exist(self):
+        self.create_user()
+        self.login()
+
         response = self.client.get("/")
 
-        try:
-            self.assertEqual(response.status_code, 200)
-        finally:
-            response.close()
+        self.assertEqual(response.status_code, 404)
 
     def test_non_admin_cannot_create_user(self):
         self.create_user()

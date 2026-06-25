@@ -1,4 +1,4 @@
-from flask import request, jsonify, Flask, send_file
+from flask import request, jsonify, Flask
 from processor import Processor
 from database import DatabaseAdmin, db
 from routes import admin_bp, auth_bp, student_bp, tutors_bp, chatbot_bp
@@ -89,13 +89,6 @@ def analysis():
 
     result = {"message": "Análises iniciadas com sucesso", "version": version}
     return jsonify(result), 200
-
-
-@app.route("/")
-def hello():
-    return send_file(
-        "pages/app.html", mimetype="text/html", download_name="app.html"
-    ), 200
 
 
 if __name__ == "__main__":

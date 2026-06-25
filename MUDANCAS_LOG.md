@@ -2,6 +2,26 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-06-25 11:01:51 -03
+
+### Titulo
+
+Rota do chatbot protegida por autenticacao
+
+### Arquivos afetados
+
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/auth.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Removida a rota `POST /chatbot` da lista de caminhos isentos de autenticacao. Adicionados testes para garantir que requisicoes sem sessao recebam HTTP 401 e que usuarios autenticados continuem conseguindo acessar o chatbot.
+
+### Impacto
+
+Antes, qualquer cliente podia chamar o chatbot sem autenticacao. Agora, a rota exige uma sessao valida, seguindo a mesma protecao aplicada aos demais endpoints privados da API.
+
 ## 2026-06-23 11:17:24 -03
 
 ### Titulo

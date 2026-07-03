@@ -1,0 +1,1 @@
+{"name": "NL2SQLTool", "description": "Converts natural language to SQL queries and executes them against a database. Read-only by default \u2014 only SELECT/SHOW/DESCRIBE/EXPLAIN queries (and read-only CTEs) are allowed unless configured with allow_dml=True.", "env_vars": [], "args_schema": 

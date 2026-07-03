@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, TypedDict
+from typing import Any, TypedDict, Annotated
 
 from crewai import LLM
 from crewai_tools import NL2SQLTool
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.message import add_messages
 
 from services.nl2sql.answer import generate_final_answer
 from services.nl2sql.candidates import generate_candidate_sqls
@@ -18,12 +20,11 @@ from services.nl2sql.sql_processing import group_equivalent_sqls, process_sql
 from services.nl2sql.visualization import generate_vega_spec
 
 log = logging.getLogger(__name__)
-
+_global_memory = MemorySaver()
 
 class PipelineState(TypedDict):
     user_question: str
-    llm: Any
-    nl2sql: Any
+    messages: Annotated[list, add_messages]  # Mantém o histórico de chats ativo
     candidate_sqls: list[str]
     processed_sqls: list[dict[str, Any]]
     valid_sqls: list[str]
@@ -42,29 +43,22 @@ def _log_step(name: str) -> None:
 
 def _make_step(name: str, fn):
     def wrapped(state: PipelineState) -> PipelineState:
-
         _log_step(name)
-
         inicio = time.time()
-
         resultado = fn(state)
-
-        print(
-            f"[TEMPO] {name}: {time.time() - inicio:.2f}s"
-        )
-
+        print(f"[TEMPO] {name}: {time.time() - inicio:.2f}s")
         return resultado
-
     return wrapped
 
 
-def build_pipeline():
+def build_pipeline(llm: LLM, nl2sql: NL2SQLTool):
     def _generate_candidates(state: PipelineState) -> PipelineState:
         sqls = generate_candidate_sqls(
-            state["user_question"],
-            state["nl2sql"],
-            state["llm"],
-            N_EXECUTIONS,
+            user_question=state["user_question"],
+            messages=state["messages"],
+            nl2sql=nl2sql,  # Usa a variável injetada, não mais state["nl2sql"]
+            llm=llm,        # Usa a variável injetada, não mais state["llm"]
+            n_executions=N_EXECUTIONS,
         )
         return {**state, "candidate_sqls": sqls}
 
@@ -89,7 +83,7 @@ def build_pipeline():
         adjudication = adjudicate_winner_sql(
             state["groups"],
             state["user_question"],
-            state["llm"],
+            llm,
         )
         return {
             **state,
@@ -105,19 +99,26 @@ def build_pipeline():
         vega_spec = generate_vega_spec(
             state["user_question"],
             state["final_json"],
-            state["llm"],
+            llm,
         )
         return {**state, "vega_spec": vega_spec}
 
     def _generate_answer(state: PipelineState) -> PipelineState:
         final_answer = generate_final_answer(
-            state["user_question"],
-            state["winner_sql"],
-            state["final_json"],
-            state["llm"],
+            user_question=state["user_question"],
+            messages=state["messages"],
+            winner_sql=state["winner_sql"],
+            final_json=state["final_json"],
+            llm=llm,
         )
-        return {**state, "final_answer": final_answer}
-
+        
+        # RETORNE TAMBÉM a mensagem do assistente para o reducer 'add_messages' agir
+        return {
+            **state, 
+            "final_answer": final_answer,
+            "messages": [{"role": "assistant", "content": final_answer}]
+        }
+    
     graph = StateGraph(PipelineState)
     graph.add_node("generate_candidates", _make_step("1/7 - Self-consistency candidates", _generate_candidates))
     graph.add_node("sqlglot_process", _make_step("2/7 - SQLGlot processing", _sqlglot_process))
@@ -136,21 +137,15 @@ def build_pipeline():
     graph.add_edge("generate_vega", "generate_answer")
     graph.add_edge("generate_answer", END)
 
-    return graph.compile()
+    memory = MemorySaver()
+    return graph.compile(checkpointer=memory)
 
 
 def _build_initial_state(user_question: str) -> PipelineState:
-    llm = LLM(model=MODEL, api_key=API_KEY, temperature=0.3)
-    nl2sql = NL2SQLTool(
-        db_uri=build_moodle_db_uri(),
-        sample_rows_in_table_info=SAMPLE_ROWS_IN_TABLE_INFO,
-        allow_dml=False,
-    )
 
     return {
         "user_question": user_question,
-        "llm": llm,
-        "nl2sql": nl2sql,
+        "messages": [{"role": "user", "content": user_question}], 
         "candidate_sqls": [],
         "processed_sqls": [],
         "valid_sqls": [],
@@ -164,14 +159,25 @@ def _build_initial_state(user_question: str) -> PipelineState:
     }
 
 
-def run_nl2sql_pipeline(user_question: str) -> dict[str, Any]:
+def run_nl2sql_pipeline(user_question: str, thread_id: str = "default_user") -> dict[str, Any]:
     if not user_question or not user_question.strip():
         raise ValueError("question is required")
     if not API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY is required")
 
-    pipeline = build_pipeline()
-    state = pipeline.invoke(_build_initial_state(user_question))
+    # Crie as ferramentas AQUI fora do State
+    llm = LLM(model=MODEL, api_key=API_KEY, temperature=0.3)
+    nl2sql = NL2SQLTool(
+        db_uri=build_moodle_db_uri(),
+        sample_rows_in_table_info=SAMPLE_ROWS_IN_TABLE_INFO,
+        allow_dml=False,
+    )
+
+    # Injete no build_pipeline
+    pipeline = build_pipeline(llm, nl2sql)
+    config = {"configurable": {"thread_id": thread_id}}
+    
+    state = pipeline.invoke(_build_initial_state(user_question), config=config)
 
     return {
         "final_answer": state["final_answer"],
@@ -181,4 +187,5 @@ def run_nl2sql_pipeline(user_question: str) -> dict[str, Any]:
         "confidence": state["confidence"],
         "candidate_sqls": state["candidate_sqls"],
         "adjudication": state["adjudication"],
+        "chat_history": state["messages"]
     }

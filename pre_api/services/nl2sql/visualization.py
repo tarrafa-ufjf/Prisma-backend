@@ -74,7 +74,7 @@ def generate_vega_spec(user_question: str, final_json: list[dict[str, Any]], llm
             "tabulares em uma especificação Vega-Lite simples, válida e diretamente renderizável."
         ),
         llm=llm,
-        verbose=False,
+        verbose=False
     )
     task = Task(
         description=vega_prompt,

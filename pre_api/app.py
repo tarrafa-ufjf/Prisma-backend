@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from flask_cors import CORS
 import atexit
 import os
-
 from auth import authenticate_request, init_auth
 
 load_dotenv()

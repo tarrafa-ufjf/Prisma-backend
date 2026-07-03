@@ -21,11 +21,11 @@ def build_moodle_db_uri() -> str:
         config = None
 
     if config is None:
-        host = os.getenv("MYSQL_HOST")
-        port = os.getenv("MYSQL_GRAD_PORT")
-        user = os.getenv("MYSQL_USER")
-        password = os.getenv("MYSQL_PASSWORD")
-        database = os.getenv("MYSQL_DATABASE")
+        host = os.getenv("DB_HOST")
+        port = os.getenv("DB_PORT")
+        user = os.getenv("DB_USER")
+        password = os.getenv("DB_PASSWORD")
+        database = os.getenv("DB_DATABASE")
     else:
         host = config.get("host")
         port = config.get("port")
@@ -45,12 +45,12 @@ def build_moodle_db_uri() -> str:
         if value in (None, "")
     ]
     if missing:
+        print("missing:", missing)
         raise RuntimeError(
             "configuracao Moodle ausente para NL2SQL: "
             + ", ".join(sorted(missing))
         )
 
     return (
-        f"mysql+pymysql://{quote_plus(str(user))}:{quote_plus(str(password))}"
-        f"@{host}:{int(port)}/{quote_plus(str(database))}"
+         f"postgresql+psycopg://{user}:{password}@{host}:{port}/{database}"
     )

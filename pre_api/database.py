@@ -17,11 +17,11 @@ class Database:
 
     def get_connection(self):
         return pymysql.connect(
-            host=os.getenv('MYSQL_HOST'),
-            port=int(os.getenv('MYSQL_GRAD_PORT')),
-            user=os.getenv('MYSQL_USER'),
-            password=os.getenv('MYSQL_PASSWORD'),
-            db=os.getenv('MYSQL_DATABASE'),
+            host=os.getenv('DB_HOST'),
+            port=int(os.getenv('DB_PORT')),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            db=os.getenv('DB_DATABASE'),
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
         )

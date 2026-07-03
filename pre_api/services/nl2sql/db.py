@@ -9,7 +9,7 @@ from services.moodle_config_service import get_saved_moodle_config
 log = logging.getLogger(__name__)
 
 
-def build_moodle_db_uri() -> str:
+def build_db_uri() -> str:
     configured_uri = os.getenv("NL2SQL_DB_URI")
     if configured_uri:
         return configured_uri

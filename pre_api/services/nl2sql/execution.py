@@ -5,7 +5,7 @@ from typing import Any
 
 from sqlalchemy import create_engine, text
 
-from services.nl2sql.db import build_moodle_db_uri
+from services.nl2sql.db import build_db_uri
 from services.nl2sql.sql_processing import is_safe_sql, validate_sql
 
 
@@ -30,7 +30,7 @@ def execute_sql_to_json(sql: str) -> list[dict[str, Any]]:
             f"safety={safe_reason}; validation={valid_reason}"
         )
 
-    engine = create_engine(build_moodle_db_uri())
+    engine = create_engine(build_db_uri())
     try:
         with engine.connect() as conn:
             rows = conn.execute(text(sql)).mappings().all()

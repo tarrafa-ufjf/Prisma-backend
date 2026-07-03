@@ -129,7 +129,7 @@ def group_equivalent_sqls_ast(candidate_sqls: list[str], dialect: str = SQL_DIAL
     return groups
 
 
-def group_equivalent_sqls(candidate_sqls: list[str]) -> dict[int, list[str]]:
+def group_equivalent_sqls(candidate_sqls: list[str], dialect: str = SQL_DIALECT) -> dict[int, list[str]]:
     if not candidate_sqls:
         return {}
-    return group_equivalent_sqls_ast(candidate_sqls)
+    return group_equivalent_sqls_ast(candidate_sqls, dialect=dialect)

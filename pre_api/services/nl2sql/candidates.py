@@ -22,23 +22,23 @@ def extract_sql(text: str) -> str:
         return match2.group(1).strip()
     return text.strip()
 
-
-def _format_chat_history(messages: list[dict[str, Any]]) -> str:
-    """Formata o histórico de mensagens para os agentes entenderem o contexto."""
+def _format_chat_history(messages: list[Any]) -> str:
     if not messages or len(messages) <= 1:
         return "Nenhum histórico anterior."
         
     formatted_turns = []
-    # Pegamos tudo menos a última mensagem (que é a pergunta atual)
     for msg in messages[:-1]:
-        role = "Usuário" if msg.get("role") == "user" else "Assistente"
-        content = msg.get("content", "")
+        if isinstance(msg, dict):
+            role = "Usuário" if msg.get("role") == "user" else "Assistente"
+            content = msg.get("content", "")
+        else:
+            role = "Usuário" if msg.type == "human" else "Assistente"
+            content = getattr(msg, "content", "")
+            
         formatted_turns.append(f"{role}: {content}")
         
     return "\n".join(formatted_turns)
 
-
-# 1. ADICIONADO O PARÂMETRO 'chat_history'
 def run_single_nl2sql(
     prompt: str, 
     chat_history: str, 
@@ -61,7 +61,6 @@ def run_single_nl2sql(
         verbose=True
     )
 
-    # 2. INJETADO O HISTÓRICO DA CONVERSA NA TASK DESCRIPTION
     task_description = f"""
     Histórico da conversa anterior (Contexto):
     {chat_history}
@@ -98,8 +97,6 @@ def run_single_nl2sql(
 
     return sql
 
-
-# 3. ALTERADO PARA RECEBER AS 'messages' DO LANGGRAPH
 def generate_candidate_sqls(
     user_question: str,
     messages: list[dict[str, Any]],
@@ -108,17 +105,14 @@ def generate_candidate_sqls(
     n_executions: int = N_EXECUTIONS,
 ) -> list[str]:
     
-    # Formata o histórico uma única vez antes de disparar as threads
     chat_history = _format_chat_history(messages)
 
     sqls: list[str] = []
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        # Usando dicionário explícito para evitar erros de desempacotamento por posição
         futures = {}
         for i in range(n_executions):
             run_id = f"R{i+1:02d}"
             
-            # Submete explicitamente nomeando os parâmetros ou garantindo a ordem exata
             future = executor.submit(
                 run_single_nl2sql,
                 prompt=user_question,

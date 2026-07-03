@@ -5,17 +5,20 @@ from typing import Any
 
 from crewai import Agent, Crew, LLM, Task
 
-
-def _format_chat_history(messages: list[dict[str, Any]]) -> str:
-    """Formata o histórico de mensagens para dar contexto ao gerador da resposta final."""
+def _format_chat_history(messages: list[Any]) -> str:
+    """Formata o histórico de mensagens para dar contexto."""
     if not messages or len(messages) <= 1:
         return "Nenhum histórico anterior."
         
     formatted_turns = []
-    # Pegamos tudo menos a última mensagem (que é a pergunta atual)
     for msg in messages[:-1]:
-        role = "Usuário" if msg.get("role") == "user" else "Assistente"
-        content = msg.get("content", "")
+        if isinstance(msg, dict):
+            role = "Usuário" if msg.get("role") == "user" else "Assistente"
+            content = msg.get("content", "")
+        else:
+            role = "Usuário" if msg.type == "human" else "Assistente"
+            content = getattr(msg, "content", "")
+            
         formatted_turns.append(f"{role}: {content}")
         
     return "\n".join(formatted_turns)
@@ -23,16 +26,14 @@ def _format_chat_history(messages: list[dict[str, Any]]) -> str:
 
 def generate_final_answer(
     user_question: str,
-    messages: list[dict[str, Any]],  # 1. ADICIONADO O PARÂMETRO 'messages'
+    messages: list[dict[str, Any]],  
     winner_sql: str,
     final_json: list[dict[str, Any]],
     llm: LLM,
 ) -> str:
     
-    # Formata o histórico recebido do LangGraph
     chat_history = _format_chat_history(messages)
 
-    # 2. INJETADO O HISTÓRICO NO PROMPT PARA O AGENTE TER FLUIDEZ NA RESPOSTA
     final_prompt = f"""
     Histórico da conversa anterior (Contexto):
     {chat_history}

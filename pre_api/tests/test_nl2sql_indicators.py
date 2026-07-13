@@ -110,5 +110,24 @@ class IndicatorsNL2SQLToolTest(unittest.TestCase):
         self.assertEqual(tool._fetch_all_available_columns("configs"), [])
 
 
+class NL2SQLIndicatorsPromptTest(unittest.TestCase):
+    def test_prompt_documents_indicator_columns_and_known_values(self):
+        from services.nl2sql.prompts import INDICATORS_RULES
+
+        expected_fragments = [
+            "local_indicators_students",
+            "global_indicators_tutors",
+            "Não há full_name nesta tabela",
+            "muito_baixo, baixo, medio, alto, muito_alto",
+            "Muito baixo, Baixo, Médio, Alto, Muito alto",
+            "label_give_up aparece como texto true/false",
+            "engagement, motivation, performance, cognitive, pedagogic",
+            "last_status pode ser running, success ou failed",
+        ]
+
+        for fragment in expected_fragments:
+            self.assertIn(fragment, INDICATORS_RULES)
+
+
 if __name__ == "__main__":
     unittest.main()

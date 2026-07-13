@@ -2,6 +2,26 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-13 10:43:44 -03
+
+### Titulo
+
+Contexto detalhado de indicadores no chatbot
+
+### Arquivos afetados
+
+- [`pre_api/services/nl2sql/prompts.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/prompts.py)
+- [`pre_api/tests/test_nl2sql_indicators.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_nl2sql_indicators.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+O contexto enviado aos agentes NL2SQL foi enriquecido com descricoes por tabela, chaves compostas, significado das principais colunas, valores observados de labels/status/atores/indicadores e orientacoes para escolher entre tabelas locais e globais. Tambem foi adicionado teste para garantir que o prompt mantenha essas informacoes essenciais.
+
+### Impacto
+
+Antes, o agente recebia apenas uma descricao geral do banco de indicadores. Agora, ele tem mais contexto sobre colunas, escalas, valores possiveis e limites das tabelas persistidas, reduzindo consultas incorretas e suposicoes como nomes de alunos/tutores inexistentes nas tabelas de indicadores.
+
 ## 2026-07-13 10:32:04 -03
 
 ### Titulo

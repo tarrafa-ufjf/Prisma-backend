@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 
 class PipelineState(TypedDict):
     user_question: str
+    original_question: str
     llm: Any
     nl2sql: Any
     candidate_sqls: list[str]
@@ -115,6 +116,7 @@ def build_pipeline():
             state["winner_sql"],
             state["final_json"],
             state["llm"],
+            original_question=state["original_question"],
         )
         return {**state, "final_answer": final_answer}
 
@@ -139,7 +141,10 @@ def build_pipeline():
     return graph.compile()
 
 
-def _build_initial_state(user_question: str) -> PipelineState:
+def _build_initial_state(
+    user_question: str,
+    original_question: str | None = None,
+) -> PipelineState:
     llm = LLM(model=MODEL, api_key=API_KEY, temperature=0.3)
     nl2sql = IndicatorsNL2SQLTool(
         db_uri=build_indicators_db_uri(),
@@ -149,6 +154,7 @@ def _build_initial_state(user_question: str) -> PipelineState:
 
     return {
         "user_question": user_question,
+        "original_question": original_question or user_question,
         "llm": llm,
         "nl2sql": nl2sql,
         "candidate_sqls": [],
@@ -164,14 +170,17 @@ def _build_initial_state(user_question: str) -> PipelineState:
     }
 
 
-def run_nl2sql_pipeline(user_question: str) -> dict[str, Any]:
+def run_nl2sql_pipeline(
+    user_question: str,
+    original_question: str | None = None,
+) -> dict[str, Any]:
     if not user_question or not user_question.strip():
         raise ValueError("question is required")
     if not API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY is required")
 
     pipeline = build_pipeline()
-    state = pipeline.invoke(_build_initial_state(user_question))
+    state = pipeline.invoke(_build_initial_state(user_question, original_question))
 
     return {
         "final_answer": state["final_answer"],

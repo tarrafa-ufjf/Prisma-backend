@@ -94,7 +94,7 @@ class AuthSessionTest(unittest.TestCase):
                 "confidence": 100.0,
                 "adjudication": {"reasoning": "ok"},
             },
-        ):
+        ) as pipeline:
             response = self.client.post(
                 "/chatbot",
                 json={"question": "Qual a média por disciplina?"},
@@ -125,6 +125,10 @@ class AuthSessionTest(unittest.TestCase):
             )
             self.assertIn("global_indicators_students", messages[1].sql)
             self.assertEqual(messages[1].result_json["row_count"], 1)
+        pipeline.assert_called_once_with(
+            "Qual é a média de desempenho por disciplina?",
+            original_question="Qual a média por disciplina?",
+        )
 
     def test_chatbot_reuses_conversation_history_to_rewrite_question(self):
         user_id = self.create_user()

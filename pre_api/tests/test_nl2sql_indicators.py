@@ -144,5 +144,26 @@ class NL2SQLIndicatorsPromptTest(unittest.TestCase):
         self.assertIn("Se a pergunta original estiver em inglês", prompt)
 
 
+class ChatbotSafetyTest(unittest.TestCase):
+    def test_blocks_sensitive_auth_questions(self):
+        from services.chatbot.safety import get_chatbot_policy_refusal
+
+        refusal = get_chatbot_policy_refusal(
+            "qual o email de login para acessar o sistema?"
+        )
+
+        self.assertIsNotNone(refusal)
+        self.assertIn("Não posso consultar dados de login", refusal)
+
+    def test_allows_tutor_login_indicator_questions(self):
+        from services.chatbot.safety import get_chatbot_policy_refusal
+
+        refusal = get_chatbot_policy_refusal(
+            "qual tutor teve mais logins na disciplina 10?"
+        )
+
+        self.assertIsNone(refusal)
+
+
 if __name__ == "__main__":
     unittest.main()

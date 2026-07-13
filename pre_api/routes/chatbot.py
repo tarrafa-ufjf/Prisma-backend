@@ -4,6 +4,7 @@ from flask_login import current_user
 from services.chatbot.build_chatbot_response import build_chatbot_response
 from services.chatbot.memory import (
     ChatbotMemoryError,
+    delete_user_conversation,
     list_user_conversations,
     require_user_conversation,
     serialize_conversation,
@@ -53,6 +54,16 @@ def get_chatbot_conversation(conversation_id):
     return jsonify(
         {"conversation": serialize_conversation_with_messages(conversation)}
     ), 200
+
+
+@chatbot_bp.route("/chatbot/conversations/<int:conversation_id>", methods=["DELETE"])
+def delete_chatbot_conversation(conversation_id):
+    try:
+        delete_user_conversation(current_user.id, conversation_id)
+    except ChatbotMemoryError as exc:
+        return jsonify({"error": exc.message}), exc.status_code
+
+    return "", 204
 
 
 def _parse_optional_positive_int(value):

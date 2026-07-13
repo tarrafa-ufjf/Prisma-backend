@@ -327,6 +327,54 @@ class AuthSessionTest(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.get_json(), {"error": "conversation not found"})
 
+    def test_chatbot_deletes_conversation_and_messages(self):
+        user_id = self.create_user()
+
+        with self.app.app_context():
+            conversation = ChatbotConversation(user_id=user_id, title="Apagar")
+            db.session.add(conversation)
+            db.session.flush()
+            db.session.add(
+                ChatbotMessage(
+                    conversation_id=conversation.id,
+                    role="user",
+                    content="Apague isso depois",
+                )
+            )
+            db.session.commit()
+            conversation_id = conversation.id
+
+        self.login()
+
+        response = self.client.delete(f"/chatbot/conversations/{conversation_id}")
+
+        self.assertEqual(response.status_code, 204)
+        with self.app.app_context():
+            self.assertIsNone(db.session.get(ChatbotConversation, conversation_id))
+            self.assertEqual(
+                ChatbotMessage.query.filter_by(conversation_id=conversation_id).count(),
+                0,
+            )
+
+    def test_chatbot_delete_conversation_rejects_other_user(self):
+        owner_id = self.create_user(email="owner@example.com")
+        self.create_user(email="other@example.com")
+
+        with self.app.app_context():
+            conversation = ChatbotConversation(user_id=owner_id, title="Privada")
+            db.session.add(conversation)
+            db.session.commit()
+            conversation_id = conversation.id
+
+        self.login(email="other@example.com")
+
+        response = self.client.delete(f"/chatbot/conversations/{conversation_id}")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.get_json(), {"error": "conversation not found"})
+        with self.app.app_context():
+            self.assertIsNotNone(db.session.get(ChatbotConversation, conversation_id))
+
     def test_login_succeeds_and_sets_session_cookie(self):
         self.create_user()
 

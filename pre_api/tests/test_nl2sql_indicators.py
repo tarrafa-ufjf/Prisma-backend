@@ -128,6 +128,21 @@ class NL2SQLIndicatorsPromptTest(unittest.TestCase):
         for fragment in expected_fragments:
             self.assertIn(fragment, INDICATORS_RULES)
 
+    def test_final_answer_prompt_uses_original_question_for_language(self):
+        from services.nl2sql.answer import build_final_answer_prompt
+
+        prompt = build_final_answer_prompt(
+            user_question="Qual é a média de desempenho por subject_id?",
+            original_question="What is the average performance by subject?",
+            winner_sql="SELECT subject_id, AVG(mean_grade_performance) FROM global_indicators_students GROUP BY subject_id",
+            final_json=[{"subject_id": 1, "average": 82}],
+        )
+
+        self.assertIn("What is the average performance by subject?", prompt)
+        self.assertIn("Qual é a média de desempenho por subject_id?", prompt)
+        self.assertIn("mesmo idioma da pergunta original do usuário", prompt)
+        self.assertIn("Se a pergunta original estiver em inglês", prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

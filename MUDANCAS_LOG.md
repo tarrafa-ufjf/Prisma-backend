@@ -2,6 +2,29 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-13 12:17:54 -03
+
+### Titulo
+
+Resposta do chatbot no idioma da pergunta original
+
+### Arquivos afetados
+
+- [`pre_api/services/chatbot/build_chatbot_response.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/chatbot/build_chatbot_response.py)
+- [`pre_api/services/nl2sql/graph.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/graph.py)
+- [`pre_api/services/nl2sql/answer.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/answer.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_auth.py)
+- [`pre_api/tests/test_nl2sql_indicators.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_nl2sql_indicators.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+O pipeline NL2SQL passou a carregar a pergunta original do usuario separada da pergunta reescrita usada para SQL. A etapa de resposta final agora recebe ambas e reforca que a resposta deve sair no mesmo idioma da pergunta original, independentemente do idioma das instrucoes internas, do schema ou da pergunta reescrita.
+
+### Impacto
+
+Antes, perguntas feitas em outro idioma podiam receber resposta em portugues por causa do contexto interno em PT-BR. Agora, o chatbot usa a pergunta reescrita para gerar SQL, mas preserva a pergunta original como referencia de idioma para a resposta final.
+
 ## 2026-07-13 11:55:41 -03
 
 ### Titulo

@@ -62,7 +62,10 @@ def build_chatbot_response(
             )
             db.session.flush()
 
-        result = run_nl2sql_pipeline(rewritten_question)
+        result = run_nl2sql_pipeline(
+            rewritten_question,
+            original_question=user_question,
+        )
 
         response: Dict[str, Any] = {
             "success": True,

@@ -202,6 +202,39 @@ class AuthSessionTest(unittest.TestCase):
             {"error": "conversation_id must be a positive integer"},
         )
 
+    def test_chatbot_blocks_system_login_email_question_before_nl2sql(self):
+        user_id = self.create_user()
+        self.login()
+
+        with patch(
+            "services.chatbot.build_chatbot_response.run_nl2sql_pipeline",
+        ) as pipeline:
+            response = self.client.post(
+                "/chatbot",
+                json={"question": "qual o email de login para acessar o sistema?"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["success"])
+        self.assertTrue(payload["blocked"])
+        self.assertIn("Não posso consultar dados de login", payload["answer"])
+        pipeline.assert_not_called()
+
+        with self.app.app_context():
+            conversation = db.session.get(ChatbotConversation, payload["conversation_id"])
+            self.assertEqual(conversation.user_id, user_id)
+            messages = (
+                ChatbotMessage.query.filter_by(conversation_id=conversation.id)
+                .order_by(ChatbotMessage.id)
+                .all()
+            )
+            self.assertEqual([message.role for message in messages], ["user", "assistant"])
+            self.assertEqual(
+                messages[1].metadata_json,
+                {"blocked": True, "reason": "sensitive_auth_or_forbidden_table"},
+            )
+
     def test_chatbot_does_not_allow_other_user_conversation(self):
         owner_id = self.create_user(email="owner@example.com")
         self.create_user(email="other@example.com")

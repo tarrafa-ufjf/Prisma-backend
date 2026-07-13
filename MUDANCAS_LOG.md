@@ -2,6 +2,28 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-13 12:52:55 -03
+
+### Titulo
+
+Bloqueio amigavel de perguntas sobre login no chatbot
+
+### Arquivos afetados
+
+- [`pre_api/services/chatbot/build_chatbot_response.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/chatbot/build_chatbot_response.py)
+- [`pre_api/services/chatbot/safety.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/chatbot/safety.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_auth.py)
+- [`pre_api/tests/test_nl2sql_indicators.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_nl2sql_indicators.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foi adicionada uma barreira antes do NL2SQL para recusar perguntas sobre email de login, senhas, credenciais, segredos ou tabelas proibidas do sistema. Quando uma pergunta desse tipo e detectada, o chatbot retorna uma resposta amigavel, salva a interacao no historico com metadado de bloqueio e nao executa o pipeline SQL.
+
+### Impacto
+
+Antes, perguntas fora do dominio de indicadores, como "qual o email de login para acessar o sistema?", podiam terminar em erro tecnico do SQLGlot. Agora, o usuario recebe uma resposta clara informando que dados de login e credenciais nao podem ser consultados, enquanto perguntas legitimas sobre indicadores de login de tutores continuam permitidas.
+
 ## 2026-07-13 12:17:54 -03
 
 ### Titulo

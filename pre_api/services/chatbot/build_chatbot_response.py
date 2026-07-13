@@ -12,6 +12,7 @@ from services.chatbot.memory import (
     get_recent_messages,
 )
 from services.chatbot.rewrite import rewrite_question_with_memory
+from services.chatbot.safety import get_chatbot_policy_refusal
 from services.nl2sql_pipeline import run_nl2sql_pipeline
 
 log = logging.getLogger(__name__)
@@ -43,24 +44,48 @@ def build_chatbot_response(
 
         conversation = None
         rewritten_question = user_question
+        refusal = get_chatbot_policy_refusal(user_question)
         if user_id is not None:
             conversation = get_or_create_conversation(
                 user_id=user_id,
                 conversation_id=conversation_id,
                 question=user_question,
             )
+            if refusal is not None:
+                add_user_message(
+                    conversation_id=conversation.id,
+                    question=user_question,
+                    rewritten_question=rewritten_question,
+                )
+                db.session.flush()
+                return _build_policy_refusal_response(
+                    user_question=user_question,
+                    rewritten_question=rewritten_question,
+                    refusal=refusal,
+                    conversation_id=conversation.id,
+                )
+
             recent_messages = get_recent_messages(conversation.id)
             conversation_context = format_messages_for_rewrite(recent_messages)
             rewritten_question = rewrite_question_with_memory(
                 user_question,
                 conversation_context,
             )
+            refusal = get_chatbot_policy_refusal(rewritten_question)
             add_user_message(
                 conversation_id=conversation.id,
                 question=user_question,
                 rewritten_question=rewritten_question,
             )
             db.session.flush()
+
+        if refusal is not None:
+            return _build_policy_refusal_response(
+                user_question=user_question,
+                rewritten_question=rewritten_question,
+                refusal=refusal,
+                conversation_id=conversation.id if conversation is not None else conversation_id,
+            )
 
         result = run_nl2sql_pipeline(
             rewritten_question,
@@ -115,3 +140,33 @@ def build_chatbot_response(
             "success": False,
             "error": str(e),
         }
+
+
+def _build_policy_refusal_response(
+    user_question: str,
+    rewritten_question: str,
+    refusal: str,
+    conversation_id: int | None,
+) -> Dict[str, Any]:
+    response: Dict[str, Any] = {
+        "success": True,
+        "blocked": True,
+        "conversation_id": conversation_id,
+        "question": user_question,
+        "rewritten_question": rewritten_question,
+        "answer": refusal,
+        "json": [],
+        "vega": None,
+    }
+
+    if conversation_id is not None:
+        add_assistant_message(
+            conversation_id=conversation_id,
+            answer=refusal,
+            sql=None,
+            result_json=[],
+            metadata={"blocked": True, "reason": "sensitive_auth_or_forbidden_table"},
+        )
+        db.session.commit()
+
+    return response

@@ -2,6 +2,51 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-13 11:22:42 -03
+
+### Titulo
+
+Endpoints para historico de conversas do chatbot
+
+### Arquivos afetados
+
+- [`pre_api/routes/chatbot.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/routes/chatbot.py)
+- [`pre_api/services/chatbot/memory.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/chatbot/memory.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foram adicionados endpoints autenticados para consultar o historico persistido do chatbot: `GET /chatbot/conversations` lista as conversas do usuario logado e `GET /chatbot/conversations/<conversation_id>` retorna uma conversa com suas mensagens. O servico de memoria ganhou funcoes de listagem, validacao de propriedade e serializacao de conversas/mensagens.
+
+### Impacto
+
+Antes, o frontend recebia `conversation_id`, mas nao tinha como recuperar conversas ja salvas no backend. Agora, a pagina do chatbot pode carregar a lista de conversas do usuario e alternar entre chats recuperando mensagens, SQLs, resultados compactos e metadados persistidos.
+
+## 2026-07-13 11:14:02 -03
+
+### Titulo
+
+Memoria conversacional do chatbot no banco
+
+### Arquivos afetados
+
+- [`pre_api/models.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/models.py)
+- [`pre_api/routes/chatbot.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/routes/chatbot.py)
+- [`pre_api/services/chatbot/build_chatbot_response.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/chatbot/build_chatbot_response.py)
+- [`pre_api/services/chatbot/memory.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/chatbot/memory.py)
+- [`pre_api/services/chatbot/rewrite.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/chatbot/rewrite.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foram adicionados os models `chatbot_conversations` e `chatbot_messages` para persistir conversas e mensagens do chatbot por usuario autenticado. A rota `POST /chatbot` passou a aceitar `conversation_id` opcional, criar uma conversa quando ele nao for informado, buscar o historico recente da conversa, reescrever perguntas dependentes de contexto antes do NL2SQL e salvar pergunta, pergunta reescrita, resposta, SQL e resultado compacto.
+
+### Impacto
+
+Antes, cada chamada do chatbot era independente e perguntas como "e por disciplina?" nao tinham contexto. Agora, chamadas com o mesmo `conversation_id` usam o historico recente da conversa para resolver referencias, mantendo compatibilidade com clientes que enviam apenas `question` e adicionando `conversation_id` e `rewritten_question` na resposta.
+
 ## 2026-07-13 10:43:44 -03
 
 ### Titulo

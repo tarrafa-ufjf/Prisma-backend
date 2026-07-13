@@ -5,7 +5,7 @@ from typing import Any
 
 from crewai import Agent, Crew, LLM, Task
 
-from services.nl2sql.prompts import MOODLE_RULES
+from services.nl2sql.prompts import INDICATORS_RULES
 
 
 def generate_final_answer(
@@ -33,8 +33,8 @@ def generate_final_answer(
 
     agent = Agent(
         role="Data Analyst",
-        goal="Responder perguntas sobre o banco Moodle usando resultados SQL já executados",
-        backstory=MOODLE_RULES,
+        goal="Responder perguntas sobre indicadores educacionais usando resultados SQL já executados",
+        backstory=INDICATORS_RULES,
         llm=llm,
         verbose=True,
     )

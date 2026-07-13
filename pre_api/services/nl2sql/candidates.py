@@ -8,7 +8,7 @@ from crewai import Agent, Crew, LLM, Task
 from crewai_tools import NL2SQLTool
 
 from services.nl2sql.config import MAX_WORKERS, N_EXECUTIONS
-from services.nl2sql.prompts import MOODLE_RULES
+from services.nl2sql.prompts import INDICATORS_RULES
 
 log = logging.getLogger(__name__)
 
@@ -26,8 +26,8 @@ def extract_sql(text: str) -> str:
 def run_single_nl2sql(prompt: str, nl2sql: NL2SQLTool, llm: LLM, run_id: str) -> str:
     agent = Agent(
         role="Data Analyst",
-        goal="Converter linguagem natural em SQL para o banco Moodle",
-        backstory=MOODLE_RULES,
+        goal="Converter linguagem natural em SQL PostgreSQL para o banco de indicadores",
+        backstory=INDICATORS_RULES,
         tools=[nl2sql],
         llm=llm,
         verbose=False,

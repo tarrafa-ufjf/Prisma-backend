@@ -5,16 +5,16 @@ import time
 from typing import Any, TypedDict
 
 from crewai import LLM
-from crewai_tools import NL2SQLTool
 from langgraph.graph import END, START, StateGraph
 
 from services.nl2sql.answer import generate_final_answer
 from services.nl2sql.candidates import generate_candidate_sqls
 from services.nl2sql.config import API_KEY, MODEL, N_EXECUTIONS, SAMPLE_ROWS_IN_TABLE_INFO
-from services.nl2sql.db import build_moodle_db_uri
+from services.nl2sql.db import build_indicators_db_uri
 from services.nl2sql.execution import execute_sql_to_json
 from services.nl2sql.judge import AdjudicationResult, adjudicate_winner_sql
 from services.nl2sql.sql_processing import group_equivalent_sqls, process_sql
+from services.nl2sql.tool import IndicatorsNL2SQLTool
 from services.nl2sql.visualization import generate_vega_spec
 
 log = logging.getLogger(__name__)
@@ -141,8 +141,8 @@ def build_pipeline():
 
 def _build_initial_state(user_question: str) -> PipelineState:
     llm = LLM(model=MODEL, api_key=API_KEY, temperature=0.3)
-    nl2sql = NL2SQLTool(
-        db_uri=build_moodle_db_uri(),
+    nl2sql = IndicatorsNL2SQLTool(
+        db_uri=build_indicators_db_uri(),
         sample_rows_in_table_info=SAMPLE_ROWS_IN_TABLE_INFO,
         allow_dml=False,
     )

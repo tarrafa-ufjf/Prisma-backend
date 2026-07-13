@@ -8,7 +8,7 @@ from typing import TypedDict
 
 from crewai import Agent, Crew, LLM, Task
 
-from services.nl2sql.prompts import JUDGE_DIMENSIONS, MOODLE_RULES
+from services.nl2sql.prompts import INDICATORS_RULES, JUDGE_DIMENSIONS
 
 log = logging.getLogger(__name__)
 
@@ -33,13 +33,13 @@ def _build_judge_prompt(user_question: str, representatives: list[str], group_si
     )
 
     return f"""
-        Você é um juiz técnico especializado em SQL e no schema Moodle.
+        Você é um juiz técnico especializado em SQL PostgreSQL e no banco de indicadores.
 
         PERGUNTA ORIGINAL DO USUÁRIO:
         {user_question}
 
-        REGRAS DO SCHEMA MOODLE:
-        {MOODLE_RULES}
+        REGRAS DO BANCO DE INDICADORES:
+        {INDICATORS_RULES}
 
         CANDIDATOS SQL (com frequência de aparição como sinal auxiliar):
         {candidates_block}
@@ -97,7 +97,7 @@ def adjudicate_winner_sql(groups: dict[int, list[str]], user_question: str, llm:
         role="SQL Technical Judge",
         goal="Selecionar o SQL tecnicamente mais correto e completo para a pergunta do usuário",
         backstory=(
-            "Você é um árbitro técnico sênior, especialista em SQL, schema Moodle e qualidade "
+            "Você é um árbitro técnico sênior, especialista em SQL PostgreSQL, indicadores educacionais e qualidade "
             "de queries. Sua decisão é baseada exclusivamente em critérios técnicos e semânticos. "
             "Você analisa cada candidato de forma independente e justifica sua escolha com rigor."
         ),

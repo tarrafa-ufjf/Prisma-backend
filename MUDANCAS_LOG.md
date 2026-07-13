@@ -2,6 +2,35 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-13 10:32:04 -03
+
+### Titulo
+
+Chatbot usando PostgreSQL de indicadores
+
+### Arquivos afetados
+
+- [`pre_api/services/nl2sql/db.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/db.py)
+- [`pre_api/services/nl2sql/config.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/config.py)
+- [`pre_api/services/nl2sql/prompts.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/prompts.py)
+- [`pre_api/services/nl2sql/tool.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/tool.py)
+- [`pre_api/services/nl2sql/graph.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/graph.py)
+- [`pre_api/services/nl2sql/execution.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/execution.py)
+- [`pre_api/services/nl2sql/candidates.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/candidates.py)
+- [`pre_api/services/nl2sql/judge.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/judge.py)
+- [`pre_api/services/nl2sql/answer.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/nl2sql/answer.py)
+- [`pre_api/tests/test_nl2sql_indicators.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_nl2sql_indicators.py)
+- [`.env`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/.env)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+O chatbot/NL2SQL passou a montar a conexao pelo PostgreSQL local de indicadores usando `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` e `DB_DATABASE`, mantendo `NL2SQL_DB_URI` como override opcional. Os prompts e agentes foram reorientados para o schema de indicadores, `NL2SQL_DIALECT` foi ajustado para `postgres` no ambiente local, e foi adicionada uma ferramenta NL2SQL local que exclui `configs`, `user`, `role`, `roles_users` e `role_users` da introspeccao e bloqueia consultas a essas tabelas antes da execucao.
+
+### Impacto
+
+Antes, o chatbot buscava configuracao Moodle/MySQL salva e orientava os agentes pelo schema Moodle. Agora, somente o chatbot consulta o banco PostgreSQL de indicadores, sem expor credenciais ou tabelas de autenticacao; as rotas administrativas Moodle e os fluxos de analise/scheduler permanecem inalterados.
+
 ## 2026-06-25 11:09:27 -03
 
 ### Titulo

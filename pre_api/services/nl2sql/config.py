@@ -17,7 +17,7 @@ API_KEY = os.getenv(
     "OPENROUTER_API_KEY",
     "",
 )
-SQL_DIALECT = os.getenv("NL2SQL_DIALECT", "mysql")
+SQL_DIALECT = os.getenv("NL2SQL_DIALECT", "postgres")
 MAX_WORKERS = int(os.getenv("NL2SQL_MAX_WORKERS", str(N_EXECUTIONS)))
 SAMPLE_ROWS_IN_TABLE_INFO = int(os.getenv("NL2SQL_SAMPLE_ROWS", "3"))
 

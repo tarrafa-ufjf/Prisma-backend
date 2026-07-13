@@ -2,6 +2,27 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-13 11:55:41 -03
+
+### Titulo
+
+Endpoint para limpar conversa do chatbot
+
+### Arquivos afetados
+
+- [`pre_api/routes/chatbot.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/routes/chatbot.py)
+- [`pre_api/services/chatbot/memory.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/chatbot/memory.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+Foi adicionada a rota autenticada `DELETE /chatbot/conversations/<conversation_id>` para remover uma conversa do chatbot pertencente ao usuario logado. O servico de memoria passou a expor a exclusao com validacao de propriedade, e os testes cobrem a remocao da conversa com suas mensagens e a rejeicao de exclusao de conversas de outro usuario.
+
+### Impacto
+
+Antes, o frontend podia listar e abrir conversas salvas, mas nao tinha como limpar uma conversa persistida. Agora, a pagina do chatbot pode remover conversas do historico no backend; mensagens associadas sao apagadas junto pela relacao em cascata.
+
 ## 2026-07-13 11:22:42 -03
 
 ### Titulo

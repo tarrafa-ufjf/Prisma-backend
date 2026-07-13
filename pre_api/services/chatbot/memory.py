@@ -63,6 +63,12 @@ def require_user_conversation(
     return conversation
 
 
+def delete_user_conversation(user_id: int, conversation_id: int) -> None:
+    conversation = require_user_conversation(user_id, conversation_id)
+    db.session.delete(conversation)
+    db.session.commit()
+
+
 def get_recent_messages(
     conversation_id: int,
     limit: int = 6,

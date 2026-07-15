@@ -112,6 +112,7 @@ def build_chatbot_response(
                     "confidence": result.get("confidence"),
                     "adjudication": result.get("adjudication"),
                 },
+                vega=result.get("vega"),
             )
             db.session.commit()
 

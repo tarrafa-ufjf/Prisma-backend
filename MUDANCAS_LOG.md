@@ -2,6 +2,29 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-15 16:03:21 -03
+
+### Titulo
+
+Vega unico por conversa do chatbot
+
+### Arquivos afetados
+
+- [`pre_api/models.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/models.py)
+- [`pre_api/auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/auth.py)
+- [`pre_api/services/chatbot/build_chatbot_response.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/chatbot/build_chatbot_response.py)
+- [`pre_api/services/chatbot/memory.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/services/chatbot/memory.py)
+- [`pre_api/tests/test_auth.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_auth.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A conversa do chatbot passou a ter um campo `vega_json` para armazenar apenas a especificacao Vega-Lite da ultima resposta. A gravacao de mensagens do assistente atualiza esse campo a cada resposta, usando o Vega retornado pelo pipeline ou `null` quando a resposta nao gera grafico. A serializacao do detalhe da conversa tambem passou a retornar esse Vega unico.
+
+### Impacto
+
+Antes, o Vega era retornado apenas na resposta imediata do `/chatbot` e nao ficava disponivel ao recuperar o historico. Agora, ao abrir uma conversa salva, o backend retorna o grafico mais recente da conversa; se a ultima resposta nao tiver grafico, o valor persistido e limpo para evitar reaproveitar um grafico antigo.
+
 ## 2026-07-13 12:52:55 -03
 
 ### Titulo

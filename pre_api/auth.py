@@ -4,6 +4,7 @@ from flask import g, jsonify, request
 from flask_login import current_user
 from flask_security import SQLAlchemyUserDatastore, Security
 from flask_security.utils import hash_password
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 
 from database import db
@@ -32,9 +33,22 @@ def init_auth(app):
 def initialize_auth_storage(app):
     with app.app_context():
         db.create_all()
+        ensure_chatbot_conversation_columns()
         ensure_roles()
         seed_admin_from_env()
         db.session.commit()
+
+
+def ensure_chatbot_conversation_columns():
+    inspector = inspect(db.engine)
+    if not inspector.has_table("chatbot_conversations"):
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("chatbot_conversations")}
+    if "vega_json" not in columns:
+        db.session.execute(
+            text("ALTER TABLE chatbot_conversations ADD COLUMN vega_json JSON")
+        )
 
 
 def ensure_roles():

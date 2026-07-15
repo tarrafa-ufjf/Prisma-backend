@@ -112,6 +112,7 @@ class AuthSessionTest(unittest.TestCase):
         with self.app.app_context():
             conversation = db.session.get(ChatbotConversation, payload["conversation_id"])
             self.assertEqual(conversation.user_id, user_id)
+            self.assertIsNone(conversation.vega_json)
             messages = (
                 ChatbotMessage.query.filter_by(conversation_id=conversation.id)
                 .order_by(ChatbotMessage.id)
@@ -186,6 +187,76 @@ class AuthSessionTest(unittest.TestCase):
         rewrite_context = rewrite.call_args.args[1]
         self.assertIn("Qual é a média de desempenho dos alunos?", rewrite_context)
         self.assertIn("global_indicators_students", rewrite_context)
+
+    def test_chatbot_stores_only_latest_conversation_vega(self):
+        user_id = self.create_user()
+        self.login()
+        first_vega = {
+            "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+            "mark": "bar",
+            "data": {"values": [{"subject_id": 1, "media": 82}]},
+            "encoding": {
+                "x": {"field": "subject_id", "type": "nominal"},
+                "y": {"field": "media", "type": "quantitative"},
+            },
+        }
+
+        with patch(
+            "services.chatbot.build_chatbot_response.rewrite_question_with_memory",
+            side_effect=[
+                "Qual é a média por disciplina?",
+                "Qual é a média geral?",
+            ],
+        ), patch(
+            "services.chatbot.build_chatbot_response.run_nl2sql_pipeline",
+            side_effect=[
+                {
+                    "final_answer": "A média por disciplina é 82.",
+                    "final_json": [{"subject_id": 1, "media": 82}],
+                    "vega": first_vega,
+                    "sql": "SELECT subject_id, AVG(mean_grade_performance) FROM global_indicators_students GROUP BY subject_id",
+                    "confidence": 100.0,
+                    "adjudication": {},
+                },
+                {
+                    "final_answer": "A média geral é 82.",
+                    "final_json": [{"media": 82}],
+                    "vega": None,
+                    "sql": "SELECT AVG(mean_grade_performance) FROM global_indicators_students",
+                    "confidence": 100.0,
+                    "adjudication": {},
+                },
+            ],
+        ):
+            first_response = self.client.post(
+                "/chatbot",
+                json={"question": "Qual a média por disciplina?"},
+            )
+            conversation_id = first_response.get_json()["conversation_id"]
+
+            with self.app.app_context():
+                conversation = db.session.get(ChatbotConversation, conversation_id)
+                self.assertEqual(conversation.user_id, user_id)
+                self.assertEqual(conversation.vega_json, first_vega)
+
+            second_response = self.client.post(
+                "/chatbot",
+                json={
+                    "conversation_id": conversation_id,
+                    "question": "E a média geral?",
+                },
+            )
+
+        self.assertEqual(second_response.status_code, 200)
+        self.assertIsNone(second_response.get_json()["vega"])
+
+        with self.app.app_context():
+            conversation = db.session.get(ChatbotConversation, conversation_id)
+            self.assertIsNone(conversation.vega_json)
+            self.assertEqual(
+                ChatbotMessage.query.filter_by(conversation_id=conversation_id).count(),
+                4,
+            )
 
     def test_chatbot_rejects_invalid_conversation_id(self):
         self.create_user()
@@ -298,7 +369,11 @@ class AuthSessionTest(unittest.TestCase):
         user_id = self.create_user()
 
         with self.app.app_context():
-            conversation = ChatbotConversation(user_id=user_id, title="Historico")
+            conversation = ChatbotConversation(
+                user_id=user_id,
+                title="Historico",
+                vega_json={"mark": "bar", "data": {"values": [{"media": 82}]}},
+            )
             db.session.add(conversation)
             db.session.flush()
             db.session.add(
@@ -330,6 +405,10 @@ class AuthSessionTest(unittest.TestCase):
         conversation_payload = response.get_json()["conversation"]
         self.assertEqual(conversation_payload["id"], conversation_id)
         self.assertEqual(conversation_payload["title"], "Historico")
+        self.assertEqual(
+            conversation_payload["vega"],
+            {"mark": "bar", "data": {"values": [{"media": 82}]}},
+        )
         self.assertEqual(
             [message["role"] for message in conversation_payload["messages"]],
             ["user", "assistant"],

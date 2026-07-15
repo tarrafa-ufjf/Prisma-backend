@@ -111,6 +111,7 @@ def add_assistant_message(
     sql: str | None,
     result_json: list[dict[str, Any]] | None,
     metadata: dict[str, Any] | None = None,
+    vega: dict[str, Any] | None = None,
 ) -> ChatbotMessage:
     message = ChatbotMessage(
         conversation_id=conversation_id,
@@ -123,6 +124,7 @@ def add_assistant_message(
     db.session.add(message)
     conversation = db.session.get(ChatbotConversation, conversation_id)
     if conversation is not None:
+        conversation.vega_json = vega
         conversation.updated_at = func.now()
     return message
 
@@ -159,13 +161,19 @@ def format_messages_for_rewrite(messages: list[ChatbotMessage]) -> str:
     return "\n".join(lines)
 
 
-def serialize_conversation(conversation: ChatbotConversation) -> dict[str, Any]:
-    return {
+def serialize_conversation(
+    conversation: ChatbotConversation,
+    include_vega: bool = False,
+) -> dict[str, Any]:
+    payload = {
         "id": conversation.id,
         "title": conversation.title,
         "created_at": _isoformat(conversation.created_at),
         "updated_at": _isoformat(conversation.updated_at),
     }
+    if include_vega:
+        payload["vega"] = conversation.vega_json
+    return payload
 
 
 def serialize_message(message: ChatbotMessage) -> dict[str, Any]:
@@ -186,7 +194,7 @@ def serialize_conversation_with_messages(
     conversation: ChatbotConversation,
 ) -> dict[str, Any]:
     return {
-        **serialize_conversation(conversation),
+        **serialize_conversation(conversation, include_vega=True),
         "messages": [
             serialize_message(message)
             for message in get_conversation_messages(conversation.id)

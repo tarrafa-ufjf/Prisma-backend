@@ -8,7 +8,7 @@ from flask_cors import CORS
 import atexit
 import os
 
-from auth import authenticate_request, init_auth
+from auth import authenticate_request, init_auth, require_admin_user
 
 load_dotenv()
 
@@ -75,6 +75,10 @@ def analysis():
     if request.method == "OPTIONS":
         return "", 200
 
+    admin_error_response = require_admin_user()
+    if admin_error_response is not None:
+        return admin_error_response
+
     payload = request.get_json() or {}
     channel = payload.get("channel", "diario")
     print("channel:", channel)
@@ -92,4 +96,4 @@ def analysis():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0",debug=True)
+    app.run(host="0.0.0.0",debug=False)

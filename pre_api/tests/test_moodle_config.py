@@ -234,17 +234,24 @@ class MoodleConfigTest(unittest.TestCase):
         self.assertEqual(response.get_json(), {"error": "missing required fields: password"})
 
     def test_analysis_without_saved_config_returns_400(self):
-        self.create_user()
-        self.login()
+        self.login_admin()
 
         response = self.client.put("/analysis", json={"channel": "diario"})
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {"error": "moodle config not found"})
 
-    def test_analysis_uses_saved_config_instead_of_payload_config(self):
+    def test_non_admin_cannot_start_analysis(self):
         self.create_user()
         self.login()
+
+        response = self.client.put("/analysis", json={"channel": "diario"})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {"error": "admin role required"})
+
+    def test_analysis_uses_saved_config_instead_of_payload_config(self):
+        self.login_admin()
         self.save_config(version="3.1")
 
         with patch("app.Processor") as processor_cls:

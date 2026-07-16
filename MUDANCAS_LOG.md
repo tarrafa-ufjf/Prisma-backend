@@ -2,6 +2,26 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-16 15:28:13 -03
+
+### Titulo
+
+Restricao administrativa para disparo de analise
+
+### Arquivos afetados
+
+- [`pre_api/app.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/app.py)
+- [`pre_api/tests/test_moodle_config.py`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/pre_api/tests/test_moodle_config.py)
+- [`MUDANCAS_LOG.md`](/home/alfredolsn/Documents/tarrafa/Prisma-backend/MUDANCAS_LOG.md)
+
+### Resumo
+
+A rota `PUT /analysis` passou a validar o papel administrativo do usuario autenticado antes de iniciar a analise. Os testes foram ajustados para executar o fluxo permitido como admin e cobrir a rejeicao de usuario comum.
+
+### Impacto
+
+Antes, qualquer usuario autenticado podia disparar analises pela rota `/analysis`. Agora, usuarios sem papel `admin` recebem HTTP 403 com `admin role required`, mantendo o comportamento de CORS para `OPTIONS`.
+
 ## 2026-07-15 16:03:21 -03
 
 ### Titulo

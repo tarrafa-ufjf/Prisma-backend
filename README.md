@@ -88,6 +88,17 @@ AUTH_ADMIN_PASSWORD=change_me_admin_password
 
 
 SCHEDULER_TIMEZONE=America/Sao_Paulo
+
+# NL2SQL / OpenRouter chatbot
+NL2SQL_N_EXECUTIONS=1
+OPENROUTER_MODEL=openrouter/openai/gpt-oss-120b:free
+OPENROUTER_API_KEY=
+NL2SQL_DIALECT=postgres
+NL2SQL_MAX_WORKERS=1
+NL2SQL_SAMPLE_ROWS=3
+NL2SQL_GENERATE_VEGA=true
+NL2SQL_VEGA_MAX_ROWS=100
+CHATBOT_DEBUG_RESPONSE=false
 ```
 
 Important: Docker Compose automatically loads the `.env` file from the project root to interpolate variables such as `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`, `DB_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, and `RABBITMQ_PORT`. If `.env` does not exist, `docker-compose.yml` still includes default values for local execution.
@@ -98,6 +109,7 @@ Notes:
 - If you change PostgreSQL or RabbitMQ credentials or ports, update `.env` before starting the containers.
 - The Moodle configuration should not be placed directly in `.env`; it is registered through the `PUT /admin/moodle-config` administrative route.
 - Run Python commands from inside `pre_api/` or `worker/`; `uv sync` installs the shared `src/` package as a local editable dependency.
+- The chatbot requires `OPENROUTER_API_KEY` to generate NL2SQL answers. The `DB_*` variables are also used by the chatbot to query the local PostgreSQL indicator database.
 
 ## First Run
 
@@ -214,6 +226,63 @@ GET /admin/scheduler/status
 
 To configure analysis channels, indicator observers, and automatic schedules, see [`CONFIGURATION_OBSERVERS_SCHEDULER.md`](CONFIGURATION_OBSERVERS_SCHEDULER.md).
 
+## Chatbot
+
+The API includes an authenticated chatbot for natural-language questions about the consolidated indicator data stored in PostgreSQL. It uses the NL2SQL pipeline to rewrite conversational questions, generate safe SQL candidates, validate and execute the selected query, and return a final answer with optional tabular data and a Vega-Lite chart specification.
+
+The chatbot only uses the local indicator database configured by `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_DATABASE`. It does not query the institutional Moodle/MySQL source directly.
+
+Required and optional settings:
+
+- `OPENROUTER_API_KEY`: required API key for the LLM provider.
+- `OPENROUTER_MODEL`: model used by the chatbot and NL2SQL agents.
+- `NL2SQL_N_EXECUTIONS`: number of candidate SQL generations used for self-consistency.
+- `NL2SQL_MAX_WORKERS`: maximum parallel workers for NL2SQL generation.
+- `NL2SQL_SAMPLE_ROWS`: number of sample rows included in table context.
+- `NL2SQL_GENERATE_VEGA`: enables or disables Vega-Lite generation.
+- `NL2SQL_VEGA_MAX_ROWS`: maximum number of rows considered when generating charts.
+- `CHATBOT_DEBUG_RESPONSE`: when set to `true`, includes SQL, confidence, candidates, and adjudication details in the immediate `/chatbot` response.
+
+Ask a question:
+
+```http
+POST /chatbot
+Content-Type: application/json
+
+{
+  "question": "Which subjects have the highest student inactivity?",
+  "conversation_id": 1
+}
+```
+
+`conversation_id` is optional. When it is omitted, the API creates a new conversation for the authenticated user and returns the new ID.
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "conversation_id": 1,
+  "question": "Which subjects have the highest student inactivity?",
+  "rewritten_question": "Which subjects have the highest student inactivity?",
+  "answer": "The subjects with the highest inactivity are...",
+  "json": [],
+  "vega": null
+}
+```
+
+Conversation history:
+
+- `GET /chatbot/conversations`: lists the authenticated user's conversations.
+- `GET /chatbot/conversations/<conversation_id>`: returns one conversation with messages, compact result data, SQL used by assistant messages, metadata, and the latest conversation-level Vega-Lite specification.
+- `DELETE /chatbot/conversations/<conversation_id>`: deletes one conversation owned by the authenticated user.
+
+Safety behavior:
+
+- Empty questions return `{"success": false, "error": "question is required"}`.
+- Sensitive authentication or forbidden-table questions are answered with a friendly refusal and `blocked: true`; they are saved in the conversation history but do not run the SQL pipeline.
+- Missing `OPENROUTER_API_KEY` or database/LLM failures return `success: false` with an error message.
+
 ## Main Endpoints
 
 Authentication:
@@ -236,6 +305,13 @@ Administration:
 Analysis:
 
 - `PUT /analysis`
+
+Chatbot:
+
+- `POST /chatbot`
+- `GET /chatbot/conversations`
+- `GET /chatbot/conversations/<conversation_id>`
+- `DELETE /chatbot/conversations/<conversation_id>`
 
 Student queries:
 
@@ -342,6 +418,7 @@ Common errors:
 - **PostgreSQL connection error**: confirm that `docker compose up -d` has been run and that the `DB_*` variables in `.env` match `docker-compose.yml`.
 - **RabbitMQ connection error**: confirm that the `rabbitmq` service is healthy and that `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, and `RABBITMQ_PASSWORD` are correct.
 - **Error starting an analysis**: confirm that `PUT /admin/moodle-config` has already been run with a valid Moodle connection.
+- **Chatbot returns `OPENROUTER_API_KEY is required`**: set `OPENROUTER_API_KEY` in `.env` and restart the API.
 - **`src` import error**: run `uv sync` again inside `pre_api/` or `worker/` so the shared local package is installed in that environment.
 - **Protected routes return an authentication error**: run `uv run python install_auth.py` inside `pre_api/` and check `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD` in `.env`.
 

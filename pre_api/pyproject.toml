@@ -29,6 +29,7 @@ dependencies = [
     "crewai-tools>=1.14.6,<2.0.0",
     "guardrails-ai>=0.10.2,<0.11.0",
     "numpy<2.4",
+    "gunicorn>=26.0.0",
 ]
 
 [tool.uv]

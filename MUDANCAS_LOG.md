@@ -2,6 +2,56 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-28 13:50:27 +00
+
+### Titulo
+
+Migracao do chatbot do OpenRouter para Gemini
+
+### Arquivos afetados
+
+- `pre_api/services/nl2sql/config.py`
+- `pre_api/services/nl2sql/graph.py`
+- `pre_api/pyproject.toml`
+- `pre_api/uv.lock`
+- `pre_api/tests/test_nl2sql_indicators.py`
+- `.env.example`
+- `README.md`
+- `README.pt-BR.md`
+- `MUDANCAS_LOG.md`
+
+### Resumo
+
+O LLM usado pelo CrewAI no chatbot passou a ser configurado para a API direta do Gemini por meio de `GEMINI_API_KEY` e `GEMINI_MODEL`. O modelo padrao agora e `gemini/gemini-2.5-flash-lite`, a validacao de configuracao foi ajustada para exigir a chave do Gemini e o extra `crewai[google-genai]` foi adicionado para habilitar o provedor nativo. O nome configurado do modelo e normalizado para aceitar tanto `gemini-...` quanto `gemini/gemini-...` e `models/gemini-...`.
+
+### Impacto
+
+Antes, o chatbot enviava as chamadas dos agentes ao OpenRouter e usava um modelo gratuito intermediado pelo servico. Agora, o CrewAI e mantido, mas envia as chamadas diretamente ao provedor Gemini, eliminando a dependencia operacional do OpenRouter. A normalizacao tambem impede que um nome Gemini sem prefixo seja interpretado como modelo OpenAI e receba a chave do Google no provedor errado. A chave do Google AI Studio precisa ser configurada no ambiente de execucao.
+
+## 2026-07-28 13:27:51 +00
+
+### Titulo
+
+Remocao da etapa Vega-Lite do pipeline do chatbot
+
+### Arquivos afetados
+
+- `pre_api/services/nl2sql/graph.py`
+- `pre_api/services/chatbot/build_chatbot_response.py`
+- `pre_api/tests/test_auth.py`
+- `.env.example`
+- `README.md`
+- `README.pt-BR.md`
+- `MUDANCAS_LOG.md`
+
+### Resumo
+
+A geracao de Vega-Lite foi retirada do grafo NL2SQL. O chatbot agora segue diretamente da execucao do SQL para a geracao da resposta textual e mantem o campo `vega` no retorno e na memoria sempre como `null`.
+
+### Impacto
+
+Antes, resultados adequados para graficos acionavam uma chamada adicional ao LLM, aumentando o tempo total da requisicao. Agora, essa etapa nao e executada, reduzindo a latencia do chatbot sem alterar os schemas nem remover o campo `vega` esperado pelos clientes.
+
 ## 2026-07-15 16:03:21 -03
 
 ### Titulo

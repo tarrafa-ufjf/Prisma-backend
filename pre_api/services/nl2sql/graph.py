@@ -15,7 +15,6 @@ from services.nl2sql.execution import execute_sql_to_json
 from services.nl2sql.judge import AdjudicationResult, adjudicate_winner_sql
 from services.nl2sql.sql_processing import group_equivalent_sqls, process_sql
 from services.nl2sql.tool import IndicatorsNL2SQLTool
-from services.nl2sql.visualization import generate_vega_spec
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +31,6 @@ class PipelineState(TypedDict):
     adjudication: AdjudicationResult
     winner_sql: str
     final_json: list[dict[str, Any]]
-    vega_spec: dict[str, Any] | None
     final_answer: str
     confidence: float
 
@@ -102,14 +100,6 @@ def build_pipeline():
     def _execute_sql(state: PipelineState) -> PipelineState:
         return {**state, "final_json": execute_sql_to_json(state["winner_sql"])}
 
-    def _generate_vega(state: PipelineState) -> PipelineState:
-        vega_spec = generate_vega_spec(
-            state["user_question"],
-            state["final_json"],
-            state["llm"],
-        )
-        return {**state, "vega_spec": vega_spec}
-
     def _generate_answer(state: PipelineState) -> PipelineState:
         final_answer = generate_final_answer(
             state["user_question"],
@@ -121,21 +111,19 @@ def build_pipeline():
         return {**state, "final_answer": final_answer}
 
     graph = StateGraph(PipelineState)
-    graph.add_node("generate_candidates", _make_step("1/7 - Self-consistency candidates", _generate_candidates))
-    graph.add_node("sqlglot_process", _make_step("2/7 - SQLGlot processing", _sqlglot_process))
-    graph.add_node("group_sqls", _make_step("3/7 - AST grouping", _group_sqls))
-    graph.add_node("adjudicate", _make_step("4/7 - LLM judge adjudication", _adjudicate))
-    graph.add_node("execute_sql", _make_step("5/7 - Execute SQL", _execute_sql))
-    graph.add_node("generate_vega", _make_step("6/7 - Generate Vega-Lite", _generate_vega))
-    graph.add_node("generate_answer", _make_step("7/7 - Generate answer", _generate_answer))
+    graph.add_node("generate_candidates", _make_step("1/6 - Self-consistency candidates", _generate_candidates))
+    graph.add_node("sqlglot_process", _make_step("2/6 - SQLGlot processing", _sqlglot_process))
+    graph.add_node("group_sqls", _make_step("3/6 - AST grouping", _group_sqls))
+    graph.add_node("adjudicate", _make_step("4/6 - LLM judge adjudication", _adjudicate))
+    graph.add_node("execute_sql", _make_step("5/6 - Execute SQL", _execute_sql))
+    graph.add_node("generate_answer", _make_step("6/6 - Generate answer", _generate_answer))
 
     graph.add_edge(START, "generate_candidates")
     graph.add_edge("generate_candidates", "sqlglot_process")
     graph.add_edge("sqlglot_process", "group_sqls")
     graph.add_edge("group_sqls", "adjudicate")
     graph.add_edge("adjudicate", "execute_sql")
-    graph.add_edge("execute_sql", "generate_vega")
-    graph.add_edge("generate_vega", "generate_answer")
+    graph.add_edge("execute_sql", "generate_answer")
     graph.add_edge("generate_answer", END)
 
     return graph.compile()
@@ -164,7 +152,6 @@ def _build_initial_state(
         "adjudication": {},  # type: ignore[typeddict-item]
         "winner_sql": "",
         "final_json": [],
-        "vega_spec": None,
         "final_answer": "",
         "confidence": 0.0,
     }
@@ -177,7 +164,7 @@ def run_nl2sql_pipeline(
     if not user_question or not user_question.strip():
         raise ValueError("question is required")
     if not API_KEY:
-        raise RuntimeError("OPENROUTER_API_KEY is required")
+        raise RuntimeError("GEMINI_API_KEY is required")
 
     pipeline = build_pipeline()
     state = pipeline.invoke(_build_initial_state(user_question, original_question))
@@ -185,7 +172,7 @@ def run_nl2sql_pipeline(
     return {
         "final_answer": state["final_answer"],
         "final_json": state["final_json"],
-        "vega": state["vega_spec"],
+        "vega": None,
         "sql": state["winner_sql"],
         "confidence": state["confidence"],
         "candidate_sqls": state["candidate_sqls"],

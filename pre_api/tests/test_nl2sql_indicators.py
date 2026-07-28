@@ -46,6 +46,40 @@ class NL2SQLIndicatorsDbUriTest(unittest.TestCase):
 
 
 class NL2SQLIndicatorsConfigTest(unittest.TestCase):
+    def test_gemini_model_name_is_normalized_with_provider_prefix(self):
+        from services.nl2sql.config import normalize_gemini_model
+
+        self.assertEqual(
+            normalize_gemini_model("gemini-3.1-flash-lite"),
+            "gemini/gemini-3.1-flash-lite",
+        )
+        self.assertEqual(
+            normalize_gemini_model("models/gemini-3.1-flash-lite"),
+            "gemini/gemini-3.1-flash-lite",
+        )
+        self.assertEqual(
+            normalize_gemini_model("gemini/gemini-3.1-flash-lite"),
+            "gemini/gemini-3.1-flash-lite",
+        )
+
+    def test_default_llm_uses_direct_gemini_provider(self):
+        original_getenv = os.getenv
+
+        def getenv_without_gemini_config(name, default=None):
+            if name in {"GEMINI_MODEL", "GEMINI_API_KEY"}:
+                return default
+            return original_getenv(name, default)
+
+        with patch("os.getenv", side_effect=getenv_without_gemini_config):
+            import services.nl2sql.config as config
+
+            reloaded = importlib.reload(config)
+            self.assertEqual(
+                reloaded.MODEL,
+                "gemini/gemini-2.5-flash-lite",
+            )
+            self.assertEqual(reloaded.API_KEY, "")
+
     def test_default_sql_dialect_is_postgres(self):
         original_getenv = os.getenv
 

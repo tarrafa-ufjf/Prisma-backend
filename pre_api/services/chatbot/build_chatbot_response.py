@@ -99,7 +99,7 @@ def build_chatbot_response(
             "rewritten_question": rewritten_question,
             "answer": result.get("final_answer"),
             "json": result.get("final_json"),
-            "vega": None,
+            "vega": result.get("vega"),
         }
 
         if conversation is not None:
@@ -112,13 +112,13 @@ def build_chatbot_response(
                     "confidence": result.get("confidence"),
                     "adjudication": result.get("adjudication"),
                 },
-                vega=None,
+                vega=result.get("vega"),
             )
             db.session.commit()
 
         if _debug_response_enabled():
             response["debug"] = {
-                "vega": None,
+                "vega": result.get("vega"),
                 "sql": result.get("sql"),
                 "confidence": result.get("confidence"),
                 "candidate_sqls": result.get("candidate_sqls"),

@@ -96,6 +96,7 @@ GEMINI_API_KEY=
 NL2SQL_DIALECT=postgres
 NL2SQL_MAX_WORKERS=1
 NL2SQL_SAMPLE_ROWS=3
+NL2SQL_GENERATE_VEGA=true
 NL2SQL_VEGA_MAX_ROWS=100
 CHATBOT_DEBUG_RESPONSE=false
 ```
@@ -227,7 +228,7 @@ To configure analysis channels, indicator observers, and automatic schedules, se
 
 ## Chatbot
 
-The API includes an authenticated chatbot for natural-language questions about the consolidated indicator data stored in PostgreSQL. It uses the NL2SQL pipeline to rewrite conversational questions, generate safe SQL candidates, validate and execute the selected query, and return a final answer with optional tabular data.
+The API includes an authenticated chatbot for natural-language questions about the consolidated indicator data stored in PostgreSQL. It uses the NL2SQL pipeline to rewrite conversational questions, generate safe SQL candidates, validate and execute the selected query, and return a final answer with optional tabular data and a Vega-Lite chart specification.
 
 The chatbot only uses the local indicator database configured by `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_DATABASE`. It does not query the institutional Moodle/MySQL source directly.
 
@@ -238,6 +239,7 @@ Required and optional settings:
 - `NL2SQL_N_EXECUTIONS`: number of candidate SQL generations used for self-consistency.
 - `NL2SQL_MAX_WORKERS`: maximum parallel workers for NL2SQL generation.
 - `NL2SQL_SAMPLE_ROWS`: number of sample rows included in table context.
+- `NL2SQL_GENERATE_VEGA`: enables or disables Vega-Lite generation.
 - `NL2SQL_VEGA_MAX_ROWS`: maximum number of rows considered when generating charts.
 - `CHATBOT_DEBUG_RESPONSE`: when set to `true`, includes SQL, confidence, candidates, and adjudication details in the immediate `/chatbot` response.
 
@@ -272,7 +274,7 @@ Successful response:
 Conversation history:
 
 - `GET /chatbot/conversations`: lists the authenticated user's conversations.
-- `GET /chatbot/conversations/<conversation_id>`: returns one conversation with messages, compact result data, SQL used by assistant messages, metadata, and an empty `vega` compatibility field.
+- `GET /chatbot/conversations/<conversation_id>`: returns one conversation with messages, compact result data, SQL used by assistant messages, metadata, and the latest conversation-level Vega-Lite specification.
 - `DELETE /chatbot/conversations/<conversation_id>`: deletes one conversation owned by the authenticated user.
 
 Safety behavior:

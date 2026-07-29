@@ -2,6 +2,30 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-29 12:49:23 +00
+
+### Titulo
+
+Reativacao da geracao Vega-Lite com Gemini
+
+### Arquivos afetados
+
+- `pre_api/services/nl2sql/graph.py`
+- `pre_api/services/chatbot/build_chatbot_response.py`
+- `pre_api/tests/test_auth.py`
+- `.env.example`
+- `README.md`
+- `README.pt-BR.md`
+- `MUDANCAS_LOG.md`
+
+### Resumo
+
+A etapa de geracao de Vega-Lite foi recolocada no pipeline NL2SQL depois da execucao do SQL e antes da resposta textual. A especificacao gerada voltou a ser retornada pelo endpoint do chatbot, incluida no bloco de debug e persistida no campo `vega_json` da conversa. A variavel `NL2SQL_GENERATE_VEGA` voltou a ser documentada e permanece habilitada por padrao.
+
+### Impacto
+
+Antes, o chatbot sempre retornava e armazenava `vega` como `null`, mesmo quando os dados eram adequados para grafico. Agora, o agente de visualizacao usa o Gemini configurado para gerar o Vega-Lite; resultados sem dados apropriados ou execucoes com `NL2SQL_GENERATE_VEGA=false` continuam retornando `null`.
+
 ## 2026-07-28 13:50:27 +00
 
 ### Titulo

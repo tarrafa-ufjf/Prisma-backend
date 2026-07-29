@@ -188,7 +188,7 @@ class AuthSessionTest(unittest.TestCase):
         self.assertIn("Qual é a média de desempenho dos alunos?", rewrite_context)
         self.assertIn("global_indicators_students", rewrite_context)
 
-    def test_chatbot_always_returns_and_stores_empty_vega(self):
+    def test_chatbot_stores_only_latest_conversation_vega(self):
         user_id = self.create_user()
         self.login()
         first_vega = {
@@ -237,8 +237,8 @@ class AuthSessionTest(unittest.TestCase):
             with self.app.app_context():
                 conversation = db.session.get(ChatbotConversation, conversation_id)
                 self.assertEqual(conversation.user_id, user_id)
-                self.assertIsNone(first_response.get_json()["vega"])
-                self.assertIsNone(conversation.vega_json)
+                self.assertEqual(first_response.get_json()["vega"], first_vega)
+                self.assertEqual(conversation.vega_json, first_vega)
 
             second_response = self.client.post(
                 "/chatbot",

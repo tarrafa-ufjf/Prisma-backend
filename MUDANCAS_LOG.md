@@ -2,6 +2,27 @@
 
 Este arquivo registra alteracoes relevantes feitas no codigo do projeto, com data e descricao do que mudou.
 
+## 2026-07-29 16:35:20 +00
+
+### Titulo
+
+Erro amigavel e estruturado no chatbot
+
+### Arquivos afetados
+
+- `pre_api/services/chatbot/build_chatbot_response.py`
+- `pre_api/routes/chatbot.py`
+- `pre_api/tests/test_auth.py`
+- `MUDANCAS_LOG.md`
+
+### Resumo
+
+Falhas internas do pipeline do chatbot passaram a retornar uma mensagem amigavel em `error` e `answer`, acompanhada de `error_code` e da indicacao `retryable`. O endpoint agora usa HTTP 500 para esse tipo de falha, enquanto os detalhes tecnicos e o traceback ficam restritos ao log do backend.
+
+### Impacto
+
+Antes, a mensagem completa da excecao, incluindo SQL e detalhes do PostgreSQL, era enviada ao frontend com HTTP 200. Agora, o frontend recebe um payload estavel e apresentavel, sem vazamento dos detalhes internos, e pode distinguir a falha pelo status HTTP e pelo codigo `CHATBOT_INTERNAL_ERROR`.
+
 ## 2026-07-29 12:49:23 +00
 
 ### Titulo

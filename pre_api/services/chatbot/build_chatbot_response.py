@@ -17,6 +17,11 @@ from services.nl2sql_pipeline import run_nl2sql_pipeline
 
 log = logging.getLogger(__name__)
 
+CHATBOT_INTERNAL_ERROR_MESSAGE = (
+    "Não foi possível concluir sua pergunta agora. "
+    "Tente novamente em alguns instantes ou reformule a pergunta."
+)
+
 
 def _debug_response_enabled() -> bool:
     return os.getenv("CHATBOT_DEBUG_RESPONSE", "").strip().lower() in {
@@ -133,13 +138,16 @@ def build_chatbot_response(
             "success": False,
             "error": e.message,
         }
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        log.error(f"Erro no chatbot: {e}")
+        log.exception("Erro interno ao processar a pergunta do chatbot")
 
         return {
             "success": False,
-            "error": str(e),
+            "error": CHATBOT_INTERNAL_ERROR_MESSAGE,
+            "error_code": "CHATBOT_INTERNAL_ERROR",
+            "answer": CHATBOT_INTERNAL_ERROR_MESSAGE,
+            "retryable": True,
         }
 
 

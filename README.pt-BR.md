@@ -62,19 +62,19 @@ Crie um arquivo `.env` na raiz do projeto a partir do exemplo:
 cp .env.example .env
 ```
 
-O arquivo `.env.example` já inclui os valores padrão usados pelo ambiente local. Depois de copiar o arquivo, tanto a aplicação quanto o `docker-compose.yml` usam essas variáveis para configurar PostgreSQL e RabbitMQ:
+O arquivo `.env.example` inclui placeholders para o ambiente local. Depois de copiar o arquivo, substitua-os pelas suas próprias credenciais; tanto a aplicação quanto o `docker-compose.yml` usam essas variáveis para configurar PostgreSQL e RabbitMQ:
 
 ```env
 DB_HOST=localhost
 DB_PORT=5432
-DB_USER=tarrafa
-DB_PASSWORD=tarrafa123
-DB_DATABASE=tarrafa_db
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_DATABASE=your_db_name
 
 RABBITMQ_HOST=localhost
 RABBITMQ_PORT=5672
-RABBITMQ_USER=guest
-RABBITMQ_PASSWORD=guest
+RABBITMQ_USER=your_rabbitmq_user
+RABBITMQ_PASSWORD=your_rabbitmq_password
 
 SECRET_KEY=change_me_to_a_long_random_secret
 MOODLE_CONFIG_ENCRYPTION_KEY=change_me_to_a_different_long_random_secret

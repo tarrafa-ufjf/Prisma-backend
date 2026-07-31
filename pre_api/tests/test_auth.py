@@ -77,6 +77,34 @@ class AuthSessionTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"answer": "Olá"})
 
+    def test_chatbot_returns_friendly_error_without_leaking_database_details(self):
+        self.create_user()
+        self.login()
+        database_error = (
+            'column "ts.avg_engagement" must appear in the GROUP BY clause'
+        )
+
+        with patch(
+            "services.chatbot.build_chatbot_response.rewrite_question_with_memory",
+            return_value="Mostre as disciplinas com maior engajamento",
+        ), patch(
+            "services.chatbot.build_chatbot_response.run_nl2sql_pipeline",
+            side_effect=RuntimeError(database_error),
+        ):
+            response = self.client.post(
+                "/chatbot",
+                json={"question": "Quais têm mais engajamento?"},
+            )
+
+        payload = response.get_json()
+        self.assertEqual(response.status_code, 500)
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["error_code"], "CHATBOT_INTERNAL_ERROR")
+        self.assertTrue(payload["retryable"])
+        self.assertEqual(payload["answer"], payload["error"])
+        self.assertNotIn("avg_engagement", payload["error"])
+        self.assertNotIn("GROUP BY", payload["error"])
+
     def test_chatbot_creates_conversation_and_stores_messages(self):
         user_id = self.create_user()
         self.login()
@@ -237,6 +265,7 @@ class AuthSessionTest(unittest.TestCase):
             with self.app.app_context():
                 conversation = db.session.get(ChatbotConversation, conversation_id)
                 self.assertEqual(conversation.user_id, user_id)
+                self.assertEqual(first_response.get_json()["vega"], first_vega)
                 self.assertEqual(conversation.vega_json, first_vega)
 
             second_response = self.client.post(

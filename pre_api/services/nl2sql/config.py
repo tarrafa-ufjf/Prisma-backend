@@ -11,10 +11,21 @@ def env_flag(name: str, default: str = "") -> bool:
     return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def normalize_gemini_model(model: str) -> str:
+    normalized = model.strip()
+    if normalized.startswith("models/"):
+        normalized = normalized.removeprefix("models/")
+    if normalized.startswith("gemini/"):
+        return normalized
+    return f"gemini/{normalized}"
+
+
 N_EXECUTIONS = int(os.getenv("NL2SQL_N_EXECUTIONS", "1"))
-MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/openai/gpt-oss-120b:free")
+MODEL = normalize_gemini_model(
+    os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+)
 API_KEY = os.getenv(
-    "OPENROUTER_API_KEY",
+    "GEMINI_API_KEY",
     "",
 )
 SQL_DIALECT = os.getenv("NL2SQL_DIALECT", "postgres")

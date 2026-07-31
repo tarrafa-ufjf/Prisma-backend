@@ -25,10 +25,11 @@ dependencies = [
     "flask-security-too[common,fsqla]>=5.8.0,<6.0.0",
     "sqlglot>=30.8.0,<31.0.0",
     "langgraph>=1.2.2,<2.0.0",
-    "crewai>=1.14.6,<2.0.0",
+    "crewai[google-genai]>=1.14.6,<2.0.0",
     "crewai-tools>=1.14.6,<2.0.0",
     "guardrails-ai>=0.10.2,<0.11.0",
     "numpy<2.4",
+    "gunicorn>=26.0.0",
 ]
 
 [tool.uv]

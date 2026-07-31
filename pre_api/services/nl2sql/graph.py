@@ -177,7 +177,7 @@ def run_nl2sql_pipeline(
     if not user_question or not user_question.strip():
         raise ValueError("question is required")
     if not API_KEY:
-        raise RuntimeError("OPENROUTER_API_KEY is required")
+        raise RuntimeError("GEMINI_API_KEY is required")
 
     pipeline = build_pipeline()
     state = pipeline.invoke(_build_initial_state(user_question, original_question))

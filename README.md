@@ -89,10 +89,10 @@ AUTH_ADMIN_PASSWORD=change_me_admin_password
 
 SCHEDULER_TIMEZONE=America/Sao_Paulo
 
-# NL2SQL / OpenRouter chatbot
+# NL2SQL / Gemini chatbot
 NL2SQL_N_EXECUTIONS=1
-OPENROUTER_MODEL=openrouter/openai/gpt-oss-120b:free
-OPENROUTER_API_KEY=
+GEMINI_MODEL=gemini/gemini-2.5-flash-lite
+GEMINI_API_KEY=
 NL2SQL_DIALECT=postgres
 NL2SQL_MAX_WORKERS=1
 NL2SQL_SAMPLE_ROWS=3
@@ -109,7 +109,7 @@ Notes:
 - If you change PostgreSQL or RabbitMQ credentials or ports, update `.env` before starting the containers.
 - The Moodle configuration should not be placed directly in `.env`; it is registered through the `PUT /admin/moodle-config` administrative route.
 - Run Python commands from inside `pre_api/` or `worker/`; `uv sync` installs the shared `src/` package as a local editable dependency.
-- The chatbot requires `OPENROUTER_API_KEY` to generate NL2SQL answers. The `DB_*` variables are also used by the chatbot to query the local PostgreSQL indicator database.
+- The chatbot requires `GEMINI_API_KEY` from Google AI Studio to generate NL2SQL answers through the direct Gemini API. The `DB_*` variables are also used by the chatbot to query the local PostgreSQL indicator database.
 
 ## First Run
 
@@ -234,8 +234,8 @@ The chatbot only uses the local indicator database configured by `DB_HOST`, `DB_
 
 Required and optional settings:
 
-- `OPENROUTER_API_KEY`: required API key for the LLM provider.
-- `OPENROUTER_MODEL`: model used by the chatbot and NL2SQL agents.
+- `GEMINI_API_KEY`: required Gemini API key created in Google AI Studio.
+- `GEMINI_MODEL`: Gemini model used by the chatbot and NL2SQL agents. Defaults to `gemini/gemini-2.5-flash-lite`.
 - `NL2SQL_N_EXECUTIONS`: number of candidate SQL generations used for self-consistency.
 - `NL2SQL_MAX_WORKERS`: maximum parallel workers for NL2SQL generation.
 - `NL2SQL_SAMPLE_ROWS`: number of sample rows included in table context.
@@ -281,7 +281,7 @@ Safety behavior:
 
 - Empty questions return `{"success": false, "error": "question is required"}`.
 - Sensitive authentication or forbidden-table questions are answered with a friendly refusal and `blocked: true`; they are saved in the conversation history but do not run the SQL pipeline.
-- Missing `OPENROUTER_API_KEY` or database/LLM failures return `success: false` with an error message.
+- Missing `GEMINI_API_KEY` or database/LLM failures return `success: false` with an error message.
 
 ## Main Endpoints
 
@@ -418,7 +418,7 @@ Common errors:
 - **PostgreSQL connection error**: confirm that `docker compose up -d` has been run and that the `DB_*` variables in `.env` match `docker-compose.yml`.
 - **RabbitMQ connection error**: confirm that the `rabbitmq` service is healthy and that `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, and `RABBITMQ_PASSWORD` are correct.
 - **Error starting an analysis**: confirm that `PUT /admin/moodle-config` has already been run with a valid Moodle connection.
-- **Chatbot returns `OPENROUTER_API_KEY is required`**: set `OPENROUTER_API_KEY` in `.env` and restart the API.
+- **Chatbot returns `GEMINI_API_KEY is required`**: set `GEMINI_API_KEY` in `.env` and restart the API.
 - **`src` import error**: run `uv sync` again inside `pre_api/` or `worker/` so the shared local package is installed in that environment.
 - **Protected routes return an authentication error**: run `uv run python install_auth.py` inside `pre_api/` and check `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD` in `.env`.
 

@@ -28,7 +28,12 @@ def chatbot():
         conversation_id=conversation_id,
     )
 
-    return jsonify(result)
+    status_code = (
+        500
+        if result.get("error_code") == "CHATBOT_INTERNAL_ERROR"
+        else 200
+    )
+    return jsonify(result), status_code
 
 
 @chatbot_bp.route("/chatbot/conversations", methods=["GET"])
